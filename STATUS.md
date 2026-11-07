@@ -8,6 +8,12 @@
 
 ## verified checkpoint
 
+paired viewer: owner accepted `specs/004-paired-episode-comparison.md`.
+`viewer/compare.html` implements turn-end alignment, slot-scoped evidence,
+per-turn record counts and configuration comparison. fifteen model tests and
+both browser suites pass. desktop/320px renders inspected; independent review,
+screen-reader operation and full-size UI performance remain pending.
+
 freight handoff follow-up: accepted `specs/003-freight-replay-handoff.md`;
 compatibility fixture and provenance manifest added under `viewer/fixtures`.
 ten model tests and browser checks pass against the pinned 394-event candidate.
