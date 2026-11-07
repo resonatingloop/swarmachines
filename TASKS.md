@@ -18,7 +18,7 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [open] swarmachines-m9p: Report skeleton on official template — owner: colette — updated: 2026-11-07T20:00Z
 - [open] swarmachines-956: Viewer: replay real recorded episode (day-1 checkpoint) — owner: asterion — updated: 2026-11-07T20:00Z
 - [open] swarmachines-19m: Measures and comparison framing for report — owner: caduceus — updated: 2026-11-07T20:00Z
-- [open] swarmachines-9e5: Bidirectional ring topology + peer-mute disturbance — owner: dev — updated: 2026-11-07T20:00Z
+- [doing] swarmachines-9e5: Bidirectional ring topology + peer-mute disturbance — owner: dev — updated: 2026-11-07T20:30Z
 - [doing] swarmachines-i3v: DEVELOPMENT.md/AGENTS.md claim stale: no committed automated test suite — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-h1m: CLAUDE.md template residue: unfilled placeholders — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-m04: Harden viewer/evidence.js markdown escaping (U+200E/200F, U+061C bidi) — owner: forge — updated: 2026-11-07T20:00Z
