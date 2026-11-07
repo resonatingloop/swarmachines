@@ -134,6 +134,13 @@ class CommunicationTopology:
         Check if communication is allowed given topology and active disturbances.
         Returns (allowed, reason) tuple.
         """
+        # Check peer-mute disturbance: muted agent cannot send or receive messages
+        # but can still perform local actions (observe, act)
+        if "peer-mute" in disturbances:
+            mute = disturbances["peer-mute"]
+            if mute.get("active") and mute.get("agent") in (from_agent, to_agent):
+                return False, "agent communication muted"
+
         # Check relay-loss disturbance
         if "relay-loss" in disturbances:
             loss = disturbances["relay-loss"]
@@ -153,6 +160,25 @@ class CommunicationTopology:
                 if from_agent != to_agent:
                     return True, ""
             return False, "hub-spoke requires hub involvement"
+        elif self.topology == "bidirectional-ring":
+            # Each agent can only communicate with immediate neighbors (left/right, wraparound)
+            # For [a,b,c,d]: a↔b, b↔c, c↔d, d↔a
+            if from_agent == to_agent:
+                return False, "self-communication not allowed"
+            try:
+                from_idx = self.agents.index(from_agent)
+                to_idx = self.agents.index(to_agent)
+            except ValueError:
+                return False, "unknown agent"
+            
+            n = len(self.agents)
+            left_neighbor = (from_idx - 1) % n
+            right_neighbor = (from_idx + 1) % n
+            
+            if to_idx == left_neighbor or to_idx == right_neighbor:
+                return True, ""
+            return False, "bidirectional-ring: agents not neighbors"
+        
         return False, "unknown topology"
 
 
@@ -171,6 +197,8 @@ class DisturbanceScheduler:
                     self._apply_relay_loss(config, log, topology, hub)
                 elif kind == "stale-report":
                     self._apply_stale_report(config, log)
+                elif kind == "peer-mute":
+                    self._apply_peer_mute(config, log)
 
     def _apply_relay_loss(self, config: dict, log: EventLog, topology: str, hub: str | None = None) -> None:
         agent = config["agent"]
@@ -219,6 +247,23 @@ class DisturbanceScheduler:
                 },
                 "before": f"message {message_id} claimed {claimed_state}",
                 "after": f"message {message_id} actually {actual_state}",
+            },
+        )
+
+    def _apply_peer_mute(self, config: dict, log: EventLog) -> None:
+        """Apply peer-mute disturbance: mute a fixed agent's communication while local actions continue."""
+        agent = config["agent"]
+        self.active["peer-mute"] = {"agent": agent, "active": True}
+
+        log.append(
+            turn=config["turn"],
+            agent_id=None,
+            event_type="disturbance.applied",
+            payload={
+                "kind": "peer-mute",
+                "detail": {"agent": agent},
+                "before": f"{agent} can send and receive messages",
+                "after": f"{agent} communication muted; local actions (observe, act) continue",
             },
         )
 
@@ -525,52 +570,59 @@ class TurnSeamRunner:
         return self.lifecycle.was_in_context_at_turn(message_id, turn)
 
 
-def load_events(path: str, char_limit: int = 10000) -> list[dict]:
+def load_events(path: str, char_limit: int = 10000000) -> list[dict]:
     """
-    Load events from a JSONL file with per-line size cap and error handling.
+    Load events from a JSONL file with per-line size cap and non-echoing error handling.
+    
+    Security: error messages use categorical types only — raw hostile input (model/attacker-
+    controlled JSON) is never echoed into logs or the episode. This prevents log injection
+    and ensures the episode remains a trustworthy audit trail.
+    
     Each line is validated against the events schema before being trusted.
     Returns a list of valid events; invalid lines are logged but not returned.
     """
     import jsonschema
-    
+
     schema_path = Path(__file__).parent / "schema" / "events.schema.json"
     with open(schema_path) as f:
         schema = json.load(f)
-    
+
     events = []
     errors = []
-    
+
     with open(path) as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line:
                 continue
-            
-            # Per-line size cap
+
+            # Per-line size cap (10MB default)
             if len(line) > char_limit:
-                errors.append(f"Line {line_num}: exceeds {char_limit} char limit ({len(line)} chars)")
+                errors.append(f"Line {line_num}: line_exceeds_size_limit")
                 continue
-            
+
             try:
                 event = json.loads(line)
-            except json.JSONDecodeError as e:
-                errors.append(f"Line {line_num}: JSON parse error: {e}")
+            except json.JSONDecodeError:
+                # Non-echoing: do not include raw hostile JSON in error message
+                errors.append(f"Line {line_num}: invalid_json")
                 continue
-            
+
             # Validate against schema
             try:
                 jsonschema.validate(event, schema)
                 events.append(event)
-            except jsonschema.ValidationError as e:
-                errors.append(f"Line {line_num}: schema validation failed: {e.message}")
-    
+            except jsonschema.ValidationError:
+                # Non-echoing: do not include raw hostile data from event in error message
+                errors.append(f"Line {line_num}: schema_validation_failed")
+
     if errors:
         print(f"load_events: {len(errors)} errors loading {path}")
         for err in errors[:5]:
             print(f"  {err}")
         if len(errors) > 5:
             print(f"  ... and {len(errors) - 5} more")
-    
+
     return events
 
 
@@ -580,7 +632,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="turn-seam scripted runner")
     parser.add_argument("--seed", type=int, default=42, help="random seed")
-    parser.add_argument("--topology", choices=["mesh", "hub-spoke"], default="mesh",
+    parser.add_argument("--topology", choices=["mesh", "hub-spoke", "bidirectional-ring"], default="mesh",
                         help="communication topology")
     parser.add_argument("--turns", type=int, default=3, help="number of turns (max 100)")
     parser.add_argument("--agents", type=str, default="a,b,c,d", 
@@ -635,6 +687,11 @@ def main():
                 "message_id": parts[2],
                 "claimed_state": parts[3],
                 "actual_state": parts[4] if len(parts) > 4 else "different",
+            }
+        elif parts[0] == "peer-mute" and len(parts) >= 3:
+            disturbance_schedule["peer-mute"] = {
+                "turn": int(parts[1]),
+                "agent": parts[2],
             }
 
     runner = TurnSeamRunner(
