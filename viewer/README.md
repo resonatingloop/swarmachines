@@ -85,3 +85,46 @@ scale 2 checks zoom-equivalent reflow, not browser-menu zoom. the pure model
 also exercises a 20,000-record input; full UI performance at that ceiling and
 screen-reader operation remain unverified. no automatic matching, causal
 scoring or outcome interpretation is provided.
+
+## report evidence export
+
+in the paired viewer, choose up to 32 turns with “select current turn,” then
+“prepare evidence.” review the exact json/markdown previews and inclusion note
+before using either explicit download button. downloads remain local; no
+report or external service is updated. configuration values and identifiers
+may contain producer-supplied sensitive content: the packet is not anonymized.
+
+successful source replacement, selection changes and reset invalidate the
+prepared packet. failed replacement retains it; moving the inspection cursor
+alone leaves selected turns unchanged. imports/hashes pause downloads. missing
+local cryptography disables export while leaving comparison available. each
+output is capped at 2 mib; refusal asks for fewer turns and never truncates.
+
+`evidence.js` owns schema `swarmachines.evidence-packet.v1`, exporter `1.0.0`.
+source sha256 hashes cover the original file bytes, before utf-8 decoding.
+packet identity is sha256 of UTF-8 deterministic compact JSON of every field
+except `packet_id`: recursively lexicographic object-key order, preserved array
+order, standard JSON scalar escaping and no trailing newline. exported json
+adds packet_id, uses the same stable serialization and ends with one newline.
+the markdown carries that same id and is generated from the same frozen object.
+no timestamps, filenames or local paths participate in identity.
+
+exports contain selected-turn counts and source references, observation ages,
+disturbance references, logged configuration and caveats. message/observation
+payloads, outcome totals and complete logs are excluded from defined fields.
+raw evidence inspection still requires the original source files. hashes prove
+byte identity, not producer authenticity, experimental control or causal effects.
+
+```sh
+node --test viewer/*.test.cjs
+node viewer/evidence-browser-check.mjs
+```
+
+the export browser check reads both actual downloaded artifacts and compares
+them to previews; it also tests invalidation, failed replacements, reset/hash
+races, missing crypto, keyboard selection and responsive layout. downloads and
+screenshots use a fresh private `/tmp/swarm-evidence-downloads-*` directory.
+model tests independently recompute packet identity, check byte-distinct line
+endings, unavailable/null semantics, exclusions and output-size refusal.
+independent export-boundary review is required before release. screen-reader,
+actual browser-menu zoom and full-size UI performance remain unverified.
