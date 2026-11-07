@@ -8,7 +8,6 @@ Check this file before starting any work; update it when status changes.
 The coordinator owns routing; the ledger is the single source of truth.
 
 ## Active
-
 - [doing] swarmachines-73o: sast HIGH (f92dfd8): markdown export passes raw HTML through — evidence.test.cjs fails — owner: forge — updated: 2026-11-07T20:08Z
 - [doing] swarmachines-b9f: PR#6 sast HIGH: freight-world integration dead code — run() never wires FreightWorld — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-bof: Fix PR #5: decouple freight-world contamination, gate peer-mute on turn, restore undeliverable — owner: forge — updated: 2026-11-07T20:00Z
@@ -20,10 +19,8 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [open] swarmachines-19m: Measures and comparison framing for report — owner: caduceus — updated: 2026-11-07T20:35Z
 - [doing] swarmachines-mnp-load-events: load_events hardening (commits 6b51134/b8a5f1b ride PR #5 ancestry + swarmachines-mnp-load-events-hardening-clean branch; NOT PR #16 — gh-verified) — owner: forge — updated: 2026-11-07T20:57Z
 - [doing] T-001: PR #16 merge condition — rebase #2 resolved: head 56389e5 (on master 89e6517, MERGEABLE/CLEAN; suites 61/61 escaping + 122/122 viewer incl. 5 sast-probe tests; sast findings of review 5815211389 fixed) — re-gate (verifier+sast) in flight, then merge-hand — owner: dev — updated: 2026-11-07T22:19Z
-- [doing] T-005: PR #8 (Adaption adapter) gates + live-smoke coordination — COMPLETE at pinned head adf712a: live smoke 4/4 green (key-holder anchored), verifier pin-audit 8/8 CLEAR, sast CLEAR at exact head; merge hand with caduceus — owner: pug-bot — updated: 2026-11-07T22:36Z
-- [open] T-006: integrated freight + ring/peer-mute acceptance commit — exact zero-provider invocation, job release/completion evidence, policy fixture: received information changes a legal decision; PR #19 fix-forward now merged (89e6517), still waits on PR #6 — owner: pug-bot (assignee TBD: dev/forge) — updated: 2026-11-07T22:19Z
+- [open] T-006: integrated freight + ring/peer-mute acceptance commit — exact zero-provider invocation, job release/completion evidence, policy fixture: received information changes a legal decision; PR #19 fix-forward now merged (89e6517), still waits on PR #6 (queued behind forge's in-flight PR#6 fixes) — owner: forge — updated: 2026-11-07T22:51Z
 - [open] T-007: accepted measure definitions — observable-source mapping review — owner: caduceus — updated: 2026-11-07T22:05Z
-- [doing] T-003: PR #8 merge condition — green smoke RECEIVED at pinned head adf712a (key-holder-anchored: 4/4 live calls, bounded wrapper, evidence comment 6713908392); verifier pin-audit 8/8 + sast CLEAR at exact head; merge handed to caduceus — owner: colette — updated: 2026-11-07T22:36Z
 - [doing] swarmachines-i3v: DEVELOPMENT.md/AGENTS.md claim stale: no committed automated test suite — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-h1m: CLAUDE.md template residue: unfilled placeholders — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-m04: Harden viewer/evidence.js markdown escaping (U+200E/200F, U+061C bidi) — owner: forge — updated: 2026-11-07T20:00Z
@@ -33,6 +30,7 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [doing] swarmachines-50u: PR#6 sast MEDIUM: route capacity never decrements (dead pass loop) — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-9p4: PR#6 sast MEDIUM: validate_action rejection reasons echo raw hostile input — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-ysv: PR#6 sast MEDIUM: apply_action fails open on malformed input — owner: forge — updated: 2026-11-07T20:00Z
+- [open] T-008: PR #20 review gates — observation-only control-plane board (asterion, owner-approved), head a4f97db; review request pinged 22:53Z, verifier+sast pending — owner: pug-bot — updated: 2026-11-07T23:01Z
 
 ## Done (recent — prune weekly)
 
@@ -45,4 +43,6 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [done] swarmachines-1iy: seam accepted, ledger+gates ratified ruling recorded — owner: forge
 - [done] swarmachines-mar: topology mapping ruling recorded in openspec — owner: dev
 - [done] swarmachines-qbv: freight world mapped onto runner turn cycle — owner: dev
-- [done] swarmachines-zpz, wwn, e74, r08, deb, 3x2, 8s2, 60c, psx, cwt, cu8, kmr, d86, mnp: closed rounds 1-3 — owner: various
+- [done] T-001: PR #16 merge condition — ALL SATISFIED at head 9652e46: verifier APPROVE (comment 6714061585) + sast PASS 0 findings (comment 6714068290), both anchored at head; suite 127/127 exit 0 (cjs 66/js 46/comparison 5/replay 10), map 482 entries, dynamic count asserts; MERGEABLE (clean vs 89e6517 + tip d4b4aa8) — merge is caduceus's (merge-executor rule); 3 fix passes tonight (283d3ca→d3205da→7183ceb→9652e46) — owner: dev — updated: 2026-11-07T22:50Z
+- [done] T-003: PR #8 merge condition — satisfied: merged 22:33:29Z as d4b4aa8 (adf712a chain in) — owner: colette — updated: 2026-11-07T23:01Z
+- [done] T-005: PR #8 (Adaption adapter) gates + live-smoke coordination — merged 22:33:29Z as d4b4aa8 via fork path (a): live smoke 4/4 at adf712a key-holder-anchored; verifier pin-audit 8/8 + sast CLEAR at exact head; record CLOSED — owner: pug-bot (sibling lane) — updated: 2026-11-07T23:01Z
