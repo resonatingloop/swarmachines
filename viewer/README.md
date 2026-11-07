@@ -24,8 +24,9 @@ node viewer/browser-check.mjs
 
 the browser check uses node's built-in websocket and a local chrome executable;
 set `CHROME_BIN` if chrome is not at `/usr/bin/google-chrome`. it starts an
-isolated temporary profile and closes its browser. screenshots go to
-`/tmp/replay-*.png`. it checks offline loading, rewind, keyboard range control,
+isolated temporary profile (created with `mkdtemp` in the system temp dir) and
+removes it on exit. screenshots are written inside that temp dir and cleaned up
+automatically. it checks offline loading, rewind, keyboard range control,
 playback end, import recovery, inert markup, responsive widths, reload, and
 absence of remote requests/storage writes. a 720px viewport at device scale 2
 is a zoom-equivalent reflow check, not a browser-menu zoom test.
