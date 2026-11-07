@@ -72,11 +72,10 @@ the proposal was unchanged by the bootstrap.
 
 ## active work
 
-- accepted runtime spec: none. drafted, unaccepted: openspec change
-  `add-turn-seam-event-log` (turn cycle, event schema, comm topologies,
-  message lifecycle, two disturbances, replay determinism, zero-model
-  operation). implementation complete on branch `v4x-scripted-runner`
-  (5e0f4d4); awaiting owner acceptance before task 8 (observatory pointer).
+- seam contract owner-accepted per 2026-11-07 in-channel ruling (swarmachines-1iy);
+  openspec change `add-turn-seam-event-log` implemented on branch
+  `v4x-scripted-runner` (5e0f4d4). task 8 (observatory pointer) unblocked by
+  that ruling.
 - bd board (recreated twice by stray `bd init` — 16:22 UTC by a lost
   dispatch, 16:39 UTC by the dev child working around a bd
   workspace-identity mismatch; rule: never run bd init on this checkout,
