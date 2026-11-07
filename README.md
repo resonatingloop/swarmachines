@@ -2,7 +2,7 @@
 
 > continuity role: operational front door
 > status: proposal phase
-> last verified: 2026-11-06
+> last verified: 2026-11-07
 > owns: the way in, present maturity, and the documentation authority map
 > update when: primary use, location, or documentation ownership changes
 
@@ -50,6 +50,13 @@ be configured.
 stop the preview with ctrl+c. alternatively, open `plans/index.html` directly
 in a browser: the file includes its styling, illustrations, and behavior.
 
+for the written spec, open the [attention-aperture review](plans/spec-review/index.html)
+directly, or visit `/spec-review/` on the same preview server. it preserves all
+twelve steps, fifteen working choices, four lanes, and twenty-one source
+passages. select a step, follow its supporting wording, or mark choices for
+discussion. marks disappear on refresh and accept no decisions. keep the
+files in `plans/spec-review/` together.
+
 ## where to go next
 
 the [written two-day plan](specs/001-hackathon-plan.md) gives the team a
@@ -75,6 +82,8 @@ calculator counts calls, not credits or dollars.
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | operational procedure | preview, validation, state, and recovery |
 | [docs/DISCORD.md](docs/DISCORD.md) | operational procedure | local agent connection, room identities, and communication proof |
 | [plans/index.html](plans/index.html) | planning / discussion draft | the detailed visual proposal for the team |
+| [spec review](plans/spec-review/index.html) | generated reference | navigable projection of the written draft; no decision authority |
+| [review data](plans/spec-review-data.json) | authored projection input | phase/choice correspondence and exact source excerpts; checked against the draft hash |
 | [specs/001-hackathon-plan.md](specs/001-hackathon-plan.md) | planning / draft | proposed sequence, defaults, integration points, and future acceptance evidence |
 
 the html is authored source, not a generated projection of an accepted spec.

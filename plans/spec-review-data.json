@@ -1,0 +1,713 @@
+{
+  "schemaVersion": 1,
+  "artifact": {
+    "title": "give the swarm a spine.",
+    "eyebrow": "swarmachines / twelve steps / two days",
+    "intro": "how do four people get from a promising idea to one inspectable experiment? follow the proposed sequence, open its source wording, and sort the choices before building. this is a draft plan made navigable—not an experiment result.",
+    "canonicalSources": [
+      "specs/001-hackathon-plan.md · draft · base 0478a6d + companion-link edit",
+      "source sha256 303e724a796e5c940d81ae3f5d788adaf6bba91721eb030014da40737a82a5d6"
+    ],
+    "next": {
+      "number": "01",
+      "label": "the first shared decision",
+      "title": "choose the specimen. name its keepers.",
+      "copy": "settle the world, four lane owners and one integration owner. accept only the first bounded slice; let the rest remain provisional."
+    }
+  },
+  "foundations": [
+    {
+      "mark": "✓",
+      "tone": "done",
+      "title": "the proposal exists",
+      "copy": "the original visual introduces the idea; this companion exposes the written build route."
+    },
+    {
+      "mark": "○",
+      "tone": "open",
+      "title": "the plan is a draft",
+      "copy": "review marks guide conversation. they accept no decisions and assign no people."
+    },
+    {
+      "mark": "↗",
+      "tone": "open",
+      "title": "the experiment is ahead",
+      "copy": "a real recorded episode on day one; a matched comparison on day two. both remain proposed exits."
+    }
+  ],
+  "phases": [
+    {
+      "id": "step-01",
+      "number": "01",
+      "title": "choose the first specimen together",
+      "short": "choose owners + accept the first slice",
+      "status": "draft · when: day one, opening thirty to forty-five minutes. who: everyone.",
+      "distance": "near",
+      "outcome": "choose owners + accept the first slice",
+      "work": [
+        "review the defaults. choose the world, first disturbance, and four human lane owners. name an integration owner; the nervous-system owner is a reasonable default, but integration is an additional responsibility, not a fifth lane.",
+        "agree on the demo's minimum: a world doing useful work, a disruption, and the actual ensuing behavior. record the decisions and accept a bounded initial slice before runtime implementation. the second disturbance and training branch can remain provisional."
+      ],
+      "dependencies": [],
+      "exit": "owners, an accepted initial slice, and a one-sentence demo. prepare individual agent context handoffs from these choices using the agent guide. the handoffs should tell each agent its scope, checkout, shared interfaces, evidence to produce, and first concrete task.",
+      "guard": "a suggested default or a visual review mark does not accept a runtime spec.",
+      "sourceIds": [
+        "passage-04"
+      ]
+    },
+    {
+      "id": "step-02",
+      "number": "02",
+      "title": "establish the workroom and a small provider budget",
+      "short": "prove access within a small allowance",
+      "status": "draft · when: day one, first hour; overlap with step 3. who: integration owner, with each human handling their harness/account setup.",
+      "distance": "near",
+      "outcome": "prove access within a small allowance",
+      "work": [
+        "confirm checkouts, branches, and how peers obtain the revision behind a handoff. use separate working copies or worktrees for parallel writers. fill the discord room card from the distributed harness guides, discover actual tools, and prove a peer round trip in the approved room. check at milestones and interface changes; ordinary read/send tools do not wake idle agents.",
+        "establish which adaption accounts hold which credits, usable models and operations, and who owns the run budget. the reported $500 / 1,500 credits does not establish pooled funds or a price per call. within the agreed scope, make one small request and record model id, latency, tokens, and any observed credit charge. choose the langfuse destination and the fictional experiment data it may receive.",
+        "the existing .env remains outside agent read access. use the owner's approved credential setup; keys do not belong in handoffs, logs, or chat."
+      ],
+      "dependencies": [
+        "step 1: named integration owner and a bounded pilot allowance"
+      ],
+      "exit": "a provider probe or explicit access blocker, a bounded pilot allowance, and a real discord connection result. the other lanes can keep working against scripted agents and sample events while access is resolved.",
+      "guard": "reported credits are not pooled funds or a price quote; credentials stay out of logs and handoffs.",
+      "sourceIds": [
+        "passage-05"
+      ]
+    },
+    {
+      "id": "step-03",
+      "number": "03",
+      "title": "agree on one turn and one event",
+      "short": "agree on one complete turn",
+      "status": "draft · when: day one, first shared design block. who: worldbuilder and nervous system, with the observatory and naturalist checking the example.",
+      "distance": "near",
+      "outcome": "agree on one complete turn",
+      "work": [
+        "write one complete example: world snapshot, differing local observations, agent response, checked action, and resulting events. the proposed turn order:",
+        "1. apply scheduled world changes and deliver messages due this turn. ",
+        "2. construct local views and record the exact context supplied to each agent. ",
+        "3. ask each agent once for a structured action and bounded outgoing messages. ",
+        "4. validate responses and resolve competing actions by a documented,    reproducible rule against the same turn snapshot. ",
+        "5. commit world changes, queue new messages for the next turn, save the    resulting state, and continue until the horizon or a stop condition.",
+        "agents receive only their permitted views, delivered messages, and their own retained context. global state belongs to the simulator/viewer. newly sent messages cannot benefit agents called later in the same turn.",
+        "candidate record fields: schema version, run id, scenario seed, condition, turn, event sequence, agent id where relevant, event type, and payload. messages also need stable ids, sender/recipient ids, source-observation turn, send turn, and delivery turn. attach trace references when available. retained agent notes are context/output, not proof of hidden reasoning."
+      ],
+      "dependencies": [
+        "steps 1–2: selected world and owners; provider access may remain blocked"
+      ],
+      "exit": "a sample episode, an agreed format version, and an owner for interface changes. these are proposed fields, not an existing contract.",
+      "guard": "no global-state leakage or same-turn message advantage; retained notes do not reveal hidden reasoning.",
+      "sourceIds": [
+        "passage-06"
+      ]
+    },
+    {
+      "id": "step-04",
+      "number": "04",
+      "title": "build the first pieces in parallel",
+      "short": "four lanes, one shared example",
+      "status": "draft · when: day one, main work block. who: all four owners.",
+      "distance": "far",
+      "outcome": "four lanes, one shared example",
+      "work": [
+        "worldbuilder — first implementation: graph, delivery jobs, legal moves, capacity limits, partial observations, scripted policy; evidence before handoff: a complete scripted episode; illegal moves change nothing; supplies are not duplicated or lost",
+        "nervous system — first implementation: turn runner, private context, message routing, adaption adapter, episode recorder; evidence before handoff: a model response becomes a checked action or explicit rejection; only allowed recipients receive messages",
+        "observatory — first implementation: sample-log reader, world view, communication overlay, turn controls, event inspection; evidence before handoff: the same turn shows the same saved state; sample data is labeled; events retain their source",
+        "field naturalist — first implementation: baseline, disturbances, run manifest, small event-derived analysis; evidence before handoff: a comparison table and an explanation of what its measurements can establish",
+        "the worldbuilder's first success is ordinary graph/state-machine work. pair with the nervous-system owner to replace one scripted policy with a model. keep the scripted version as a useful baseline. this gives the teammate new to agents substantial ownership and a concrete way into the agent loop."
+      ],
+      "dependencies": [
+        "step 3: shared turn/event example and format"
+      ],
+      "exit": "four pieces that agree on the example from step 3. share artifacts and revisions, not just “my part works.”",
+      "guard": "do not substitute “my part works” for shared artifacts and revisions.",
+      "sourceIds": [
+        "passage-07"
+      ]
+    },
+    {
+      "id": "step-05",
+      "number": "05",
+      "title": "join the pieces while the system is small",
+      "short": "observation → action → real replay",
+      "status": "draft · when: day one, before the final work block. who: integration owner, with every lane available to fix its boundary.",
+      "distance": "far",
+      "outcome": "observation → action → real replay",
+      "work": [
+        "connect one agent to the world, then all four under one arrangement. load the real episode in the viewer. follow a selected turn from local observation through model response and validation to world change and replay state.",
+        "nest model/tool observations under agent turns in langfuse, grouped with an episode/run reference. record identity, timing, errors, and usage; missing usage remains unknown. the event log owns world replay. langfuse's graph describes execution structure, not automatically communication or influence. see its data model.",
+        "record invalid output and a deterministic fallback, such as no action. bound and count retries. a telemetry failure must not duplicate a committed action. finish runs as completed, failed, budget-stopped, or cancelled, with a reason. a missing terminal record means the log is incomplete. for this weekend, start a new linked run after interruption rather than transparently resuming provider calls."
+      ],
+      "dependencies": [
+        "steps 2–4: one working world, runner, recorder and viewer; real provider access"
+      ],
+      "exit": "one real, inspectable episode that replays without another model call. identify any remaining tracing gap explicitly.",
+      "guard": "telemetry must not duplicate actions; missing usage stays unknown; incomplete logs remain incomplete.",
+      "sourceIds": [
+        "passage-08"
+      ]
+    },
+    {
+      "id": "step-06",
+      "number": "06",
+      "title": "freeze a day-one specimen",
+      "short": "leave a recoverable specimen",
+      "status": "draft · when: day one, final thirty to forty-five minutes. who: everyone.",
+      "distance": "far",
+      "outcome": "leave a recoverable specimen",
+      "work": [
+        "save a known-working run, configuration, prompt/model versions, and matching code revision. document launch, run, inspect, and replay. have another teammate follow the path from their checkout. update the checkpoint and leave a next action per lane.",
+        "if the complete loop still fails, narrow to one arrangement and one disturbance. defer rich classification and training until the loop works."
+      ],
+      "dependencies": [
+        "step 5: a real replayable episode, or an explicit narrower scope"
+      ],
+      "exit": "a recoverable working specimen and a credible day-two scope.",
+      "guard": "defer rich classification and training while the complete loop is broken.",
+      "sourceIds": [
+        "passage-09"
+      ]
+    },
+    {
+      "id": "step-07",
+      "number": "07",
+      "title": "introduce a disturbance and its matched control",
+      "short": "mute communication, retain local action",
+      "status": "draft · when: day two, first block. who: worldbuilder and naturalist, supported by the nervous-system owner.",
+      "distance": "far",
+      "outcome": "mute communication, retain local action",
+      "work": [
+        "keep the scenario, jobs, model/prompt configuration, horizon, and message allowance comparable. first contrast undisturbed communication with a fixed agent muted for a specified interval. its local routing actions continue: the intervention changes communication without also removing delivery capacity.",
+        "choose the target and timing before viewing outcomes. log the intervention and permitted graph. check which peers remain reachable; disconnection and a failure to use remaining routes are different findings. call it relay loss only when pre-disruption behavior supports that description; the fixed target may never have become a coordinator."
+      ],
+      "dependencies": [
+        "step 6: saved working specimen; a specified target and timing"
+      ],
+      "exit": "two runs whose meaningful difference is explicit in their manifests, plus a disruption marker in the viewer.",
+      "guard": "muting does not remove delivery capacity; call it relay loss only if earlier behavior supports that reading.",
+      "sourceIds": [
+        "passage-10"
+      ]
+    },
+    {
+      "id": "step-08",
+      "number": "08",
+      "title": "expand to the second arrangement and stale information",
+      "short": "compare topology + information timing",
+      "status": "draft · when: day two, after the first comparison works. who: nervous system and naturalist, with the worldbuilder handling scenario changes.",
+      "distance": "far",
+      "outcome": "compare topology + information timing",
+      "work": [
+        "compare a fully connected graph with a bidirectional ring while keeping the physical freight map separate. centralization may emerge within either; do not call an imposed topology a discovered morphology.",
+        "for stale information, delay a report that was true when sent until after a world change. preserve its source and original observation turn. the control gets timely reports under the same world-change schedule. if a fixture supplies the report, record scenario authorship instead of calling it model-generated.",
+        "use the same small seed set across conditions and vary execution order. seeded worlds support comparable inputs; they do not make model outputs deterministic. three repeats per condition are an exploratory starting point, not a statistical guarantee."
+      ],
+      "dependencies": [
+        "step 7: one matched comparison works before expansion"
+      ],
+      "exit": "a small comparable batch, or an explicitly narrower comparison if cost or time requires it.",
+      "guard": "an imposed topology is not a discovered morphology; seeded worlds do not make model outputs deterministic.",
+      "sourceIds": [
+        "passage-11"
+      ]
+    },
+    {
+      "id": "step-09",
+      "number": "09",
+      "title": "use more of adaption where it serves the experiment",
+      "short": "optional data or adaptation branch",
+      "status": "draft · when: alongside day two, once the complete loop is stable. who: naturalist, pairing with the nervous-system owner.",
+      "distance": "far",
+      "outcome": "optional data or adaptation branch",
+      "work": [
+        "use adaption inference for the agents. a second useful contribution is generating candidate scenarios or coordination examples: inspect a small sample, validate it against the world, and expand useful material. generated trajectories are examples, not observed experimental evidence.",
+        "dataset generation/adaptation offer estimates. the documented autoscientist mcp tool has no estimate mode; a hyperparameter recommendation is not a quote. see adaption's operation reference.",
+        "if training fits, isolate one skill, such as communicating a route update with provenance. separate held-out scenarios before selecting training examples. compare base and adapted agents under the same topology and budgets, and prove the trained artifact can be served in time. this is an optional branch, not a dependency of the main demo."
+      ],
+      "dependencies": [
+        "step 5: stable complete loop; training also needs held-out data, serving and a budget"
+      ],
+      "exit": "a useful data artifact or bounded adaptation comparison, if feasible. report the sponsor capabilities actually exercised.",
+      "guard": "generated trajectories are examples; training is optional; a recommendation is not a cost estimate.",
+      "sourceIds": [
+        "passage-12"
+      ]
+    },
+    {
+      "id": "step-10",
+      "number": "10",
+      "title": "inspect before naming the collective",
+      "short": "count first; name carefully",
+      "status": "draft · when: day two, comparison block. who: naturalist and observatory, with the team reviewing selected episodes.",
+      "distance": "far",
+      "outcome": "count first; name carefully",
+      "work": [
+        "review these proposed measures before implementing them. start with event counts and human interpretation, without requiring a model judge. the small, goal-linked measurement approach is supported by langfuse's evaluation guide.",
+        "core — status: proposed; candidate measure: deliveries completed / jobs released by the horizon; source: world events; decision informed: whether coordination helps the task; measurability: direct counts; retain unmet jobs",
+        "core — status: proposed; candidate measure: calls, tokens, observed credits per episode; source: runner/provider usage; decision informed: affordable and comparable repeats; measurability: calls direct; missing usage stays unknown",
+        "core — status: proposed; candidate measure: turns from intervention to next completed delivery; source: world timeline; decision informed: whether useful work resumes promptly; measurability: record no delivery before horizon explicitly; this is not stable recovery",
+        "supporting — status: proposed; candidate measure: per-agent sent/delivered traffic and concentration; source: message events; decision informed: where coordination may concentrate; measurability: descriptive; include reachability and allowances",
+        "supporting — status: proposed; candidate measure: invalid actions, failed requests, fallbacks; source: validation/lifecycle events; decision informed: distinguish behavioral and implementation failures; measurability: direct counts with reasons",
+        "for a quiet-specialist candidate, inspect local evidence, delivery, decision context, and subsequent action. for repair, inspect changed exchanges alongside resumed useful work. allow mixed, unclear, and no-pattern outcomes. keep the whole small batch visible when selecting replay specimens."
+      ],
+      "dependencies": [
+        "steps 7–8: recorded comparison or an explicitly narrower batch"
+      ],
+      "exit": "evidence-linked observations and their limitations. a compelling nickname is the beginning of an interpretation.",
+      "guard": "counts are descriptive; allow mixed, unclear and no-pattern results.",
+      "sourceIds": [
+        "passage-13"
+      ]
+    },
+    {
+      "id": "step-11",
+      "number": "11",
+      "title": "finish around one honest reveal",
+      "short": "one observation, one limitation",
+      "status": "draft · when: day two, final sixty to ninety minutes. who: observatory and integration owner, with the naturalist preparing the explanation.",
+      "distance": "far",
+      "outcome": "one observation, one limitation",
+      "work": [
+        "show the task and limited views. pause before the disruption, advance the replay, and inspect events behind changed behavior. compare the control or other arrangement. distinguish allowed links, exchanges, and inferred influence.",
+        "keep a recorded episode available when live inference is slow. label the recording, replay it without provider spend, and finish with one observation, one limitation, and the next experiment it suggests."
+      ],
+      "dependencies": [
+        "step 10: evidence-linked interpretation and replayable episodes"
+      ],
+      "exit": "a demo backed by inspectable events.",
+      "guard": "label recordings and distinguish allowed links, actual exchanges and inferred influence.",
+      "sourceIds": [
+        "passage-14"
+      ]
+    },
+    {
+      "id": "step-12",
+      "number": "12",
+      "title": "leave a usable handoff",
+      "short": "one revision + one next action",
+      "status": "draft · when: after the demo build stabilizes. who: all lane owners.",
+      "distance": "far",
+      "outcome": "one revision + one next action",
+      "work": [
+        "run the agreed checks, reconcile actual setup and implementation docs, and replace the checkpoint. preserve manifests and findings with provenance; record omissions and unverified claims. hand over one exact revision and next action per remaining task. commits, pushes, posts, or publication follow the team's established scope; this written plan performs none of those actions."
+      ],
+      "dependencies": [
+        "step 11: stable demo build and actual verification results"
+      ],
+      "exit": "one exact revision and next action per remaining task, with omissions and unverified claims recorded.",
+      "guard": "this plan does not itself authorize commits, pushes, posting or publication.",
+      "sourceIds": [
+        "passage-15"
+      ]
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "world",
+      "name": "freight in the fog",
+      "kind": "decide",
+      "purpose": "give coordination something concrete to accomplish.",
+      "disposition": "choose before building",
+      "proposal": "graph, delivery jobs and partial local observations. a different resource-routing world needs new rules and examples.",
+      "edge": "pilot the information asymmetry: simple routing may need little communication.",
+      "sourceIds": [
+        "passage-02",
+        "passage-04",
+        "passage-20"
+      ]
+    },
+    {
+      "id": "owners",
+      "name": "four owners; one integrator",
+      "kind": "decide",
+      "purpose": "let four people build in parallel with explicit shared boundaries.",
+      "disposition": "choose before building",
+      "proposal": "worldbuilder, nervous system, observatory and field naturalist. one integration owner is an additional responsibility, not a fifth lane.",
+      "edge": "all assignments remain open. worldbuilding begins with graph/state-machine work; pair on one model turn.",
+      "sourceIds": [
+        "passage-04",
+        "passage-07"
+      ]
+    },
+    {
+      "id": "runtime",
+      "name": "choose the runtime",
+      "kind": "decide",
+      "purpose": "give the team a tractable world-to-replay implementation.",
+      "disposition": "choose before building",
+      "proposal": "python for world, runner and analysis; plain browser javascript for replay. shared typescript is an alternative with fewer language boundaries.",
+      "edge": "exact dependencies and versions must be selected and verified; this draft is not a lockfile.",
+      "sourceIds": [
+        "passage-02",
+        "passage-17"
+      ]
+    },
+    {
+      "id": "communication",
+      "name": "two communication arrangements",
+      "kind": "decide",
+      "purpose": "compare coordination under different permitted connections.",
+      "disposition": "choose before building",
+      "proposal": "fully connected and bidirectional ring, with equal per-agent message allowances and a separate physical freight map.",
+      "edge": "a forced star may disconnect peers when its hub is lost; centralization may emerge inside either proposed arrangement.",
+      "sourceIds": [
+        "passage-02",
+        "passage-11"
+      ]
+    },
+    {
+      "id": "turn",
+      "name": "one turn; bounded information",
+      "kind": "core",
+      "purpose": "make a turn comparable regardless of the order model calls finish.",
+      "disposition": "proposed core",
+      "proposal": "apply changes and due messages, build local views, ask each agent once, validate against the same snapshot, then commit and queue next-turn messages.",
+      "edge": "record exact supplied context; candidate fields are proposed, not an accepted schema. retained notes are not hidden reasoning.",
+      "sourceIds": [
+        "passage-06",
+        "passage-18"
+      ]
+    },
+    {
+      "id": "record",
+      "name": "local records + execution traces",
+      "kind": "core",
+      "purpose": "replay an episode and inspect the events behind the picture.",
+      "disposition": "proposed core",
+      "proposal": "local events and snapshots own replay; langfuse nests execution observations under turns and runs.",
+      "edge": "execution structure is not communication or influence. schema versions, ids, provenance and incomplete records need validation.",
+      "sourceIds": [
+        "passage-06",
+        "passage-08",
+        "passage-19"
+      ]
+    },
+    {
+      "id": "lifecycle",
+      "name": "fail visibly; commit once",
+      "kind": "core",
+      "purpose": "separate agent behavior from implementation failure.",
+      "disposition": "proposed core",
+      "proposal": "record invalid output and deterministic fallback; bound retries and finish as completed, failed, budget-stopped or cancelled with a reason.",
+      "edge": "missing terminal record means incomplete. after interruption, start a linked new run rather than silently replaying paid calls.",
+      "sourceIds": [
+        "passage-08",
+        "passage-18"
+      ]
+    },
+    {
+      "id": "muting",
+      "name": "a mute + its matched control",
+      "kind": "core",
+      "purpose": "test communication loss while preserving the ability to do local work.",
+      "disposition": "proposed core",
+      "proposal": "mute a fixed agent for a specified interval; hold jobs, scenario, horizon, model/prompt and allowance comparable to the control.",
+      "edge": "choose timing before seeing outcomes. inspect reachability; the target might never have become a coordinator.",
+      "sourceIds": [
+        "passage-10"
+      ]
+    },
+    {
+      "id": "stale",
+      "name": "stale information",
+      "kind": "optional",
+      "purpose": "test how agents handle information that used to be true.",
+      "disposition": "optional extension",
+      "proposal": "delay a true report until after a world change; the control receives timely reports under the same change schedule.",
+      "edge": "retain source and observation turn. label scenario-authored fixtures; three repeats are exploratory.",
+      "sourceIds": [
+        "passage-11"
+      ]
+    },
+    {
+      "id": "adaption",
+      "name": "data generation + adaptation",
+      "kind": "optional",
+      "purpose": "exercise sponsor capabilities where they help the research question.",
+      "disposition": "optional extension",
+      "proposal": "inference for agents; inspect and validate candidate scenarios or coordination examples. train one bounded skill only after the loop works.",
+      "edge": "hold out scenarios before choosing examples; compare base/adapted agents with matched budgets and prove serving in time. generated data is not observed evidence.",
+      "sourceIds": [
+        "passage-12",
+        "passage-16"
+      ]
+    },
+    {
+      "id": "measure",
+      "name": "inspect before naming",
+      "kind": "core",
+      "purpose": "connect a candidate collective form to visible events and limits.",
+      "disposition": "proposed core",
+      "proposal": "core: deliveries/jobs, calls/tokens/observed credits, and turns from intervention to next completed delivery. supporting: traffic distribution, invalid actions, failures and fallbacks.",
+      "edge": "no delivery by horizon is explicit; first delivery is not stable recovery. inspect evidence delivery and subsequent action; keep the whole batch visible.",
+      "sourceIds": [
+        "passage-13",
+        "passage-20"
+      ]
+    },
+    {
+      "id": "workload",
+      "name": "128 / 768 / 1,152 calls",
+      "kind": "bounds",
+      "purpose": "pick a batch the weekend and account can actually sustain.",
+      "disposition": "retain the boundary",
+      "proposal": "small: 2 runs / 128 calls. middle: 12 runs / 768 calls. expanded: 18 runs / 1,152 calls. all agents still get decision calls while muted.",
+      "edge": "excludes probes, retries, data generation, training and extra evaluators. measure pilot cost and time; missing credit usage does not turn calls into a currency cap.",
+      "sourceIds": [
+        "passage-16",
+        "passage-05"
+      ],
+      "tension": "the original proposal calculator counts four disturbed conditions: 768 calls. this written plan adds matched controls: its expanded six-condition batch is 1,152. these are different workloads, not interchangeable prices."
+    },
+    {
+      "id": "demo",
+      "name": "one honest reveal",
+      "kind": "core",
+      "purpose": "make one observed change inspectable by another person.",
+      "disposition": "proposed core",
+      "proposal": "show limited views, pause before disruption, advance replay, inspect events and compare a control. keep a recorded episode available without extra inference spend.",
+      "edge": "finish with one observation, one limitation and the next experiment. an inconclusive result is valid.",
+      "sourceIds": [
+        "passage-14",
+        "passage-19"
+      ]
+    },
+    {
+      "id": "cuts",
+      "name": "what survives the scope cuts",
+      "kind": "bounds",
+      "purpose": "preserve a useful experiment when time or access runs out.",
+      "disposition": "retain the boundary",
+      "proposal": "cut training first, then the second disturbance, then rich visual classification. preserve local records, complete replay and a matched comparison.",
+      "edge": "no provider access means an honestly labeled scripted prototype; the model-backed experiment remains incomplete. production hosting and a definitive taxonomy are outside core.",
+      "sourceIds": [
+        "passage-16",
+        "passage-17"
+      ]
+    },
+    {
+      "id": "handoff",
+      "name": "leave something recoverable",
+      "kind": "bounds",
+      "purpose": "let the next person reproduce the result and continue the work.",
+      "disposition": "retain the boundary",
+      "proposal": "save configuration, prompt/model versions and revision; have another teammate run-to-replay; reconcile setup, evidence, omissions and next actions.",
+      "edge": "offline world/scheduling/validation/replay tests and a separately invoked bounded provider smoke must be added when runtime exists. zero tests is not proof.",
+      "sourceIds": [
+        "passage-09",
+        "passage-15",
+        "passage-19"
+      ]
+    }
+  ],
+  "deployments": [],
+  "lanes": [
+    {
+      "tone": "active",
+      "status": "unassigned · approachable agent entry",
+      "title": "worldbuilder",
+      "copy": "graph, jobs, legal moves, capacities, partial observations and a scripted policy. prove a complete episode, invalid-move rejection and resource conservation.",
+      "note": "start with ordinary state-machine work; pair with nervous system on the first model turn."
+    },
+    {
+      "tone": "active",
+      "status": "unassigned · integration candidate",
+      "title": "nervous system",
+      "copy": "turn runner, private context, message routing, adaption adapter and episode recorder. prove checked actions and allowed recipients.",
+      "note": "integration is extra responsibility; name its owner explicitly."
+    },
+    {
+      "tone": "open",
+      "status": "unassigned · sample events first",
+      "title": "observatory",
+      "copy": "world view, communication overlay, turn controls and source events. prove the same saved state appears at the same turn.",
+      "note": "keep sample logs labeled until real episodes arrive."
+    },
+    {
+      "tone": "open",
+      "status": "unassigned · evidence and its limits",
+      "title": "field naturalist",
+      "copy": "baseline, disturbances, run manifests and event-derived comparisons. explain what the measurements can establish.",
+      "note": "morphology names begin an interpretation; mixed and no-pattern outcomes remain valid."
+    }
+  ],
+  "sources": [
+    {
+      "id": "passage-00",
+      "title": "swarmachines / a provisional two-day build plan",
+      "start": 1,
+      "end": 14,
+      "excerpt": "# swarmachines / a provisional two-day build plan\n\nstatus: draft\n\n> continuity role: proposed transition\n> owner: repository owner, with the hackathon team choosing assignments\n> created: 2026-11-06\n> supersedes: none\n> format: written plan with a [visual review companion](../plans/spec-review/index.html)\n\nthis is a route through the weekend, using the freight-world idea as a working\ndefault. none of the build steps below has been carried out. the choices are\nprovisional; this document does not accept itself or authorize provider spend.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-01",
+      "title": "owner view",
+      "start": 15,
+      "end": 29,
+      "excerpt": "## owner view\n\n- **change:** build a small world in which we can watch an agent collective\n  coordinate, lose a familiar arrangement, and possibly recover.\n- **before:** a visual proposal and documentation, at planning baseline commit\n  `2158ea9`. there is no experimental runtime.\n- **after:** a runner, real recorded episodes, an inspectable replay, and a\n  small comparison of communication arrangements under disruption.\n- **day-one checkpoint:** one complete recorded episode plays in the viewer.\n- **day-two checkpoint:** comparable runs and an explanation supported by\n  their events, including a boring or inconclusive result.\n- **authority:** this markdown owns the proposed sequence. the\n  [visual proposal](../plans/index.html) introduces the idea;\n  [the brief](../PROJECT_BRIEF.md) owns intent. acceptance remains with the owner.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-02",
+      "title": "working defaults to review",
+      "start": 30,
+      "end": 49,
+      "excerpt": "## working defaults to review\n\nthese defaults make the steps concrete. change them before implementation if\nthe team prefers another shape.\n\n| choice | recommendation | alternative and consequence |\n|---|---|---|\n| world | freight in the fog: graph, delivery jobs, limited local observations | a different resource-routing world needs new rules and examples |\n| people | one owner per lane, with pairing across interfaces | combine roles by interest, but name one integration owner |\n| runtime | python for world, runner, and analysis; plain browser javascript for replay | a shared typescript stack reduces language boundaries if the team prefers it |\n| communication | fully connected and bidirectional ring; equal per-agent message allowances | a forced star is possible, but losing its hub may structurally disconnect peers rather than reveal a learned coordination failure |\n| first disruption | temporarily mute one fixed agent's communication while local actions continue | stale information is the second case; it tests information handling rather than availability |\n| episode | four agents, sixteen turns, one decision call per agent per turn | adjust after the pilot if cost or the timing of useful behavior warrants it |\n| evidence | local event log and state snapshots, plus langfuse for execution traces | a storage service adds setup and is unnecessary for the first weekend |\n| extension | finish the core comparison before model training | prioritize an adapted-agent comparison only after cost, training time, serving, and a baseline are demonstrated |\n\nthe actual model, exact dependency versions, lane owners, and spend ceiling\nremain decisions. choose and record validated versions during setup, before\nbuilding their integrations. this draft is not a dependency lockfile.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-03",
+      "title": "the step-by-step",
+      "start": 50,
+      "end": 54,
+      "excerpt": "## the step-by-step\n\nthese are suggested working blocks, not a continuous forty-eight-hour shift.\nkeep an integration checkpoint at the end of each day.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-04",
+      "title": "1. choose the first specimen together",
+      "start": 55,
+      "end": 72,
+      "excerpt": "### 1. choose the first specimen together\n\n**when:** day one, opening thirty to forty-five minutes. **who:** everyone.\n\nreview the defaults. choose the world, first disturbance, and four human lane\nowners. name an integration owner; the nervous-system owner is a reasonable\ndefault, but integration is an additional responsibility, not a fifth lane.\n\nagree on the demo's minimum: a world doing useful work, a disruption, and\nthe actual ensuing behavior. record the decisions and accept a bounded initial\nslice before runtime implementation. the second disturbance and training\nbranch can remain provisional.\n\n**leave with:** owners, an accepted initial slice, and a one-sentence demo.\nprepare individual agent context handoffs from these choices using\n[the agent guide](../AGENTS.md). the handoffs should tell each agent its scope,\ncheckout, shared interfaces, evidence to produce, and first concrete task.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-05",
+      "title": "2. establish the workroom and a small provider budget",
+      "start": 73,
+      "end": 97,
+      "excerpt": "### 2. establish the workroom and a small provider budget\n\n**when:** day one, first hour; overlap with step 3. **who:** integration owner,\nwith each human handling their harness/account setup.\n\nconfirm checkouts, branches, and how peers obtain the revision behind a\nhandoff. use separate working copies or worktrees for parallel writers. fill\nthe discord room card from the distributed harness guides, discover actual\ntools, and prove a peer round trip in the approved room. check at milestones\nand interface changes; ordinary read/send tools do not wake idle agents.\n\nestablish which adaption accounts hold which credits, usable models and\noperations, and who owns the run budget. the reported $500 / 1,500 credits\ndoes not establish pooled funds or a price per call. within the agreed scope,\nmake one small request and record model id, latency, tokens, and any observed\ncredit charge. choose the langfuse destination and the fictional experiment\ndata it may receive.\n\nthe existing `.env` remains outside agent read access. use the owner's\napproved credential setup; keys do not belong in handoffs, logs, or chat.\n\n**leave with:** a provider probe or explicit access blocker, a bounded pilot\nallowance, and a real discord connection result. the other lanes can keep\nworking against scripted agents and sample events while access is resolved.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-06",
+      "title": "3. agree on one turn and one event",
+      "start": 98,
+      "end": 126,
+      "excerpt": "### 3. agree on one turn and one event\n\n**when:** day one, first shared design block. **who:** worldbuilder and nervous\nsystem, with the observatory and naturalist checking the example.\n\nwrite one complete example: world snapshot, differing local observations,\nagent response, checked action, and resulting events. the proposed turn order:\n\n1. apply scheduled world changes and deliver messages due this turn.\n2. construct local views and record the exact context supplied to each agent.\n3. ask each agent once for a structured action and bounded outgoing messages.\n4. validate responses and resolve competing actions by a documented,\n   reproducible rule against the same turn snapshot.\n5. commit world changes, queue new messages for the next turn, save the\n   resulting state, and continue until the horizon or a stop condition.\n\nagents receive only their permitted views, delivered messages, and their own\nretained context. global state belongs to the simulator/viewer. newly sent\nmessages cannot benefit agents called later in the same turn.\n\ncandidate record fields: schema version, run id, scenario seed, condition,\nturn, event sequence, agent id where relevant, event type, and payload.\nmessages also need stable ids, sender/recipient ids, source-observation turn,\nsend turn, and delivery turn. attach trace references when available. retained\nagent notes are context/output, not proof of hidden reasoning.\n\n**leave with:** a sample episode, an agreed format version, and an owner for\ninterface changes. these are proposed fields, not an existing contract.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-07",
+      "title": "4. build the first pieces in parallel",
+      "start": 127,
+      "end": 145,
+      "excerpt": "### 4. build the first pieces in parallel\n\n**when:** day one, main work block. **who:** all four owners.\n\n| lane | first implementation | evidence before handoff |\n|---|---|---|\n| worldbuilder | graph, delivery jobs, legal moves, capacity limits, partial observations, scripted policy | a complete scripted episode; illegal moves change nothing; supplies are not duplicated or lost |\n| nervous system | turn runner, private context, message routing, adaption adapter, episode recorder | a model response becomes a checked action or explicit rejection; only allowed recipients receive messages |\n| observatory | sample-log reader, world view, communication overlay, turn controls, event inspection | the same turn shows the same saved state; sample data is labeled; events retain their source |\n| field naturalist | baseline, disturbances, run manifest, small event-derived analysis | a comparison table and an explanation of what its measurements can establish |\n\nthe worldbuilder's first success is ordinary graph/state-machine work. pair\nwith the nervous-system owner to replace one scripted policy with a model.\nkeep the scripted version as a useful baseline. this gives the teammate new\nto agents substantial ownership and a concrete way into the agent loop.\n\n**leave with:** four pieces that agree on the example from step 3. share\nartifacts and revisions, not just “my part works.”\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-08",
+      "title": "5. join the pieces while the system is small",
+      "start": 146,
+      "end": 170,
+      "excerpt": "### 5. join the pieces while the system is small\n\n**when:** day one, before the final work block. **who:** integration owner,\nwith every lane available to fix its boundary.\n\nconnect one agent to the world, then all four under one arrangement. load the\nreal episode in the viewer. follow a selected turn from local observation\nthrough model response and validation to world change and replay state.\n\nnest model/tool observations under agent turns in langfuse, grouped with an\nepisode/run reference. record identity, timing, errors, and usage; missing\nusage remains unknown. the event log owns world replay. langfuse's graph\ndescribes execution structure, not automatically communication or influence.\nsee its [data model](https://langfuse.com/docs/observability/data-model).\n\nrecord invalid output and a deterministic fallback, such as no action. bound\nand count retries. a telemetry failure must not duplicate a committed action.\nfinish runs as completed, failed, budget-stopped, or cancelled, with a reason.\na missing terminal record means the log is incomplete. for this weekend,\nstart a new linked run after interruption rather than transparently resuming\nprovider calls.\n\n**leave with:** one real, inspectable episode that replays without another\nmodel call. identify any remaining tracing gap explicitly.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-09",
+      "title": "6. freeze a day-one specimen",
+      "start": 171,
+      "end": 184,
+      "excerpt": "### 6. freeze a day-one specimen\n\n**when:** day one, final thirty to forty-five minutes. **who:** everyone.\n\nsave a known-working run, configuration, prompt/model versions, and matching\ncode revision. document launch, run, inspect, and replay. have another teammate\nfollow the path from their checkout. update the checkpoint and leave a next\naction per lane.\n\nif the complete loop still fails, narrow to one arrangement and one disturbance.\ndefer rich classification and training until the loop works.\n\n**leave with:** a recoverable working specimen and a credible day-two scope.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-10",
+      "title": "7. introduce a disturbance and its matched control",
+      "start": 185,
+      "end": 203,
+      "excerpt": "### 7. introduce a disturbance and its matched control\n\n**when:** day two, first block. **who:** worldbuilder and naturalist, supported\nby the nervous-system owner.\n\nkeep the scenario, jobs, model/prompt configuration, horizon, and message\nallowance comparable. first contrast undisturbed communication with a fixed\nagent muted for a specified interval. its local routing actions continue:\nthe intervention changes communication without also removing delivery capacity.\n\nchoose the target and timing before viewing outcomes. log the intervention\nand permitted graph. check which peers remain reachable; disconnection and a\nfailure to use remaining routes are different findings.\ncall it relay loss only when pre-disruption behavior supports that description;\nthe fixed target may never have become a coordinator.\n\n**leave with:** two runs whose meaningful difference is explicit in their\nmanifests, plus a disruption marker in the viewer.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-11",
+      "title": "8. expand to the second arrangement and stale information",
+      "start": 204,
+      "end": 225,
+      "excerpt": "### 8. expand to the second arrangement and stale information\n\n**when:** day two, after the first comparison works. **who:** nervous system\nand naturalist, with the worldbuilder handling scenario changes.\n\ncompare a fully connected graph with a bidirectional ring while keeping the\nphysical freight map separate. centralization may emerge within either;\ndo not call an imposed topology a discovered morphology.\n\nfor stale information, delay a report that was true when sent until after a\nworld change. preserve its source and original observation turn. the control\ngets timely reports under the same world-change schedule. if a fixture supplies\nthe report, record scenario authorship instead of calling it model-generated.\n\nuse the same small seed set across conditions and vary execution order. seeded\nworlds support comparable inputs; they do not make model outputs deterministic.\nthree repeats per condition are an exploratory starting point, not a statistical\nguarantee.\n\n**leave with:** a small comparable batch, or an explicitly narrower comparison\nif cost or time requires it.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-12",
+      "title": "9. use more of adaption where it serves the experiment",
+      "start": 226,
+      "end": 248,
+      "excerpt": "### 9. use more of adaption where it serves the experiment\n\n**when:** alongside day two, once the complete loop is stable. **who:** naturalist,\npairing with the nervous-system owner.\n\nuse adaption inference for the agents. a second useful contribution is generating\ncandidate scenarios or coordination examples: inspect a small sample, validate\nit against the world, and expand useful material. generated trajectories are\nexamples, not observed experimental evidence.\n\ndataset generation/adaptation offer estimates. the documented autoscientist\nmcp tool has no estimate mode; a hyperparameter recommendation is not a quote.\nsee [adaption's operation reference](https://docs.adaptionlabs.ai/tools/mcp/).\n\nif training fits, isolate one skill, such as communicating a route update with\nprovenance. separate held-out scenarios before selecting training examples.\ncompare base and adapted agents under the same topology and budgets, and prove\nthe trained artifact can be served in time. this is an optional branch, not a\ndependency of the main demo.\n\n**leave with:** a useful data artifact or bounded adaptation comparison, if\nfeasible. report the sponsor capabilities actually exercised.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-13",
+      "title": "10. inspect before naming the collective",
+      "start": 249,
+      "end": 274,
+      "excerpt": "### 10. inspect before naming the collective\n\n**when:** day two, comparison block. **who:** naturalist and observatory, with\nthe team reviewing selected episodes.\n\nreview these proposed measures before implementing them. start with event\ncounts and human interpretation, without requiring a model judge. the small,\ngoal-linked measurement approach is supported by\n[langfuse's evaluation guide](https://langfuse.com/academy/evaluate/choosing-what-to-evaluate).\n\n| priority | status | candidate measure | source | decision informed | measurability |\n|---|---|---|---|---|---|\n| core | proposed | deliveries completed / jobs released by the horizon | world events | whether coordination helps the task | direct counts; retain unmet jobs |\n| core | proposed | calls, tokens, observed credits per episode | runner/provider usage | affordable and comparable repeats | calls direct; missing usage stays unknown |\n| core | proposed | turns from intervention to next completed delivery | world timeline | whether useful work resumes promptly | record no delivery before horizon explicitly; this is not stable recovery |\n| supporting | proposed | per-agent sent/delivered traffic and concentration | message events | where coordination may concentrate | descriptive; include reachability and allowances |\n| supporting | proposed | invalid actions, failed requests, fallbacks | validation/lifecycle events | distinguish behavioral and implementation failures | direct counts with reasons |\n\nfor a quiet-specialist candidate, inspect local evidence, delivery, decision\ncontext, and subsequent action. for repair, inspect changed exchanges alongside\nresumed useful work. allow mixed, unclear, and no-pattern outcomes. keep the\nwhole small batch visible when selecting replay specimens.\n\n**leave with:** evidence-linked observations and their limitations. a compelling\nnickname is the beginning of an interpretation.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-14",
+      "title": "11. finish around one honest reveal",
+      "start": 275,
+      "end": 289,
+      "excerpt": "### 11. finish around one honest reveal\n\n**when:** day two, final sixty to ninety minutes. **who:** observatory and\nintegration owner, with the naturalist preparing the explanation.\n\nshow the task and limited views. pause before the disruption, advance the\nreplay, and inspect events behind changed behavior. compare the control or\nother arrangement. distinguish allowed links, exchanges, and inferred influence.\n\nkeep a recorded episode available when live inference is slow. label the\nrecording, replay it without provider spend, and finish with one observation,\none limitation, and the next experiment it suggests.\n\n**leave with:** a demo backed by inspectable events.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-15",
+      "title": "12. leave a usable handoff",
+      "start": 290,
+      "end": 299,
+      "excerpt": "### 12. leave a usable handoff\n\n**when:** after the demo build stabilizes. **who:** all lane owners.\n\nrun the agreed checks, reconcile actual setup and implementation docs, and\nreplace the checkpoint. preserve manifests and findings with provenance;\nrecord omissions and unverified claims. hand over one exact revision and next\naction per remaining task. commits, pushes, posts, or publication follow the\nteam's established scope; this written plan performs none of those actions.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-16",
+      "title": "workload and scope cuts",
+      "start": 300,
+      "end": 326,
+      "excerpt": "## workload and scope cuts\n\nthe visual calculator's default is four agents × sixteen turns × two\narrangements × two disturbances × three repeats: **768 calls in 12 runs**.\nthis plan adds an undisturbed-communication control for each arrangement:\n\n| comparison size | runs | agent calls before retries |\n|---|---:|---:|\n| one arrangement, control plus one disturbance, one repeat | 2 | 128 |\n| two arrangements, control plus one disturbance, three repeats | 12 | 768 |\n| two arrangements, control plus two disturbances, three repeats | 18 | 1,152 |\n\nall four agents receive one decision call per turn, including while muted.\nthese counts exclude probes, retries, data generation, training, and extra\nevaluators. the html still describes its original four conditions; it has\nnot been changed by this plan.\n\nmeasure cost and elapsed time on the pilot before choosing a batch. agree\nepisode/call/token ceilings and a separate data/training allowance. if credit\nusage is unavailable, call counts are not a guaranteed currency cap; use\navailable account controls and small batches rather than inventing a conversion.\n\ncut training first, then the second disturbance, then rich visual classification.\npreserve the local record, complete replay, and a matched comparison. if provider\naccess never works, show a scripted prototype honestly; the model-backed\nexperiment remains incomplete.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-17",
+      "title": "scope and governing documents",
+      "start": 327,
+      "end": 347,
+      "excerpt": "## scope and governing documents\n\n**proposed core:** one world, bounded agent decisions, controlled communication,\nan undisturbed control, at least one disturbance, real episode records, replay,\nand event-derived comparisons.\n\n**outside the core:** production hosting, open-ended autonomous agents,\na multi-world benchmark suite, a definitive automatic taxonomy, and a\ndependency on finishing model training.\n\nlikely new components are the simulator, runner/provider adapter, event schema,\nrecorder, fixtures, analysis, tests, and replay ui. choose paths and dependency\npins in steps 1–3. give the runtime its own entry point; retain the proposal at\n`plans/index.html`. choose a local storage/ignore policy before generating runs.\n\n[AGENTS.md](../AGENTS.md) governs collaboration;\n[PROJECT_BRIEF.md](../PROJECT_BRIEF.md) owns intent;\n[development](../docs/DEVELOPMENT.md) describes the existing proposal.\nthere are no accepted runtime contracts. extract durable contracts when the\nturn/event decisions actually exist; do not infer them from this draft alone.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-18",
+      "title": "change shape of the proposed implementation",
+      "start": 348,
+      "end": 362,
+      "excerpt": "## change shape of the proposed implementation\n\nthis describes the future build, not the documentation edits made today.\n\n| dimension | changed? | proposed source of truth | proof to establish |\n|---|---|---|---|\n| user-visible behavior | yes | real replay ui | inspect a saved episode and its source events |\n| persisted state or schema | yes | agreed events, manifests, snapshots | validate complete logs; detect incomplete/incompatible input |\n| external or provider-visible behavior | yes | provider adapter and trace configuration | real inference response and a retrieved useful trace |\n| identifiers, secrets or privacy | yes | run/agent/message ids and approved provider data boundary | match representations; inspect fictional outbound data and credential exclusion |\n| lifecycle or terminal states | yes | runner's stop/error rules | invalid output, failed call, interruption, and budget stop without duplicate actions |\n| setup, operation or recovery | yes | actual dependency pins and development instructions | another teammate completes run-to-replay |\n| normative contract or decision | yes | owner-accepted turn/event rules | consumer agreement on an example and semantic checks |\n| cross-repository dependency | no | one project checkout; harness guides are external setup references | no imports from another private repository |\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-19",
+      "title": "done when, and how to prove it",
+      "start": 363,
+      "end": 389,
+      "excerpt": "## done when, and how to prove it\n\nthe core is done when a fresh checkout can run a real model-backed episode,\nsave it, replay it without more model calls, and explain a matched comparison\nfrom its events. integration and research limits remain visible in the demo\nand checkpoint.\n\nafter choosing the runtime, add a documented offline validation command for\nworld invariants, information boundaries, scheduling, action validation,\nevent/replay agreement, and terminal states. under the python default, a\nproposed command is `python3 -m unittest discover -s tests -v`; tests do not\nexist yet, and a zero-test result is not proof.\n\nadd a separately invoked live-provider smoke command when the adapter exists,\nwith a small call limit and a run/trace reference. do not hide paid calls inside\noffline tests. record actual run/replay commands in development docs once\nthey work rather than inventing commands here.\n\nthe documentation check already runs from the repository root:\n\n```sh\npython3 /home/resonatingloop/.resonance/exoresonance/repository-continuity/skills/manage-project-docs/scripts/check_docset.py .\n```\n\nsix lowercase checkpoint-heading warnings are known. this check proves\ndocument structure, not future implementation criteria.\n",
+      "path": "specs/001-hackathon-plan.md"
+    },
+    {
+      "id": "passage-20",
+      "title": "unresolved decisions and risks",
+      "start": 390,
+      "end": 405,
+      "excerpt": "## unresolved decisions and risks\n\n- choose the world, owners, runtime, arrangements, disruption semantics, and\n  first accepted slice. the defaults above make these decisions reviewable.\n- verify account coverage, models, exact sdk versions/compatibility, trace\n  destination, spend limits, and provider latency during setup.\n- simplistic routing may need little communication. pilot the information\n  asymmetry and scripted baseline before paying for a large batch.\n- context leakage, unequal allowances, call ordering, reachability, and\n  provider errors can masquerade as collective behavior. record them.\n- two days may yield a useful instrument and a few observations. three repeats\n  do not justify a general causal or statistical claim.\n\nreview the defaults with the team, revise this draft, and accept the exact\nbounded slice before implementation. the later route can remain provisional\nas the first real traces teach us what is worth pursuing.",
+      "path": "specs/001-hackathon-plan.md"
+    }
+  ],
+  "sourceRevision": {
+    "path": "specs/001-hackathon-plan.md",
+    "sha256": "303e724a796e5c940d81ae3f5d788adaf6bba91721eb030014da40737a82a5d6",
+    "baseCommit": "0478a6ddd6e0d2cfd20e22a54f92b1bb89f174c6"
+  },
+  "coverage": "covers every step of the written draft, its working defaults, workload cuts, scope, proposed change surfaces, proof criteria and unresolved risks. dependencies are explicit reading guidance drawn from the sequence; the phase chain is source order, not a computed dependency graph. source wording stays available in full. excludes live listener operations, new runtime design, provider-price refreshes and deployment planning."
+}

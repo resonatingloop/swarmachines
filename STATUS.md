@@ -1,8 +1,8 @@
 # swarmachines / status
 
 > continuity role: operational checkpoint
-> status: proposal ready for team review; direct and scored discord intake verified
-> last verified: 2026-11-06
+> status: proposal and source-linked spec review ready; discord intake verified
+> last verified: 2026-11-07
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
@@ -13,6 +13,23 @@ the working presentation remains [plans/index.html](plans/index.html).
 steps, lane responsibilities, integration checkpoints, workload choices,
 fallbacks, and evidence required from a future implementation. its status is
 `draft`; no runtime step has been executed as part of writing it.
+
+the new [spec review](plans/spec-review/index.html) projects that written draft
+through attention-aperture: twelve steps, fifteen reviewable choices, four
+lanes and twenty-one exact source passages. the route starts at step one;
+the entire inventory, source correspondence and provisional sorting bench stay
+reachable. the markdown retains authority. the only plan edit links this
+companion; no scope or acceptance decision changed.
+
+this companion pass began at `0478a6d` with only the unrelated `.env` untracked.
+the builder self-test passed, the source hash and all excerpts matched, and
+headless chrome exercised phase/source navigation, filters, marks, clipboard
+success/refusal, reload, keyboard focus and reduced motion. desktop, 320px and
+200%-equivalent reflow renders were inspected; no page overflow, external page
+requests, storage writes or runtime errors remained. native browser-menu zoom,
+screen-reader output and owner comfort remain unverified. the original proposal
+hash is unchanged. rebuild and verification instructions live in
+[development](docs/DEVELOPMENT.md#written-spec-review).
 
 planning started from commit `2158ea9` on `master`, matching the local
 `origin/master` tracking reference. the presentation and bootstrap docs were
@@ -72,6 +89,8 @@ owns the launch commands and boundaries.
   instructions for owner and teammate re-entry.
 - a written route through day-one integration, day-two comparisons, adaption
   use, evidence review, and final handoffs.
+- a source-linked visual review of that draft, with temporary review marks
+  and the 768-versus-1,152-call workload distinction exposed.
 - local asterion launcher, authenticated bot identity, readable room messages,
   and a confirmed peer round trip through the installed MCP adapter.
 - selective intake with approved adaption caps, live message processing, two
@@ -100,7 +119,7 @@ owns the launch commands and boundaries.
 
 - accepted runtime spec: none.
 - draft: [001-hackathon-plan](specs/001-hackathon-plan.md).
-- current focus: return to team review and lane selection; the local listener
+- current focus: use the visual spec review for team choices and lane selection; the local listener
   pilot has verified direct and scored intake into the active coding session.
 - pending decisions: world, lane owners, runtime, communication arrangements,
   disturbance semantics, first implementation slice, exact dependencies, and
@@ -109,6 +128,10 @@ owns the launch commands and boundaries.
   or assigned yet.
 
 ## next useful action
+
+open the [spec review](plans/spec-review/index.html). follow step one to its
+wording, then use the working-choice bench to identify what needs discussion.
+review marks clear on refresh; they do not accept a slice or assign a person.
 
 the listener pilot has verified both direct and scored delivery. to move it
 out of the foreground terminal, stop that run with ctrl+c and use the

@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="A full-fidelity, attention-safe planning review artifact.">
+  <title>attention aperture</title>
+  <link rel="stylesheet" href="instrument.css">
+  <link rel="stylesheet" href="aperture.css">
+  <script src="review-data.js" defer></script>
+  <script src="aperture.js" defer></script>
+  <link rel="stylesheet" href="swarm-review.css">
+  <script src="swarm-review.js" defer></script>
+</head>
+<body data-density="near">
+  <a class="skip-link" href="#current-review">skip to the current review</a>
+  <div class="water-light" aria-hidden="true"></div>
+  <div class="water-grid" aria-hidden="true"></div>
+
+  <header class="masthead">
+    <a class="brand" href="#top" aria-label="attention aperture: return to the beginning">
+      <span>attention aperture</span>
+      <small>map / attention / authority</small>
+    </a>
+    <p class="artifact-mark"><span aria-hidden="true">◌</span> review projection / nothing decided</p>
+  </header>
+
+  <main id="top">
+    <section class="orientation" aria-labelledby="page-title">
+      <div class="orientation-copy">
+        <p class="eyebrow" data-eyebrow></p>
+        <h1 id="page-title" data-title></h1>
+        <p class="lede" data-intro></p>
+      </div>
+
+      <article class="next-bite" data-next-bite>
+        <span class="bite-number" data-next-number aria-hidden="true"></span>
+        <div>
+          <p class="micro-label" data-next-label></p>
+          <h2 data-next-title></h2>
+          <p data-next-copy></p>
+        </div>
+        <a href="#current-review">open the current review ↓</a>
+      </article>
+
+      <div class="density-switch" role="group" aria-label="map density" data-density-switch>
+        <button type="button" aria-pressed="true" data-density="near"><span aria-hidden="true">◉</span> nearby current</button>
+        <button type="button" aria-pressed="false" data-density="whole"><span aria-hidden="true">◎</span> whole map</button>
+      </div>
+    </section>
+
+    <section class="foundations section-shell" aria-labelledby="foundations-title" data-foundations-section hidden>
+      <div class="section-kicker"><span>established already</span><span class="rule"></span></div>
+      <h2 id="foundations-title" class="visually-hidden">established foundations</h2>
+      <div class="foundation-ledger" data-foundations></div>
+    </section>
+
+    <section class="capability-review section-shell" id="current-review" aria-labelledby="capability-title" data-capability-section hidden>
+      <div class="section-heading">
+        <div>
+          <p class="micro-label">sorting bench</p>
+          <h2 id="capability-title">sort the working choices</h2>
+        </div>
+        <p>one specimen in full; the complete inventory remains reachable. pencil marks disappear on refresh.</p>
+      </div>
+
+      <div class="review-meter" aria-live="polite">
+        <div class="meter-copy">
+          <span data-review-count></span>
+          <div class="meter-track" aria-hidden="true"><i data-review-fill></i></div>
+        </div>
+        <div class="meter-actions">
+          <button type="button" data-next-unmarked>next unmarked →</button>
+          <button type="button" data-copy-review disabled>copy sorting slip</button>
+        </div>
+      </div>
+
+      <div class="sorting-bench">
+        <article class="capability-card" aria-live="polite" aria-atomic="true" data-capability-detail></article>
+        <aside class="capability-index" aria-label="capability index">
+          <div class="capability-filters" role="group" aria-label="filter by proposed disposition" data-capability-filters></div>
+          <div class="capability-list" role="list" data-capability-list></div>
+        </aside>
+      </div>
+
+      <div class="review-foot">
+        <p><strong>projection, not acceptance.</strong> these marks do not assign owners or accept the draft.</p>
+        <p class="review-status" role="status" aria-live="polite" data-review-status></p>
+      </div>
+    </section>
+
+    <section class="roadmap section-shell" id="roadmap" aria-labelledby="roadmap-title" data-roadmap-section hidden>
+      <div class="section-heading">
+        <div>
+          <p class="micro-label">the proposed two-day route</p>
+          <h2 id="roadmap-title">from specimen to evidence</h2>
+        </div>
+        <p>distant phases recede in nearby mode. they are never deleted.</p>
+      </div>
+
+      <div class="roadmap-layout">
+        <nav class="phase-field" aria-label="programme phases">
+          <div class="current-line" aria-hidden="true"></div>
+          <div class="fish" aria-hidden="true"><span></span><i></i><b></b></div>
+          <div class="phase-list" data-phase-list></div>
+        </nav>
+        <aside class="phase-detail" aria-live="polite" aria-atomic="true" data-phase-detail></aside>
+      </div>
+
+      <details class="causal-chain">
+        <summary>read the phase order <span>show the sequence and exits</span></summary>
+        <div class="chain" data-causal-chain></div>
+      </details>
+    </section>
+
+    <section class="source-section section-shell" id="source-wording" aria-labelledby="source-heading">
+      <div class="section-heading">
+        <div><p class="micro-label">wording ↔ structure</p><h2 id="source-heading" tabindex="-1">open the manuscript</h2></div>
+        <p>every step and choice returns to its supporting passage. excerpts retain the draft’s exact wording and markdown notation.</p>
+      </div>
+      <label for="source-select">enter through a source passage</label>
+      <select id="source-select"></select>
+      <div class="source-layout">
+        <article class="source-plate">
+          <p class="micro-label">draft / source excerpt</p>
+          <h3 data-source-title></h3>
+          <p class="source-locator" data-source-locator></p>
+          <pre data-source-excerpt></pre>
+        </article>
+        <aside class="source-counterparts">
+          <h3>what this passage supports</h3>
+          <p>correspondence means the draft discusses this object. it does not prove execution.</p>
+          <div data-source-counterparts></div>
+          <details><summary>coverage + source revision</summary><p data-coverage></p><p class="source-locator" data-source-revision></p></details>
+        </aside>
+      </div>
+    </section>
+
+    <section class="deployments section-shell" aria-labelledby="deployment-title" data-deployment-section hidden>
+      <div class="section-heading">
+        <div>
+          <p class="micro-label">separate current</p>
+          <h2 id="deployment-title">programme is not deployment</h2>
+        </div>
+        <p>useful cuts may travel before the whole map is complete. each crossing retains its own gates.</p>
+      </div>
+      <div class="deployment-layout">
+        <div class="deployment-rail" data-deployment-rail></div>
+        <aside class="deployment-detail" aria-live="polite" data-deployment-detail></aside>
+      </div>
+    </section>
+
+    <section class="lanes section-shell" aria-labelledby="lanes-title" data-lanes-section hidden>
+      <div class="section-heading">
+        <div>
+          <p class="micro-label">parallel work without trampling</p>
+          <h2 id="lanes-title">give every current one owner</h2>
+        </div>
+        <p>parallel reading is cheap. shared seams wait for explicit contracts and one integrator.</p>
+      </div>
+      <div class="lane-grid" data-lanes></div>
+    </section>
+
+    <section class="error-state section-shell" role="alert" data-error hidden>
+      <p class="micro-label">the pond did not form</p>
+      <h2>review data could not be loaded</h2>
+      <p data-error-copy></p>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>aperture, not authority.</strong> compressed attention; intact dependencies.</p>
+    <p>canonical sources: <span data-canonical-sources></span> · no state saved · no network requests</p>
+  </footer>
+</body>
+</html>

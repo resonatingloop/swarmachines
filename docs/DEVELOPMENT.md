@@ -1,14 +1,14 @@
 # swarmachines / development
 
 > continuity role: operational procedure
-> status: current for the proposal page
-> last verified: 2026-11-06
+> status: current for the proposal and spec review
+> last verified: 2026-11-07
 > owns: local preview, maintenance checks, and recovery
 > update when: the entry point, dependencies, or validation path changes
 
 ## what runs
 
-[plans/index.html](../plans/index.html) is the entire working presentation:
+[plans/index.html](../plans/index.html) is the original self-contained presentation:
 html, css, svg illustrations, and browser javascript in one file. it has no
 package manifest, install step, build step, backend, or configured provider
 integration. a modern browser is sufficient to open the file directly.
@@ -16,6 +16,51 @@ integration. a modern browser is sufficient to open the file directly.
 the optional http preview uses python 3; python 3.12.3 was exercised here.
 there is no environment configuration to load for the proposal. `.env` is
 outside this workflow and must not be read or sourced by agents.
+
+## written-spec review
+
+[plans/spec-review/index.html](../plans/spec-review/index.html) is a separate
+local html bundle built with the owner's attention-aperture skill. it reads
+only neighboring files and works directly from `file://`. javascript is needed
+for this interactive review; the canonical markdown remains readable separately.
+
+the [authored input](../plans/spec-review-data.json) represents the draft's
+twelve steps and fifteen review choices. its twenty-one passages include the
+complete source wording with line locators, a base revision and a sha256 of
+the working source. the builder refuses a changed source hash or mismatched
+excerpt; reconcile meaning and correspondence before regenerating the data.
+an extracted dependency is reading guidance, not an accepted contract.
+
+to rebuild, supply the skill checkout and an empty, real destination:
+
+```sh
+node /home/resonatingloop/.agentic/attention-aperture/scripts/build-aperture.mjs --self-test
+node scripts/build-spec-review.mjs --skill-root /home/resonatingloop/.agentic/attention-aperture --output /tmp/swarmachines-review-new
+```
+
+the second command refuses a nonempty destination. use another destination
+for another build. inspect that bundle before replacing the generated files
+under `plans/spec-review/`. readers need neither node nor the skill checkout.
+project-owned additions live in `plans/spec-review-assets/`: source navigation,
+small-screen step selection, and layout/copy adjustments. the shared skill
+repository is not modified. removing this bundle and its entry links reverses
+the presentation addition without changing the proposed experiment.
+
+after editing, check all phase fields, exact source excerpts and both directions
+of correspondence; filters, review marks, clear/next-unmarked, clipboard success
+and refusal, and reset on reload. verify the workload distinction remains
+visible. inspect desktop, 320px and enlarged layouts, keyboard focus and reduced
+motion. check that the local-file page requests only bundle files and writes
+no browser storage. real browser zoom and assistive-technology output remain
+separate manual checks from viewport/device-scale emulation.
+
+the initial browser pass used headless chrome at 1440px and 320px, plus a
+720-css-pixel / 2x-device-scale view equivalent to the reflow area of 200% at
+1440px. native clipboard copy succeeded; refusal handling was also exercised.
+all twelve phase accounts and exact source counterparts matched the data;
+no runtime errors, external page requests, storage writes or horizontal page
+overflow were observed. this verifies the artifact, not the proposed runtime
+or a reader's understanding.
 
 ## preview
 

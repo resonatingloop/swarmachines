@@ -6,7 +6,7 @@ status: draft
 > owner: repository owner, with the hackathon team choosing assignments
 > created: 2026-11-06
 > supersedes: none
-> format: written plan; no generated visual companion
+> format: written plan with a [visual review companion](../plans/spec-review/index.html)
 
 this is a route through the weekend, using the freight-world idea as a working
 default. none of the build steps below has been carried out. the choices are
