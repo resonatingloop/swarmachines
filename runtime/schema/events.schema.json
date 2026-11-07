@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "swarmachines/events/v1",
+  "title": "swarmachines event record",
+  "description": "one record per logged event. (run_id, seq) is unique within a run and seq increases in append order; uniqueness is enforced by the runner, not by json schema. message lifecycle: sent, delivered, seen, acted_on are separate transitions and must never be conflated.",
+  "type": "object",
+  "required": ["run_id", "seq", "turn", "type", "ts", "payload"],
+  "properties": {
+    "run_id": { "type": "string", "description": "stable identifier for one episode" },
+    "seq": { "type": "integer", "minimum": 0, "description": "append-order index, unique with run_id" },
+    "turn": { "type": "integer", "minimum": 0 },
+    "agent_id": { "type": ["string", "null"], "description": "null for world-level events" },
+    "type": {
+      "enum": [
+        "run.config", "world.init", "turn.begin",
+        "observation.recorded",
+        "message.sent", "message.delivered", "message.seen", "message.acted_on",
+        "action.proposed", "action.validated", "action.rejected", "action.committed",
+        "world.changed", "disturbance.applied",
+        "run.end"
+      ]
+    },
+    "ts": { "type": "string", "format": "date-time", "description": "wall-clock at append time; logical time lives in turn/seq" },
+    "payload": { "type": "object", "description": "type-specific fields; see examples/sample-episode.jsonl" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "message.sent" } } },
+      "then": { "properties": { "payload": { "required": ["message_id", "from", "to", "body_ref"], "properties": {
+        "message_id": { "type": "string" },
+        "from": { "type": "string" },
+        "to": { "type": "string", "description": "recipient agent id; router may redirect or drop per topology" },
+        "body_ref": { "type": "string", "description": "pointer into the run's message store, not the body itself" }
+      } } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "message.delivered" } } },
+      "then": { "properties": { "payload": { "required": ["message_id", "to", "status"], "properties": {
+        "message_id": { "type": "string" },
+        "to": { "type": "string" },
+        "status": { "enum": ["delivered", "undelivered"], "description": "undelivered must carry a reason (unreachable, filtered)" }
+      } } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "action.rejected" } } },
+      "then": { "properties": { "payload": { "required": ["action_id", "reason"], "properties": {
+        "action_id": { "type": "string" },
+        "reason": { "type": "string" }
+      } } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "disturbance.applied" } } },
+      "then": { "properties": { "payload": { "required": ["kind", "detail"], "properties": {
+        "kind": { "enum": ["relay-loss", "stale-report"] },
+        "detail": { "type": "object", "description": "for relay-loss: {agent, until}; for stale-report: {message_id, claimed_state, actual_state}" }
+      } } } }
+    }
+  ]
+}
