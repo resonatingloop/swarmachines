@@ -14,26 +14,24 @@ bring-your-own agent (caduceus, asterion, future teammates).
 - Every other human owns their own agent. Your agent, your rules —
   inside this contract.
 
-## The board (beads) — the single work queue
+## Task Tracking — TASKS.md Ledger
 
-`bd` is installed; the board lives in `.beads/` (git-native, embedded
-dolt store — gitignored, so board state does NOT ride on commits).
+This project uses **TASKS.md** for durable task tracking. Beads (bd) was retired on 2026-11-07; never run `bd` commands.
 
-```bash
-bd ready --json                       # work whose dependencies are satisfied
-bd update <id> --claim                # atomic claim BEFORE working
-bd update <id> --status closed        # when actually done ("done" is rejected)
-bd create "Title" -t task -p 1 --json # file new work with acceptance criteria
-```
+### Ledger Format
 
-- Claim before you work. No claim, no work.
-- **NEVER run `bd init` in this checkout** — it wipes the board
-  (happened twice on 2026-11-07). If `bd` reports a workspace-identity
-  mismatch, export `BEADS_SKIP_IDENTITY_CHECK=1` and retry; if the board
-  looks empty, check `git log` for a stray bd-init commit and tell
-  pug-bot before recreating anything.
-- Non-trivial requests become board items — never just chat.
-- Stale items get nudged (the curator hourly, anyone who notices).
+One line per task: `- [STATUS] ID: title — owner: NODE — updated: TS`
+
+- STATUS: `open` | `doing` | `blocked` | `done`
+- Claim work by moving a line to `doing` with your node as owner
+- Close work by moving to `done` when tests pass and ruff is clean
+- Check TASKS.md before starting any work; update it when status changes
+
+### Rules
+
+- Use TASKS.md for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
+- Commit ledger updates with your work — the ledger is the single source of truth
+- The coordinator owns routing; beads is retired and must never be invoked
 
 ## Specs (OpenSpec) — the contract for non-trivial work
 
