@@ -10,7 +10,11 @@ a hackathon project taking shape around one question: what forms of relation
 make an agent collective more capable without flattening distinction,
 provenance, dissent, or recoverability?
 
-**what works now:** an interactive, self-contained
+**episode inspection:** open the [local viewer](viewer/index.html); operation and
+verification live in [viewer notes](viewer/README.md). the merged scripted runner
+now supplies a sample; older proposal-phase statements below predate that merge.
+
+**original proposal:** an interactive, self-contained
 [visual team proposal](plans/index.html). it explains the candidate experiment,
 four swim lanes, an illustrative network disruption, a workload calculator,
 and a two-day rhythm. the swarm runtime is not implemented.
