@@ -39,8 +39,8 @@ def run_smoke_test() -> dict:
 
     # Lazy imports: allows graceful degradation when SDK is unavailable
     # Only reached when API key is present
+    # <=4 calls enforced in code; 256/night operational cap enforced by coordinator
     from adaption import AdaptionError
-
     from adaption_adapter import AdaptionAdapter
 
     adapter = AdaptionAdapter()
@@ -69,7 +69,7 @@ def run_smoke_test() -> dict:
         return {
             "status": "error",
             "call": 1,
-            "error": str(e),
+            "error": f"AdaptionError: {type(e).__name__}",
             "calls_made": len(results),
         }
 
@@ -98,7 +98,7 @@ def run_smoke_test() -> dict:
             {
                 "call": 2,
                 "model": "glm-53-flash",
-                "error": str(e),
+                "error": f"AdaptionError: {type(e).__name__}",
             }
         )
 
@@ -127,7 +127,7 @@ def run_smoke_test() -> dict:
             {
                 "call": 3,
                 "model": "gemma-4-26b-a4b-it",
-                "error": str(e),
+                "error": f"AdaptionError: {type(e).__name__}",
             }
         )
 
@@ -156,7 +156,7 @@ def run_smoke_test() -> dict:
             {
                 "call": 4,
                 "model": "gemma-4-26b-a4b-it",
-                "error": str(e),
+                "error": f"AdaptionError: {type(e).__name__}",
             }
         )
 
