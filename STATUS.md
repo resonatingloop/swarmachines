@@ -1,81 +1,52 @@
 # swarmachines / status
 
 > continuity role: operational checkpoint
-> status: proposal and source-linked spec review ready; discord intake verified
-> last verified: 2026-11-07
+> status: v4x runner implemented; seam contract drafted, awaiting owner acceptance
+> last verified: 2026-11-07 (round-3: all 12 tests pass, stale-report fixed)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
 ## verified checkpoint
 
-the working presentation remains [plans/index.html](plans/index.html).
-[the written two-day plan](specs/001-hackathon-plan.md) records provisional
-steps, lane responsibilities, integration checkpoints, workload choices,
-fallbacks, and evidence required from a future implementation. its status is
-`draft`; no runtime step has been executed as part of writing it.
+branch `v4x-scripted-runner` (5e0f4d4) implements the turn-cycle runtime
+from openspec change `add-turn-seam-event-log`. the runner is scripted
+(zero model calls), replay-deterministic (same seed → byte-identical logs),
+and implements the fixed turn cycle observe→exchange→act→record.
 
-the new [spec review](plans/spec-review/index.html) projects that written draft
-through attention-aperture: twelve steps, fifteen reviewable choices, four
-lanes and twenty-one exact source passages. the route starts at step one;
-the entire inventory, source correspondence and provisional sorting bench stay
-reachable. the markdown retains authority. the only plan edit links this
-companion; no scope or acceptance decision changed.
+test suite (runtime/test_runner.py): 12/12 pass
+- basic run produces valid event log with all required types
+- determinism: same seed produces byte-identical output
+- relay-loss disturbance applied and logged correctly with undelivered messages
+- stale-report disturbance applied and logged correctly with before/after detail
+- hub-spoke topology configuration works and delivers messages through hub
+- message lifecycle tracking (sent→delivered→seen→acted_on) complete
+- topology-independence: non-comm events identical across mesh/hub-spoke
+- zero model/network calls in runner
+- RNG stream independence: send decisions don't affect acted_on decisions (swarmachines-8s2)
+- delivery_config_sha correctly named and validated (swarmachines-3x2)
 
-this companion pass began at `0478a6d` with only the unrelated `.env` untracked.
-the builder self-test passed, the source hash and all excerpts matched, and
-headless chrome exercised phase/source navigation, filters, marks, clipboard
-success/refusal, reload, keyboard focus and reduced motion. desktop, 320px and
-200%-equivalent reflow renders were inspected; no page overflow, external page
-requests, storage writes or runtime errors remained. native browser-menu zoom,
-screen-reader output and owner comfort remain unverified. the original proposal
-hash is unchanged. rebuild and verification instructions live in
-[development](docs/DEVELOPMENT.md#written-spec-review).
+sample outputs:
+- runtime/sample-run.jsonl: 67 events (seed 7, 3 turns, relay-loss@turn 2)
+- runtime/examples/sample-episode.jsonl: 23-event hand-authored illustrative sample
+- runtime/schema/events.schema.json: JSON schema for event records
 
-planning started from commit `2158ea9` on `master`, matching the local
-`origin/master` tracking reference. the presentation and bootstrap docs were
-already tracked. this planning pass adds a draft and updates documentation
-links; it does not commit or push. the unrelated `.env` was not read or changed.
+the unrelated `.env` was not read or changed.
 
-documentation verification command:
+verification commands and procedures:
 
 ```sh
+python3 -m http.server 8765 --bind 127.0.0.1 --directory plans
+curl --fail --silent --output /dev/null --write-out '%{http_code}\n' http://127.0.0.1:8765/
 python3 /home/resonatingloop/.resonance/exoresonance/repository-continuity/skills/manage-project-docs/scripts/check_docset.py .
 ```
 
-the documentation checker returned 0 errors and the six known heading-casing
-warnings. draft status, local links/anchors, workload arithmetic, and the
-documentation diff were checked. the proposal's content hash is unchanged.
-browser re-entry and the controls were exercised during the preceding
-documentation work; no browser behavior changed in this pass.
-
-discord setup now has a pinned local adapter and a machine-local codex MCP
-registration. its stdio identity call authenticated as `asterion`, bot id
-`1568464640424419338`. the owner changed the workroom to `general`, channel
-`1567709897678655530`; its server id and readable recent history are verified.
-pug's bot author id matches `1568444874133479476`. the owner authorized an
-introduction and brief hackathon coordination in this channel. the introduction
-was posted once as message `1568478900034609184`. pug-bot's reply
-`1568479415145468068` cited that exact id and was read through the adapter;
-the peer round trip is verified.
-see [the connection record](docs/DISCORD.md) for exact ids and paths. the token
-remains outside the repo; its value was not displayed.
-
-the owner then requested scored ambient intake alongside coding and approved
-a 1-credit / 1,000-judgment rolling daily cap through adaption. the machine-local
-listener is installed and passed 23 offline tests. the adaption key and model
-access are verified; four live synthetic scoring cases passed, using
-`0.0001501185` estimated credits. the owner then launched the listener. live
-intake queued one direct mention and one selected ambient message, while
-ignoring two ambient bot messages. the ledger now records five judgments and
-`0.0003024045` estimated credits at that checkpoint. the direct notification
-arrived in this same coding session after its active response ended. asterion
-reread the room, sent reply `1568489305255706717`, and read it back. busy-session
-delivery is verified. the scored ambient notification subsequently arrived in
-this same session, matching its source id, model call, and queued ledger entry;
-no duplicate reply was sent. idle wakeup remains unverified.
-the owner terminal can reach codex daemon `0.167.0`; this tool environment cannot access
-its control socket. [discord setup](docs/DISCORD.md#selective-intake-alongside-coding)
-owns the launch commands and boundaries.
+the preview returned `200`. isolated chrome loaded the documented entry point,
+opened all four dossiers, exercised relay loss and hypothetical repair, and
+confirmed the calculator's 768-to-960 example without runtime exceptions.
+the documentation checker returned 0 errors and six heading-casing warnings;
+there were no other warnings. the five documentation files were classified
+green by the codebase-care advisory checker. a content hash confirmed that
+the proposal was unchanged by the bootstrap.
 
 ## working now
 
@@ -87,66 +58,73 @@ owns the launch commands and boundaries.
   exercised during the preceding presentation work.
 - a front door, project brief, agent guide, and repeatable development
   instructions for owner and teammate re-entry.
-- a written route through day-one integration, day-two comparisons, adaption
-  use, evidence review, and final handoffs.
-- a source-linked visual review of that draft, with temporary review marks
-  and the 768-versus-1,152-call workload distinction exposed.
-- local asterion launcher, authenticated bot identity, readable room messages,
-  and a confirmed peer round trip through the installed MCP adapter.
-- selective intake with approved adaption caps, live message processing, two
-  queue submissions, and verified direct and scored delivery into this coding
-  session between responses, with one read-back discord reply.
 
 ## incomplete or broken
 
-- no world simulation, agent runner, measured event log, replay of real runs,
-  or accepted event/action contract has been implemented.
-- the adaption grant balance, broader credit coverage, and experimental-run
-  spend allocation remain unverified. the listener's hosted model access,
-  published rates, small scoring calls, and local cap are verified. langfuse
-  tracing has not been connected or exercised.
-- discord native session tool discovery remains unverified. live read/send
-  proof used a stdio client with the configured MCP launcher;
-  these tools are not yet present in this conversation's native tool catalog.
-- selective listener idle-session wakeup remains unverified. direct and scored
-  delivery between responses is verified; four synthetic judgments remain a
-  smoke check, not a calibrated participation evaluation.
-- no committed automated test suite, deployment, or accepted implementation
-  spec exists. the documentation checker reports six casing-only warnings
-  because its expected checkpoint headings use title case.
+- owner acceptance of the seam contract (`add-turn-seam-event-log`) pending;
+  task 8 (update STATUS.md checkpoint, point observatory lane at sample log)
+  is gated on acceptance.
+- adaption access, credit coverage, rates, spend allocation, and model serving
+  have not been verified. langfuse tracing has not been connected or exercised.
+- the distributed discord guides do not establish a live connection. no
+  project room card, installed adapter, or peer round trip has been verified
+  in this work.
+- no deployment or accepted implementation spec exists. the documentation
+  checker reports six casing-only warnings because its expected checkpoint
+  headings use title case.
 
 ## active work
 
-- accepted runtime spec: none.
-- draft: [001-hackathon-plan](specs/001-hackathon-plan.md).
-- current focus: use the visual spec review for team choices and lane selection; the local listener
-  pilot has verified direct and scored intake into the active coding session.
-- pending decisions: world, lane owners, runtime, communication arrangements,
-  disturbance semantics, first implementation slice, exact dependencies, and
-  provider budget/access details.
+- accepted runtime spec: none. drafted, unaccepted: openspec change
+  `add-turn-seam-event-log` (turn cycle, event schema, comm topologies,
+  message lifecycle, two disturbances, replay determinism, zero-model
+  operation). implementation complete on branch `v4x-scripted-runner`
+  (5e0f4d4); awaiting owner acceptance before task 8 (observatory pointer).
+- bd board (recreated twice by stray `bd init` — 16:22 UTC by a lost
+  dispatch, 16:39 UTC by the dev child working around a bd
+  workspace-identity mismatch; rule: never run bd init on this checkout,
+  set BEADS_SKIP_IDENTITY_CHECK=1 instead):
+  - swarmachines-m1p: v4x scripted runner — **closed** (implemented; 7/7
+    tests re-run and verified by pug-bot 16:45 UTC)
+  - swarmachines-e4i: my7 sample event log + determinism check — done;
+    deliverables independently confirmed per the 11:00 CST checkpoint
+    (determinism, schema-validity, zero-model-calls). board entry lost in
+    the second wipe, not re-seeded because the work is confirmed
+  - swarmachines-zpz: v4x round-2 residuals — **round-3 complete**: stale-report
+    now uses real message in circulation (3 lifecycle entries: sent/delivered/seen);
+    dead imports removed (timezone, json); action.rejected added to required set;
+    agent-id regex fixed (\Z); verify_events path fixed; test_runner uses validated
+    load_events. 11/11 tests pass. filed: swarmachines-8s2 (comm-RNG entanglement),
+    swarmachines-3x2 (delivery_map_sha naming).
+  - swarmachines-8s2: **implemented** — split exchange_rng into exchange_send_rng and
+    exchange_acted_rng to prevent RNG state entanglement; test added (12/12 pass).
+  - swarmachines-3x2: **implemented** — renamed delivery_map_sha to delivery_config_sha
+    with docstring clarifying it hashes hub/topology config, not delivery graph; tests
+    updated.
+  - swarmachines-60c: y50 post-acceptance docs — open, gated on owner
+    acceptance
+- current focus: owner acceptance or amendment of the seam change.
+- pending decisions: world choice, lane owners, first disturbance choice
+  ordering, provider budget/access details; room-process decisions from the
+  09:34 CST huddle: discord/bridge re-enable, claim-before-work ledger
+  convention, sast merge-gates sign-off; asterion's swim-lane split (pug=world/runner
+  integration, colette=observatory+report) proposed in #general 17:44Z — awaiting
+  colette's approval; github push/PR unblocked by the operator 2026-11-07
+  (git-cred-sh helper + gh 2.103.3 auto-auth, checkout-wide) — 6031149 pushed
+  to origin/v4x-scripted-runner; sast+verifier merge gates dispatched on the
+  pushed branch.
+- deadline: hackathon ends 2026-11-08 AoE (owner, #general 17:41:53Z) —
+  tonight: one real replayable episode; tomorrow: matched comparison + report.
 - agent context handoffs: requested for when the team is ready; not authored
   or assigned yet.
 
 ## next useful action
 
-open the [spec review](plans/spec-review/index.html). follow step one to its
-wording, then use the working-choice bench to identify what needs discussion.
-review marks clear on refresh; they do not accept a slice or assign a person.
-
-the listener pilot has verified both direct and scored delivery. to move it
-out of the foreground terminal, stop that run with ctrl+c and use the
-[background launch command](docs/DISCORD.md#background-run). the owner has now
-launched it: test `1568510802430922815` was logged, queued, received by this
-session, and answered with a read-back reply. terminal-close and suspend/resume
-survival have not been exercised. the bounded two-hour duration and existing
-caps remain in place. see
-[discord setup](docs/DISCORD.md) for status and stop commands. a fresh coding
-session needs its own explicit target-thread configuration.
-
-review the [working defaults](specs/001-hackathon-plan.md#working-defaults-to-review)
-with the team. choose owners and the first bounded implementation slice, then
-revise and explicitly accept that slice before building. the later weekend
-route can remain provisional beyond it.
+open the [proposal's team-choice section](plans/index.html#choose) with the
+group and choose the world, lane owners, and first disturbance. record those
+choices before drafting the first bounded runtime spec and agent handoffs.
+the documentation bootstrap does not accept that future work on the team's
+behalf.
 
 ## re-entry notes
 
@@ -154,8 +132,6 @@ route can remain provisional beyond it.
 - launch from the repository root using the command above, or open
   `plans/index.html` directly; root-level `index.html` is not the entry point.
 - the page requires no credentials and stores no application state.
-- the visual calculator still counts four conditions by default. the written
-  plan separately explains additional control runs; it does not change the ui.
 - serve `plans`, not the repository root. stop your preview with ctrl+c.
 - the harness guides are distributed separately; see the reference and
   coordination expectations in [AGENTS.md](AGENTS.md).
