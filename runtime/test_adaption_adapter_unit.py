@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Unit tests for the Adaption adapter with mocked SDK.
 
@@ -15,7 +14,7 @@ Usage:
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 # Add runtime to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -84,7 +83,7 @@ def test_adapter_chat_interface():
             {"role": "user", "content": "Hello"},
         ]
         
-        response = adapter.chat(
+        adapter.chat(
             model="test-model",
             messages=messages,
         )
@@ -180,7 +179,7 @@ def run_tests():
             else:
                 failed += 1
                 status = "FAIL"
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - Test runner catches all test failures for reporting
             failed += 1
             success = False
             status = "ERROR"
