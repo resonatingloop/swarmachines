@@ -8,6 +8,14 @@
 
 ## verified checkpoint
 
+viewer slice: owner accepted `specs/002-episode-replay.md` on 2026-11-07.
+local implementation in `viewer/index.html` opens recorded episodes offline,
+plays append order, and inspects prefix-scoped evidence. see `viewer/README.md`
+for commands and limits. nine model tests and the chrome browser checks pass;
+independent import-boundary review and release remain pending. no runner code
+was changed by this slice. the older runner/board status below is inherited
+context and has not been refreshed by this viewer work.
+
 branch `v4x-scripted-runner` (5e0f4d4) implements the turn-cycle runtime
 from openspec change `add-turn-seam-event-log`. the runner is scripted
 (zero model calls), replay-deterministic (same seed → byte-identical logs),
