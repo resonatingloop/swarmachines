@@ -16,6 +16,7 @@ import random
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import ClassVar
 
 
 class EventLog:
@@ -149,9 +150,10 @@ class CommunicationTopology:
             # All communication must go through hub
             if self.hub is None:
                 return False, "hub not configured"
-            if from_agent == self.hub or to_agent == self.hub:
-                if from_agent != to_agent:
-                    return True, ""
+            if (
+                from_agent == self.hub or to_agent == self.hub
+            ) and from_agent != to_agent:
+                return True, ""
             return False, "hub-spoke requires hub involvement"
         return False, "unknown topology"
 
@@ -392,7 +394,7 @@ class TurnSeamRunner:
     observe → exchange → act → record
     """
 
-    PHASE_ORDER = ["observe", "exchange", "act", "record"]
+    PHASE_ORDER: ClassVar[list[str]] = ["observe", "exchange", "act", "record"]
 
     def __init__(self, seed: int, comm_topology: str, agents_config: list[str],
                  disturbance_schedule: dict, delivery_map: dict | None = None):

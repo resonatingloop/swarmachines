@@ -209,7 +209,7 @@ def test_hub_spoke_cli_delivery():
     Path(output).unlink()
     
     # Check run.config has correct topology
-    config = [e for e in events if e["type"] == "run.config"][0]
+    config = next(e for e in events if e["type"] == "run.config")
     if config["payload"]["comm_topology"] != "hub-spoke":
         return False, f"Expected topology 'hub-spoke', got {config['payload']['comm_topology']}"
     
@@ -313,7 +313,7 @@ def test_delivery_config_sha_real():
     
     Path(output).unlink()
     
-    config = [e for e in events if e["type"] == "run.config"][0]
+    config = next(e for e in events if e["type"] == "run.config")
     sha = config["payload"].get("delivery_config_sha")
     
     if not sha:
@@ -383,9 +383,10 @@ def test_zero_model_calls():
             for alias in node.names:
                 if any(fm in alias.name.lower() for fm in forbidden_modules):
                     found.append(alias.name)
-        elif isinstance(node, ast.ImportFrom):
-            if node.module and any(fm in node.module.lower() for fm in forbidden_modules):
-                found.append(node.module)
+        elif isinstance(node, ast.ImportFrom) and node.module and any(
+            fm in node.module.lower() for fm in forbidden_modules
+        ):
+            found.append(node.module)
     
     if found:
         return False, f"Found forbidden imports: {found}"
@@ -400,7 +401,7 @@ def test_agent_id_validation():
         output = f.name
     
     # Try invalid agent id with special chars
-    code, out = run_runner(["--seed", "42", "--turns", "1", "--agents", "a,b@c"], output)
+    code, _out = run_runner(["--seed", "42", "--turns", "1", "--agents", "a,b@c"], output)
     
     Path(output).unlink(missing_ok=True)
     
@@ -416,7 +417,7 @@ def test_turns_cap():
     with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
         output = f.name
     
-    code, out = run_runner(["--seed", "42", "--turns", "101"], output)
+    code, _out = run_runner(["--seed", "42", "--turns", "101"], output)
     
     Path(output).unlink(missing_ok=True)
     

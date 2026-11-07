@@ -134,6 +134,12 @@ the proposal was unchanged by the bootstrap.
   tonight: one real replayable episode; tomorrow: matched comparison + report.
 - agent context handoffs: requested for when the team is ready; not authored
   or assigned yet.
+- prune pass 2026-11-07 (swarmachines-fvh): runtime/ ruff findings 14→3,
+  behavior-preserving only — dead unpacked vars, nested-if collapse,
+  set()/list-slice rewrites, ClassVar annotation, exec bits on the three
+  scripts; runtime/test_runner.py 13/13 before and after. the three remaining
+  findings are intentional (test-harness broad catch, non-checking subprocess
+  helper, py<3.11 fromisoformat compat) and were not suppressed.
 
 ## next useful action
 

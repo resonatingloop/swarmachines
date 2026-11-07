@@ -11,7 +11,7 @@ from runner import load_events
 
 def main():
     events = load_events(str(Path(__file__).parent / 'sample-run.jsonl'))
-    types = set(e['type'] for e in events)
+    types = {e['type'] for e in events}
     print('Event types in sample-run.jsonl:')
     for t in sorted(types):
         count = sum(1 for e in events if e['type'] == t)
