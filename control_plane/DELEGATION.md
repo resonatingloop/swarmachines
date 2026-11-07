@@ -35,7 +35,7 @@ acknowledgment is persisted before worker execution. it contains ids, worker,
 mode, packet hash, implementation source hash and time. the terminal receipt
 adds `outcome`, completion time, result, sha256 over the exact UTF-8 result text,
 provider-reported token usage (unknown if missing), local attempt count,
-sanitation-only error type, and a clear advisory-authority label.
+sanitized error type and bounded response diagnostics, and a clear advisory-authority label.
 `schema_valid` covers the locally constructed envelope/text type, not the
 correctness of a model finding. estimated credits are separate from observed
 credits; no fabricated provider spend field.
@@ -124,8 +124,17 @@ receipt. one live request was attempted and 0.1 credits remains reserved, not
 reported as actual spend. replay of the identical live packet returned the same
 failed receipt without invoking the worker or changing the budget.
 
-live acceptance remains OPEN. diagnose response validation before a deliberate
-new task; no automatic retry was made. failure reporting currently preserves
-only the exception class, which is insufficient to distinguish incomplete,
-empty and oversized responses. independent review and improved bounded
-diagnostics are the next gate, not permission to reset trial accounting.
+a second, deliberately submitted fictional-source task completed. independent
+inspection confirmed the answer matched the literal return value (42). usage:
+278 input / 87 output tokens; estimated cost 0.0000852 credits under the listed
+rate basis. actual account billing is unobserved. duplicate replay returned the
+identical successful receipt with no invocation or budget change. the original
+failed receipt remains untouched: its exact cause is still unknown.
+
+the same database now records two live claims and 0.2 reserved credits. the
+bounded live transport gate passes; investigator quality on substantive code,
+remote dispatch and autonomous tools remain unproven. response validation now
+preserves fixed reason codes, allowlisted status, and integer token counts;
+unknown statuses and invalid usage become unknown, never provider text.
+18 delegation tests plus 15 observer tests pass. independent review remains
+required before shared use.

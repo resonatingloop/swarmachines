@@ -11,8 +11,8 @@ make an agent collective more capable without flattening distinction,
 provenance, dissent, or recoverability?
 
 **bounded delegation:** [local investigator protocol](control_plane/DELEGATION.md)
-implements private task receipts and duplicate-safe replay. offline proof passes;
-the first live attempt failed, so live acceptance remains pending.
+implements private task receipts and duplicate-safe replay. offline and bounded
+live transport proofs pass; independent review remains pending.
 
 **paired inspection:** open the [paired viewer](viewer/compare.html) to compare
 two local episodes at a shared logical turn; matching logged settings do not

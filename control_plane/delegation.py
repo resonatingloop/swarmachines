@@ -31,6 +31,39 @@ INSTRUCTIONS = (
 )
 
 
+class ProviderResponseError(ValueError):
+    """Carry only locally constructed, bounded response diagnostics."""
+
+    def __init__(self, code, diagnostics):
+        super().__init__(code)
+        self.code = code
+        self.diagnostics = diagnostics
+
+
+def response_diagnostics(response):
+    """Extract allowlisted status and integer usage without provider text."""
+    status = getattr(response, "status", None)
+    allowed = (
+        "completed",
+        "incomplete",
+        "failed",
+        "cancelled",
+        "queued",
+        "in_progress",
+    )
+    usage = getattr(response, "usage", None)
+    tokens = {}
+    for key in ("input_tokens", "output_tokens"):
+        value = getattr(usage, key, None)
+        tokens[key] = value if type(value) is int and 0 <= value <= 10**9 else None
+    return {
+        "status": status
+        if isinstance(status, str) and status in allowed
+        else "unknown",
+        "usage": tokens,
+    }
+
+
 def timestamp():
     """Return the receipt timestamp in UTC."""
     return datetime.now(UTC).isoformat()
@@ -273,7 +306,9 @@ class Queue:
                 "schema_valid": True,
                 "schema_scope": "receipt envelope and text type; not semantic correctness",
                 "requests_attempted": 1 if job["mode"] == "adaption" else 0,
-                "usage": result.get("usage") if result else None,
+                "usage": result.get("usage")
+                if result
+                else (error or {}).get("diagnostics", {}).get("usage"),
                 "result": result,
                 "error": error,
                 "result_sha256": digest(result["text"]) if result is not None else None,
@@ -339,15 +374,16 @@ def adaption_worker(packet):
             store=False,
             max_output_tokens=packet["limits"]["max_output_tokens"],
         )
-    if getattr(response, "status", None) != "completed":
-        raise ValueError("provider response incomplete")
+    diagnostics = response_diagnostics(response)
+    if diagnostics["status"] != "completed":
+        raise ProviderResponseError("response_not_completed", diagnostics)
     text = response.output_text
     if (
         not isinstance(text, str)
         or not text.strip()
         or len(text.encode()) > MAX_RESULT_BYTES
     ):
-        raise ValueError("empty or oversized model result")
+        raise ProviderResponseError("invalid_output_text", diagnostics)
     usage = getattr(response, "usage", None)
     tokens = {
         key: getattr(usage, key, None) for key in ("input_tokens", "output_tokens")
@@ -386,7 +422,10 @@ def execute(queue, packet, worker, live=False, runner=None):
             raise ValueError("invalid result shape or size")
     except Exception as exc:  # noqa: BLE001 - record only a sanitized worker failure
         # Do not emit provider exception strings, headers, request bodies or keys.
-        return queue.finish(packet, token, error={"type": type(exc).__name__}), False
+        error = {"type": type(exc).__name__}
+        if isinstance(exc, ProviderResponseError):
+            error.update(code=exc.code, diagnostics=exc.diagnostics)
+        return queue.finish(packet, token, error=error), False
     return queue.finish(packet, token, result=result), False
 
 

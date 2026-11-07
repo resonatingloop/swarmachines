@@ -8,15 +8,18 @@
 
 ## verified checkpoint
 
-local delegation slice (2026-11-07): owner accepted spec008 and a first trial
+local delegation slice (2026-11-07): accepted spec008 and owner-approved trial
 limited to 1 credit / four requests / one worker / no automatic retries. pug
-accepted the v1 packet mapping. 17 offline tests and scoped ruff pass. the
-first live attempt terminated with sanitized `ValueError`; no usable result
-or token usage was retained. 0.1 credits remains reserved locally, not a
-measured bill. replay returns the identical failed receipt without execution
-or another reservation. live acceptance and independent review remain open.
-see [delegation operations](control_plane/DELEGATION.md). older checkpoint
-statements below describe earlier slices, not the current delegation state.
+accepted the v1 mapping. 33 tests (18 delegation + 15 observer), scoped ruff and
+atlas freshness pass. first paid attempt failed with unknown cause; the second
+explicit fictional-source task completed with the correct literal answer.
+usage: 278 input / 87 output tokens; estimated 0.0000852 credits, not observed
+billing. both duplicate replays reused receipts without calls or reservations.
+the same private queue records two live claims / 0.2 reserved credits. bounded
+status/usage diagnostics now distinguish response-validation failures without
+logging provider text. pr #22 awaits independent review. see
+[delegation operations](control_plane/DELEGATION.md). older evidence below is
+historical, not a current merge ledger.
 
 control-plane observer: owner-approved first slice implemented in
 `control_plane/`. a live pinned-ledger/github capture produced 33 supported task
@@ -190,10 +193,11 @@ the proposal was unchanged by the bootstrap.
 
 ## next useful action
 
-delegation: independently review spec008 and the local runner; investigate the
-failed response validation with bounded diagnostics before any deliberate new
-paid task. preserve the existing trial database and its reservation. do not
-retry the completed attempt or treat the paid path as accepted.
+delegation: independently review pr #22 at its latest head; local offline and
+bounded live transport gates pass. preserve existing trial state and both
+receipts. next proposed slice is a substantive investigator task with explicit
+source and acceptance criteria; remote dispatch and editing agents are not
+implemented. the first attempt's exact failure cause remains unknown.
 
 experiment lane (separate):
 

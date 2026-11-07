@@ -208,6 +208,31 @@ class DelegationTests(unittest.TestCase):
         self.assertEqual(result["usage"], {"input_tokens": 10, "output_tokens": 5})
         self.assertIsNone(result["observed_credits"])
 
+    def test_failure_diagnostics_are_bounded_and_persisted(self):
+        response = SimpleNamespace(
+            status="incomplete",
+            usage=SimpleNamespace(input_tokens=12, output_tokens=100),
+        )
+
+        def worker(p):
+            raise d.ProviderResponseError(
+                "response_not_completed", d.response_diagnostics(response)
+            )
+
+        receipt, _ = d.execute(self.queue, packet(), "investigator", runner=worker)
+        self.assertEqual(receipt["error"]["code"], "response_not_completed")
+        self.assertEqual(receipt["usage"], {"input_tokens": 12, "output_tokens": 100})
+        response.status = "secret-canary"
+        response.usage = SimpleNamespace(
+            input_tokens=True, output_tokens="secret-canary"
+        )
+        diagnostics = d.response_diagnostics(response)
+        self.assertNotIn("secret-canary", d.encoded(diagnostics))
+        self.assertEqual(diagnostics["status"], "unknown")
+        self.assertEqual(
+            diagnostics["usage"], {"input_tokens": None, "output_tokens": None}
+        )
+
     def test_incomplete_response_is_failure(self):
         client = MagicMock()
         client.responses.create.return_value = SimpleNamespace(
