@@ -191,14 +191,14 @@ class DisturbanceScheduler:
         self.schedule = schedule  # {"relay-loss": {"turn": N, "agent": "a"}, "stale-report": {...}}
         self.active: dict = {}
 
-    def apply_at_turn(self, turn: int, log: EventLog, topology: str, hub: str | None = None) -> None:
+    def apply_at_turn(self, turn: int, log: EventLog, topology: str, hub: str | None = None, lifecycle: MessageLifecycle | None = None) -> None:
         """Apply any disturbances scheduled for this turn."""
         for kind, config in self.schedule.items():
             if config.get("turn") == turn and kind not in self.active:
                 if kind == "relay-loss":
                     self._apply_relay_loss(config, log, topology, hub)
                 elif kind == "stale-report":
-                    self._apply_stale_report(config, log)
+                    self._apply_stale_report(config, log, lifecycle)
                 elif kind == "peer-mute":
                     self._apply_peer_mute(config, log)
 
@@ -230,10 +230,20 @@ class DisturbanceScheduler:
             },
         )
 
-    def _apply_stale_report(self, config: dict, log: EventLog) -> None:
+    def _apply_stale_report(self, config: dict, log: EventLog, lifecycle: MessageLifecycle | None = None) -> None:
+        """Apply stale-report disturbance: claim a message state different from reality.
+        
+        Validation: the message_id must have been actually SENT (exist in lifecycle).
+        Raises ValueError if the message was never sent (prevents injection of fake message ids).
+        """
         message_id = config["message_id"]
         claimed_state = config["claimed_state"]
         actual_state = config["actual_state"]
+        
+        # Validate: message must have been sent (exist in lifecycle)
+        if lifecycle is not None and message_id not in lifecycle.lifecycle:
+            raise ValueError(f"stale-report message_id {message_id} was never sent (not in message lifecycle)")
+        
         self.active["stale-report"] = {"message_id": message_id, "active": True}
 
         log.append(
@@ -529,7 +539,7 @@ class TurnSeamRunner:
             )
 
             # Apply disturbances at start of turn
-            self.disturbance_scheduler.apply_at_turn(turn, self.log, self.topology.topology, self.topology.hub)
+            self.disturbance_scheduler.apply_at_turn(turn, self.log, self.topology.topology, self.topology.hub, self.lifecycle)
 
             # Phase 1: observe - ALL agents observe before any exchange
             for agent in self.agents:
@@ -572,9 +582,9 @@ class TurnSeamRunner:
         return self.lifecycle.was_in_context_at_turn(message_id, turn)
 
 
-def load_events(path: str, char_limit: int = 10000000) -> list[dict]:
+def load_events(path: str, line_char_limit: int = 10000, total_char_limit: int = 10000000) -> list[dict]:
     """
-    Load events from a JSONL file with per-line size cap and non-echoing error handling.
+    Load events from a JSONL file with per-line size cap (10k default) and cumulative total cap (10MB default).
     
     Security: error messages use categorical types only — raw hostile input (model/attacker-
     controlled JSON) is never echoed into logs or the episode. This prevents log injection
@@ -591,6 +601,7 @@ def load_events(path: str, char_limit: int = 10000000) -> list[dict]:
 
     events = []
     errors = []
+    total_chars = 0
 
     with open(path) as f:
         for line_num, line in enumerate(f, 1):
@@ -598,10 +609,16 @@ def load_events(path: str, char_limit: int = 10000000) -> list[dict]:
             if not line:
                 continue
 
-            # Per-line size cap (10MB default)
-            if len(line) > char_limit:
+            # Per-line size cap (10k default)
+            if len(line) > line_char_limit:
                 errors.append(f"Line {line_num}: line_exceeds_size_limit")
                 continue
+
+            # Cumulative total cap (10MB default)
+            total_chars += len(line)
+            if total_chars > total_char_limit:
+                errors.append(f"Line {line_num}: total_size_exceeded")
+                break
 
             try:
                 event = json.loads(line)

@@ -586,6 +586,116 @@ def test_relay_loss_hub_spoke_payload():
     return True, f"OK: hub-spoke payload correctly describes topology: {after_text}"
 
 
+def test_load_events_line_cap():
+    """Test load_events enforces 10k per-line cap."""
+    print("Test: load_events 10k per-line cap...")
+    import io
+    from runner import load_events
+    
+    # Create a test file with a line exceeding 10k chars
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False, mode="w") as f:
+        # Write a valid event
+        valid_event = {"run_id": "test", "seq": 0, "turn": 1, "agent_id": "a", "type": "observation.recorded", "ts": "2026-11-07T00:00:00Z", "payload": {}}
+        f.write(json.dumps(valid_event) + "\n")
+        # Write a line exceeding 10k chars
+        f.write("x" * 10001 + "\n")
+        # Write another valid event
+        f.write(json.dumps(valid_event) + "\n")
+        output = f.name
+    
+    # Load events - should skip the oversized line
+    events = load_events(output, line_char_limit=10000)
+    Path(output).unlink()
+    
+    # Should have 2 events (the oversized line is skipped)
+    if len(events) != 2:
+        return False, f"Expected 2 events (oversized line skipped), got {len(events)}"
+    
+    return True, "OK: 10k per-line cap enforced (oversized lines skipped)"
+
+
+def test_load_events_total_cap():
+    """Test load_events enforces 10MB cumulative total cap."""
+    print("Test: load_events 10MB cumulative total cap...")
+    from runner import load_events
+    
+    # Create a test file that exceeds 10MB total
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False, mode="w") as f:
+        valid_event = {"run_id": "test", "seq": 0, "turn": 1, "agent_id": "a", "type": "observation.recorded", "ts": "2026-11-07T00:00:00Z", "payload": {}}
+        event_json = json.dumps(valid_event)
+        # Write enough events to exceed 10MB (each event is ~100 bytes, so 100k events = ~10MB)
+        for i in range(110000):
+            f.write(event_json + "\n")
+        output = f.name
+    
+    # Load events with a small total cap for testing (1MB)
+    events = load_events(output, line_char_limit=10000, total_char_limit=1000000)
+    Path(output).unlink()
+    
+    # Should have stopped before reading all events due to total cap
+    # 1MB / ~100 bytes per event ≈ 10000 events max
+    if len(events) >= 110000:
+        return False, f"Expected < 110000 events (total cap enforced), got {len(events)}"
+    
+    return True, f"OK: 10MB cumulative total cap enforced (stopped at {len(events)} events)"
+
+
+def test_stale_report_rejects_never_sent():
+    """Test stale-report disturbance rejects message_ids that were never sent."""
+    print("Test: stale-report rejects never-sent message ids...")
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    
+    # Try to apply stale-report with a fake message_id that was never sent
+    # The runner should raise ValueError
+    repo_root = Path(__file__).parent.parent
+    cmd = [sys.executable, "runtime/runner.py", "--seed", "42", "--turns", "3", 
+           "--disturbance", "stale-report:2:fake-never-sent-msg:open:closed",
+           "--output", output]
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(repo_root))
+    
+    Path(output).unlink(missing_ok=True)
+    
+    # Should fail with ValueError
+    if result.returncode == 0:
+        return False, "Runner should reject stale-report with never-sent message_id"
+    
+    if "ValueError" not in result.stdout and "ValueError" not in result.stderr:
+        return False, f"Expected ValueError, got: {result.stderr[:200]}"
+    
+    return True, "OK: stale-report correctly rejects never-sent message ids"
+
+
+def test_peer_mute_turn_gating():
+    """Test peer-mute only applies at/after scheduled turn; turn-1 deliveries work normally."""
+    print("Test: peer-mute turn-gating (turn-1 deliveries pre-mute)...")
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    
+    # Peer-mute agent 'b' at turn 2 - turn 1 should deliver normally
+    run_runner(["--seed", "7", "--turns", "4", "--disturbance", "peer-mute:2:b"], output)
+    events = load_events(output)
+    
+    Path(output).unlink()
+    
+    # Check turn-1 delivered messages (should exist, before mute)
+    turn1_delivered = [e for e in events if e["type"] == "message.delivered" 
+                       and e["turn"] == 1 and e["payload"].get("status") == "delivered"]
+    
+    if not turn1_delivered:
+        return False, "Turn-1 should have delivered messages before peer-mute applied at turn 2"
+    
+    # Check turn-2+ undelivered messages due to mute (should exist, after mute)
+    turn2plus_undelivered_muted = [e for e in events if e["type"] == "message.delivered" 
+                                    and e["turn"] >= 2 and e["payload"].get("status") == "undelivered"
+                                    and e["payload"].get("reason") == "agent communication muted"]
+    
+    if not turn2plus_undelivered_muted:
+        return False, "Turn-2+ should have undelivered messages due to peer-mute"
+    
+    return True, f"OK: peer-mute turn-gating works ({len(turn1_delivered)} turn-1 delivered, {len(turn2plus_undelivered_muted)} turn-2+ muted)"
+
+
 def main():
     """Run all tests."""
     print("=" * 60)
@@ -609,6 +719,10 @@ def main():
         ("relay_loss_hub_spoke_payload", test_relay_loss_hub_spoke_payload),
         ("bidirectional_ring_topology", test_bidirectional_ring_topology),
         ("topology_independence_with_ring", test_topology_independence_with_ring),
+        ("load_events_line_cap", test_load_events_line_cap),
+        ("load_events_total_cap", test_load_events_total_cap),
+        ("stale_report_rejects_never_sent", test_stale_report_rejects_never_sent),
+        ("peer_mute_turn_gating", test_peer_mute_turn_gating),
     ]
     
     passed = 0
