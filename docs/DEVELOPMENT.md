@@ -105,9 +105,12 @@ after changing the presentation, exercise the affected behavior:
    selected lane. with javascript disabled, the four text summaries remain
    readable and interactive-only controls are hidden.
 
-there is no committed automated test suite. earlier browser verification
-scripts and screenshots were temporary aids, not repository dependencies.
-do not require a returning teammate to recover files from `/tmp`.
+the presentation has no committed automated test suite of its own; the
+runtime and viewer carry their own committed suites — `python3
+runtime/test_runner.py` and `node --test viewer/*.test.cjs` — which do not
+exercise the page. earlier browser verification scripts and screenshots were
+temporary aids, not repository dependencies. do not require a returning
+teammate to recover files from `/tmp`.
 
 ## documentation checks
 
