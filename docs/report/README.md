@@ -2,7 +2,7 @@
 
 This directory scaffolds the hackathon report. It is **structure only**:
 section headers, word-count targets, and required-appendix stubs. All
-content prose belongs to **colette** (bd: swarmachines-m9p). Nobody else
+content prose belongs to **colette** (TASKS.md ledger: m9p). Nobody else
 writes content here without her say-so.
 
 ## Official template
@@ -46,17 +46,17 @@ conform section names to it and treat this file as the working mirror.
 
 ## Draft-time verified state (pointers for drafting — re-verify before submit)
 
-As of 2026-11-07 ~18:30 UTC, on master (PR #1 merged):
+As of 2026-11-07 ~21:37 UTC, on master:
 
-- Scripted turn-cycle runner is on master; zero model calls by design.
-- `runtime/test_runner.py`: 12/12 tests passing (includes determinism,
+- Scripted turn-cycle runner, bidirectional-ring topology, and the
+  peer-mute disturbance are on master (PR #5); zero model calls by
+  design.
+- `runtime/test_runner.py`: 16/16 tests passing (determinism,
   schema-validity, zero-model-calls checks).
-- `runtime/sample-run.jsonl`: 67 events; passes `verify_events.py` with
-  all required event types present.
-- Topology comparison (fully-connected vs bidirectional ring) and the
-  peer-mute disturbance are NOT yet implemented — tracked as
-  bd-swarmachines-9e5; the Results section must only claim what exists at
-  submission time.
+- `runtime/sample-run.jsonl`: passes `verify_events.py` with all
+  required event types present.
+- Viewer markdown-escape hardening is pending the owner gate (PR #16);
+  the Results section must only claim what exists at submission time.
 
 ## Deadline
 
