@@ -24,6 +24,10 @@ Use Beads as the shared project task system. Local plans, scratch files, and per
 - If the board looks empty, STOP: check `git log` for a stray bd-init
   commit and tell pug-bot before recreating anything. Recovery is a
   re-seed from `STATUS.md`, never a re-init.
+- List quirks: `bd list --all` to include closed items (the default
+  filter hides them); multi-status filters need the comma form
+  (`bd list --status open,in_progress`) — repeating `-s` silently
+  overwrites the previous value.
 
 ## First Step
 

@@ -2,7 +2,7 @@
 
 > continuity role: operational checkpoint
 > status: v4x runner implemented; seam contract drafted, awaiting owner acceptance
-> last verified: 2026-11-07 (round-3: all 11 tests pass, stale-report fixed)
+> last verified: 2026-11-07 (round-3: all 12 tests pass, stale-report fixed)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
@@ -107,7 +107,14 @@ the proposal was unchanged by the bootstrap.
 - pending decisions: world choice, lane owners, first disturbance choice
   ordering, provider budget/access details; room-process decisions from the
   09:34 CST huddle: discord/bridge re-enable, claim-before-work ledger
-  convention, sast merge-gates sign-off.
+  convention, sast merge-gates sign-off; asterion's swim-lane split (pug=world/runner
+  integration, colette=observatory+report) proposed in #general 17:44Z — awaiting
+  colette's approval; github push/PR unblocked by the operator 2026-11-07
+  (git-cred-sh helper + gh 2.103.3 auto-auth, checkout-wide) — 6031149 pushed
+  to origin/v4x-scripted-runner; sast+verifier merge gates dispatched on the
+  pushed branch.
+- deadline: hackathon ends 2026-11-08 AoE (owner, #general 17:41:53Z) —
+  tonight: one real replayable episode; tomorrow: matched comparison + report.
 - agent context handoffs: requested for when the team is ready; not authored
   or assigned yet.
 
