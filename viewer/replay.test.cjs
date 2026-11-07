@@ -82,3 +82,31 @@ test('record count ceiling and exact bundled sample provenance', () => {
   const small = Array.from({length:20001}, (_,seq) => JSON.stringify({run_id:'r',seq,turn:0,agent_id:null,type:'x',ts:'2026-01-01T00:00:00Z',payload:{}})).join('\n');
   assert.throws(() => parseEpisode(small), /20,000 events/);
 });
+
+test('pinned freight candidate is reproducible compatibility data, not world-backed evidence', () => {
+  const crypto = require('node:crypto');
+  const raw = fs.readFileSync(path.join(__dirname, 'fixtures/freight-candidate.jsonl'));
+  const provenance = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/freight-candidate.provenance.json')));
+  assert.equal(crypto.createHash('sha256').update(raw).digest('hex'), provenance.sha256);
+  assert.equal(provenance.world_backed, false);
+  const freight = parseEpisode(raw.toString('utf8'));
+  assert.equal(freight.events.length, provenance.records);
+  assert.deepEqual(freight.turns, Array.from({length:17}, (_,i)=>i));
+  for (let cursor = 0; cursor < freight.events.length; cursor++) {
+    const state = snapshot(freight, cursor);
+    const prefix = freight.events.slice(0, cursor + 1);
+    assert.equal(state.event, freight.events[cursor]);
+    assert.equal(state.reportedSummary, prefix.find(e=>e.type==='run.end') ?? null);
+    assert.deepEqual(state.disturbances, prefix.filter(e=>e.type==='disturbance.applied'));
+    for (const [agent, observation] of state.observations) {
+      assert.equal(observation, prefix.filter(e=>e.agent_id===agent && e.type==='observation.recorded').at(-1));
+    }
+    for (const message of state.messages.values()) {
+      assert.deepEqual(message.transitions.map(t=>t.event), prefix.filter(e=>e.type.startsWith('message.') && e.payload.message_id===message.id));
+    }
+  }
+  const state = snapshot(freight,393);
+  assert.equal(state.messages.size,71);
+  assert.equal([...state.messages.values()].filter(m=>m.transitions.some(t=>t.status==='undelivered')).length,20);
+  assert.equal(snapshot(freight,0).messages.size,0);
+});

@@ -41,3 +41,18 @@ independent review of this file-import boundary is still required before
 release. browser-menu zoom, screen-reader behavior and very large log interaction
 performance have not been verified. no commit, push, release or provider run
 is part of this local handoff.
+
+## freight handoff candidate
+
+`fixtures/freight-candidate.jsonl` is pinned to pr #6 revision
+`46d54a31f45b43ec6c190a5e7badfad29a2d076c`; the adjacent provenance json records
+its sha256, source-file hashes, invocation and evidence limits. it reproduces
+byte-for-byte from that runner, but that revision still randomizes observations,
+action legality and delivery totals rather than integrating its freight world.
+**compatibility-only: not world-backed experiment evidence.**
+
+the ten model tests now check every prefix of this 394-event fixture; browser
+checks import it, navigate turns, inspect message evidence and rewind. the
+bundled default remains the original scripted sample. no viewer runtime change
+was needed. complete freight acceptance waits for a reviewed runtime handoff
+that derives observations, state transitions and outcomes from its world.

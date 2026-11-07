@@ -1,0 +1,26 @@
+{
+  "status": "compatibility-only; not world-backed experiment evidence",
+  "repository": "resonatingloop/swarmachines",
+  "pull_request": 6,
+  "source_commit": "46d54a31f45b43ec6c190a5e7badfad29a2d076c",
+  "source_path": "runtime/freight-episode.jsonl",
+  "fixture": "freight-candidate.jsonl",
+  "sha256": "f4b6a3432a69577074d4c38a826d8160c793a5b83ba73f654a73a9aa1100dcad",
+  "records": 394,
+  "rerun": {
+    "command": "python3 runtime/runner.py --seed 42 --turns 16 --topology mesh --disturbance relay-loss:8:c --output reproduced.jsonl",
+    "result": "byte-identical at inspected source commit",
+    "provider_calls": 0
+  },
+  "runtime_sources_sha256": {
+    "runner.py": "e5caad812be810c7dd6c635ee07d944aa8d8494d04765c0f3f3b67db19dbeeae",
+    "freight_world.py": "e16864a3067eae31b477789567c56fbfc56dc0f4de48fe23c844018d03dd61c8"
+  },
+  "world_backed": false,
+  "blockers": [
+    "runner does not connect freight_world to observations, action validation or state updates",
+    "run.end delivery totals are randomized, not counted from freight state"
+  ],
+  "reviewed_at": "2026-11-07",
+  "note": "source-level findings apply only to the pinned revision; same-seed reproducibility is not proof of world integration"
+}
