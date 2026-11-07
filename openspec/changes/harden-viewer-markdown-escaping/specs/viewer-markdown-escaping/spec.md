@@ -54,9 +54,9 @@ the escaping implementation SHALL include tests that: (a) replace every codepoin
 #### Scenario: comprehensive byte-level verification
 
 - **WHEN** the test suite runs
-- **THEN** 46/46 tests pass, covering all bidi char classes and attack scenarios
+- **THEN** 56/56 tests pass, covering all bidi char classes and attack scenarios
 
-## CAVEATS
+## caveats
 
-- apostrophe (`'`) normalization is not performed; markdown renderers vary in smart-quote behavior
+- apostrophe (`'`) escapes to `&#39;` in the `text()` pipeline; smart-quote behavior varies by renderer
 - the escaping is behavioral: exported markdown bytes change, but UI/browser replay behavior outside the export path is unchanged

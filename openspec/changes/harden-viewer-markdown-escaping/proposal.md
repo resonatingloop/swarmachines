@@ -22,13 +22,13 @@ invisible bidi and direction-control characters (LRM/RLM, ALM, LRE/RLE/LRO/RLO, 
 
 ## caveats
 
-- apostrophe normalization: `'` is not escaped; markdown renderers vary in smart-quote behavior
+- apostrophe (`'`) escapes to `&#39;` in the `text()` pipeline; smart-quote behavior varies by renderer
 - the escape is behavioral: exported bytes change, but UI behavior outside the export path is unchanged
 
 ## how verified
 
-- byte-level probe: test replaces all mapped codepoints and asserts visible `\uXXXX` output
-- 46/46 node test suite (`evidence.test.js`) covering all bidi char classes
+- byte-level probe: test replaces all 82 mapped codepoints and asserts visible `\uXXXX` output
+- 56/56 node test suite (`evidence.test.cjs`) covering all bidi char classes and attack scenarios
 - no UI behavior change outside the export path (browser replay unaffected)
 - verifier gate: escaping verified byte-level (PR #16)
 
