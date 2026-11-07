@@ -79,6 +79,13 @@ hosted model and its published rates; see [discord setup](docs/DISCORD.md).
 the grant balance and experimental-run costs remain unverified. the page's
 calculator counts calls, not credits or dollars.
 
+## construction control plane
+
+[the switchboard observer](control_plane/README.md) captures reported task state
+and github pr facts into a private offline board. it is observation-only; no
+workers, dispatch or provider calls are started. see the accepted
+[observer slice](specs/007-control-plane-observer.md).
+
 ## documentation authority
 
 | document | role | owns |

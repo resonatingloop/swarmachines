@@ -8,6 +8,14 @@
 
 ## verified checkpoint
 
+control-plane observer: owner-approved first slice implemented in
+`control_plane/`. a live pinned-ledger/github capture produced 33 supported task
+rows, 19 prs and 12 reconciliation diagnostics. these are snapshot counts, not
+a live board or worker inventory. fifteen offline tests pass; browser checks
+cover desktop/720px/320px reflow, keyboard disclosure and no external requests.
+independent review is pending. no dispatch or provider activity in this slice.
+see [operations](control_plane/README.md). later checkpoints below are historical.
+
 owner accepted [formal experiment protocol](specs/006-formal-experiment-handoff.md)
 on 2026-11-07. source recovered into a durable worktree and atlas regenerated.
 pr #14 is merged at 19b69e3; pr #5 (db0fde8) and #6 (46d54a3) remain open
@@ -170,11 +178,10 @@ the proposal was unchanged by the bootstrap.
 
 ## next useful action
 
-receive a reviewed integrated freight + ring/peer-mute revision and exact
-scripted invocation from pug. map the accepted spec006 measures to actual
-job transitions with caduceus, including evidence that the policy consumes
-messages. only after those gates pass, implement the manifest/analyzer and
-run the zero-provider seed-42 pilot. no substitute scaffold batch.
+review the observation-only control-plane slice, then agree the task/receipt
+interface with pug before one assignment/acknowledgment/artifact round trip.
+worker concurrency and orchestration spend allocation remain pending. formal
+experiment spec006 separately requires the integrated runtime and measure mapping.
 
 ## re-entry notes
 
