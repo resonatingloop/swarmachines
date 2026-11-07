@@ -3,6 +3,7 @@
 **Date:** 2026-11-07  
 **Authority:** Owner directive (GO issued ~18:05Z)  
 **Change:** add-turn-seam-event-log
+**Ordering:** This ruling is recorded before any comparison code is written; no comparison implementation lands until this record merges.
 
 ## Comparison Arms
 
