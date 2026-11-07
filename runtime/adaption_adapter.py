@@ -50,27 +50,23 @@ class AdaptionAdapter:
     Wraps the Adaption SDK to provide a consistent interface for model calls.
     Records latency, tokens, and model ID for each call.
 
-    The ADAPTION_API_KEY environment variable must be set before instantiation.
+    Credential contract: the API key is read from the ADAPTION_API_KEY
+    environment variable by the SDK itself. Do not pass credentials
+    as arguments. If the env var is absent, the SDK will raise its
+    own error on first use.
     """
 
-    def __init__(self, api_key: str | None = None):
+    def __init__(self):
         """
         Initialize the Adaption adapter.
 
-        Args:
-            api_key: Optional API key. If not provided, reads ADAPTION_API_KEY
-                     from the environment (default SDK behavior).
-
-        Raises:
-            ValueError: If no API key is provided and ADAPTION_API_KEY is not set.
+        The SDK reads ADAPTION_API_KEY from the environment automatically.
+        No arguments are accepted — credentials must come from the environment.
         """
         # Lazy import: allows graceful degradation when SDK is unavailable
         from adaption import Adaption
 
-        if api_key:
-            self._client = Adaption(api_key=api_key)
-        else:
-            self._client = Adaption()
+        self._client = Adaption()
 
     def chat(
         self,
