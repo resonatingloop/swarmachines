@@ -118,7 +118,7 @@ def run_smoke_test() -> dict:
             "output": r4.output_text,
             "latency_ms": round(r4.latency_ms, 2),
             "input_tokens": r4.usage.input_tokens,
-            "output_tokens": r4.output_tokens,
+            "output_tokens": r4.usage.output_tokens,
         })
     except Exception as e:
         results.append({
