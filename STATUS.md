@@ -1,12 +1,20 @@
 # swarmachines / status
 
 > continuity role: operational checkpoint
-> status: v4x runner implemented; seam contract drafted, awaiting owner acceptance
+> status: formal protocol accepted; integrated runtime readiness pending
 > last verified: 2026-11-07 (round-3: all 12 tests pass, stale-report fixed)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
 ## verified checkpoint
+
+owner accepted [formal experiment protocol](specs/006-formal-experiment-handoff.md)
+on 2026-11-07. source recovered into a durable worktree and atlas regenerated.
+pr #14 is merged at 19b69e3; pr #5 (db0fde8) and #6 (46d54a3) remain open
+at this check. no formal run or provider expenditure started. the historical
+slice evidence below is retained; its pending-review labels are not a current
+merge ledger. `bd prime` could not run here (`bd: command not found`); no board
+was initialized or replaced.
 
 evidence export: accepted spec005 implemented in the paired viewer. selected
 turns produce bounded json/markdown previews and explicit local downloads with
@@ -143,11 +151,11 @@ the proposal was unchanged by the bootstrap.
 
 ## next useful action
 
-open the [proposal's team-choice section](plans/index.html#choose) with the
-group and choose the world, lane owners, and first disturbance. record those
-choices before drafting the first bounded runtime spec and agent handoffs.
-the documentation bootstrap does not accept that future work on the team's
-behalf.
+receive a reviewed integrated freight + ring/peer-mute revision and exact
+scripted invocation from pug. map the accepted spec006 measures to actual
+job transitions with caduceus, including evidence that the policy consumes
+messages. only after those gates pass, implement the manifest/analyzer and
+run the zero-provider seed-42 pilot. no substitute scaffold batch.
 
 ## re-entry notes
 
