@@ -8,6 +8,14 @@
 
 ## verified checkpoint
 
+freight handoff follow-up: accepted `specs/003-freight-replay-handoff.md`;
+compatibility fixture and provenance manifest added under `viewer/fixtures`.
+ten model tests and browser checks pass against the pinned 394-event candidate.
+the inspected pr #6 revision reproduces that fixture byte-for-byte but does not
+connect the freight world to observations, actions or outcome totals. runtime
+owner notified; world-backed acceptance remains blocked. no viewer runtime or
+runner code changed. pr #9 is merged with caduceus review clear.
+
 viewer slice: owner accepted `specs/002-episode-replay.md` on 2026-11-07.
 local implementation in `viewer/index.html` opens recorded episodes offline,
 plays append order, and inspects prefix-scoped evidence. see `viewer/README.md`

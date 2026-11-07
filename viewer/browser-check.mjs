@@ -42,6 +42,17 @@ try {
  assert(await ev(`cursor===66 && document.getElementById('error').textContent.includes('could not load')`),'invalid utf-8 rejected');
  await ev(`upload(JSON.stringify({...episode.events[0], type:'future.record',payload:{value:'<img src=https://example.invalid onerror=alert(1)>'}}))`);
  assert(await ev(`document.getElementById('detail').textContent.includes('<img') && document.querySelectorAll('img').length===0 && document.getElementById('warnings').textContent.includes('unsupported')`),'unknown markup remains inert');
+ const freightText = await fs.readFile(new URL('./fixtures/freight-candidate.jsonl',import.meta.url),'utf8');
+ await ev(`upload(${JSON.stringify(freightText)},'freight-candidate.jsonl')`);
+ assert(await ev(`episode.events.length===394 && cursor===0 && document.getElementById('source').textContent.includes('has not verified')`),'freight candidate import preserves unknown provenance');
+ await ev(`document.getElementById('turn').value='8';document.getElementById('turn').onchange()`);
+ assert(await ev(`episode.events[cursor].type==='turn.begin' && episode.events[cursor].turn===8`),'freight turn navigation selects first event');
+ await ev(`go(393)`);
+ assert(await ev(`document.querySelectorAll('#messages .card').length===71 && document.getElementById('world').textContent.includes('reported summary')`),'freight lifecycle and summary reachable');
+ await ev(`document.querySelector('#messages button').click()`);
+ assert(await ev(`document.activeElement.id==='detail' && document.getElementById('detail').textContent.includes('message.sent')`),'freight evidence button exposes original record');
+ await ev(`go(0)`);
+ assert(await ev(`!document.querySelectorAll('#messages .card').length && !document.getElementById('world').textContent.includes('reported summary')`),'freight rewind clears future evidence');
  await ev(`document.getElementById('sample').click();go(66)`);
  for(const [w,d,name] of [[320,1,'narrow'],[720,2,'zoom-equivalent']]){
   await size(w,1000,d);

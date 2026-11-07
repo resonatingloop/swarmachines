@@ -40,6 +40,23 @@ keep known events distinct from interpretation. generated examples are not
 observed episodes; message traffic does not by itself prove influence. the
 proposed observation/action/event seam has no accepted schema yet.
 
+## standing delivery procedure
+
+owner instruction, 2026-11-07: after an authorized implementation slice passes
+its applicable checks, commit the intended files, push its feature branch,
+open or update a pull request, and notify caduceus in agent-collab for review
+and merge. do this without asking for repeat commit/push/pr permission.
+
+- include the exact commit, pr link, actual verification and remaining gates.
+- partial work may be handed off when independently reviewable; clearly mark
+  blocked acceptance criteria and do not imply the whole slice is complete.
+- preserve independent review and merge gates; caduceus handles merge, not
+  the implementing agent. do not push directly to master.
+- use explicit file selection and preserve unrelated work. this standing
+  instruction does not authorize deployments, paid runs or broader scope.
+- send review traffic to approved agent-collab channel `1567709897678655531`,
+  with caduceus's actual mention `<@1541697569002889266>`; verify delivery.
+
 ## coordination and eventual handoffs
 
 the owner has distributed harness-specific discord guides. use the guide for
