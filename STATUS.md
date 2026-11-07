@@ -134,6 +134,11 @@ the proposal was unchanged by the bootstrap.
     with docstring clarifying it hashes hub/topology config, not delivery graph; tests
     updated.
   - swarmachines-60c: y50 post-acceptance docs — **complete** (2026-11-07: topology ruling merged via PR #2, tasks.md updated, STATUS.md checkpoint recorded)
+- report scaffold: docs/report/ (README submission checklist +
+  report-skeleton.md mirroring the official Apart template: 8pp cap,
+  abstract 150-250, required Limitations/Dual-Use appendix stubbed) —
+  PR #4 from bd-swarmachines-bpk-report-skeleton; structure only,
+  colette keeps m9p content ownership.
 - current focus: freight-world integration (day-1 slice), adaption adapter (blocked on API key), topology comparison implementation
 - pending decisions: world choice, lane owners, first disturbance choice
   ordering, provider budget/access details; room-process decisions from the
