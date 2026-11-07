@@ -87,6 +87,10 @@ report the mismatch; do not modify the shared skill just to clear this result.
 
 ## state and recovery
 
+the coding-agent workroom connection is separate from the proposal and future
+experimental runtime. [discord setup](DISCORD.md) records its machine-local
+launcher, room card, current access evidence, and remaining connection steps.
+
 - the proposal's controls change the current page only. reload resets them.
   there is no application database or saved lane selection to restore.
 - a pdf saved from the browser is a separate user-chosen export; edits still

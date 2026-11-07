@@ -52,13 +52,20 @@ the world, lane assignments, event format, runtime language, and first
 disturbance are still open. the proposal's four-agent setup, comparison counts,
 and calculator defaults are suggestions, not accepted requirements.
 
+the [written two-day plan](specs/001-hackathon-plan.md) supplies provisional
+steps and reviewable defaults. it adds matched communication controls and
+explains the resulting workload difference from the visual calculator.
+both artifacts remain proposals.
+
 ## resources and intended use
 
 the owner reported an adaption grant as **$500 / 1,500 credits** and wants to
 lean on it. this is an owner-reported allowance, not a verified conversion or
-an account balance read by an agent. per-account allocation, usable operations,
-rates, and a spend plan remain unverified; do not multiply or pool the grant
-by assumption.
+an account balance read by an agent. per-account allocation and the experiment's
+spend plan remain unverified; do not multiply or pool the grant by assumption.
+the separate coding-agent listener has verified one hosted model and its
+published rates under an owner-approved local cap; its evidence lives in
+[discord setup](docs/DISCORD.md).
 
 the proposed division is adaption for model/data capability, langfuse for
 inspection of agent execution, and a project-owned event log for world and
@@ -86,8 +93,9 @@ own explicit agreement before they become contracts.
 
 ## phase boundary
 
-the working artifact is a local proposal page. there is no accepted runtime
-implementation spec. the next design transition is team selection of the
-world, lanes, and first bounded slice, followed by an explicit draft and owner
-acceptance. provider setup, paid runs, publication, deployment, and discord
-posting are separate actions whose scope must be established when requested.
+the working artifact is a local proposal page, accompanied by a written draft
+plan. there is no accepted runtime implementation spec. the next design
+transition is team selection of the world, lanes, and first bounded slice,
+followed by revision and owner acceptance of that slice. provider setup, paid
+runs, publication, deployment, and discord posting are separate actions whose
+scope must be established when requested.

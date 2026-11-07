@@ -52,14 +52,17 @@ in a browser: the file includes its styling, illustrations, and behavior.
 
 ## where to go next
 
-the proposal is ready for team discussion. choose the world, lane owners, and
-first disturbance before drafting the first runtime implementation spec.
-agent context handoffs come after those choices; nobody is assigned by
-clicking a lane on the page.
+the [written two-day plan](specs/001-hackathon-plan.md) gives the team a
+provisional step-by-step route from setup to a recorded experiment and demo.
+review its defaults, choose the world and lane owners, and accept the first
+bounded implementation slice. agent context handoffs come after those choices;
+nobody is assigned by clicking a lane on the page.
 
 the owner reported a $500 / 1,500-credit adaption grant and wants to use the
-platform substantially. account entitlements, prices, and runtime costs have
-not been checked. the page's calculator counts calls, not credits or dollars.
+platform substantially. a separate coding-agent listener has verified one
+hosted model and its published rates; see [discord setup](docs/DISCORD.md).
+the grant balance and experimental-run costs remain unverified. the page's
+calculator counts calls, not credits or dollars.
 
 ## documentation authority
 
@@ -70,7 +73,9 @@ not been checked. the page's calculator counts calls, not credits or dollars.
 | [AGENTS.md](AGENTS.md) | behavioral | repository working rules and agent continuity |
 | [PROJECT_BRIEF.md](PROJECT_BRIEF.md) | durable intent | purpose, audience, constraints, and exploratory direction |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | operational procedure | preview, validation, state, and recovery |
+| [docs/DISCORD.md](docs/DISCORD.md) | operational procedure | local agent connection, room identities, and communication proof |
 | [plans/index.html](plans/index.html) | planning / discussion draft | the detailed visual proposal for the team |
+| [specs/001-hackathon-plan.md](specs/001-hackathon-plan.md) | planning / draft | proposed sequence, defaults, integration points, and future acceptance evidence |
 
 the html is authored source, not a generated projection of an accepted spec.
 there are no runtime contracts, accepted implementation specs, or implemented

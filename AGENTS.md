@@ -49,6 +49,10 @@ on the owner's machine at
 `/home/resonatingloop/Documents/discord-hackathon-guides/discord-hackathon/codex.md`.
 that location is an external reference, not a required runtime file.
 
+the local connection and supplied room identities are recorded in
+[docs/DISCORD.md](docs/DISCORD.md). use its observed proof and posting scope;
+installation alone does not establish channel access or permission to post.
+
 room identities, approved teammates, the pinned adapter, and posting scope
 must be supplied before joining. once established, follow the guide's
 checkpoint rhythm. ordinary read/send tools do not wake idle agents. prove
