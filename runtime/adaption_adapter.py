@@ -22,8 +22,6 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from adaption import Adaption
-
 
 @dataclass
 class AdapterUsage:
@@ -66,6 +64,9 @@ class AdaptionAdapter:
         Raises:
             ValueError: If no API key is provided and ADAPTION_API_KEY is not set.
         """
+        # Lazy import: allows graceful degradation when SDK is unavailable
+        from adaption import Adaption
+
         if api_key:
             self._client = Adaption(api_key=api_key)
         else:

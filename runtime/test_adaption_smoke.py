@@ -17,9 +17,6 @@ from pathlib import Path
 # Add runtime to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from adaption import AdaptionError
-from adaption_adapter import AdaptionAdapter
-
 
 def run_smoke_test() -> dict:
     """
@@ -29,13 +26,19 @@ def run_smoke_test() -> dict:
     """
     results = []
 
-    # Check API key is available
+    # Check API key is available BEFORE importing SDK
     if not os.environ.get("ADAPTION_API_KEY"):
         return {
             "status": "blocked",
             "reason": "ADAPTION_API_KEY not set in environment",
             "calls_made": 0,
         }
+
+    # Lazy imports: allows graceful degradation when SDK is unavailable
+    # Only reached when API key is present
+    from adaption import AdaptionError
+
+    from adaption_adapter import AdaptionAdapter
 
     adapter = AdaptionAdapter()
 
