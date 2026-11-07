@@ -8,13 +8,28 @@
 
 ## verified checkpoint
 
+local delegation slice (2026-11-07): accepted spec008 and owner-approved trial
+limited to 1 credit / four requests / one worker / no automatic retries. pug
+accepted the v1 mapping. 33 tests (18 delegation + 15 observer), scoped ruff and
+atlas freshness pass. first paid attempt failed with unknown cause; the second
+explicit fictional-source task completed with the correct literal answer.
+usage: 278 input / 87 output tokens; estimated 0.0000852 credits, not observed
+billing. both duplicate replays reused receipts without calls or reservations.
+the same private queue records two live claims / 0.2 reserved credits. bounded
+status/usage diagnostics now distinguish response-validation failures without
+logging provider text. pr #22 awaits independent review. see
+[delegation operations](control_plane/DELEGATION.md). older evidence below is
+historical, not a current merge ledger.
+
 control-plane observer: owner-approved first slice implemented in
 `control_plane/`. a live pinned-ledger/github capture produced 33 supported task
 rows, 19 prs and 12 reconciliation diagnostics. these are snapshot counts, not
 a live board or worker inventory. fifteen offline tests pass; browser checks
 cover desktop/720px/320px reflow, keyboard disclosure and no external requests.
-independent review is pending. no dispatch or provider activity in this slice.
+pr #20 merged at 0d0aee8 after independent review. no dispatch or provider
+activity occurred in the observer slice.
 see [operations](control_plane/README.md). later checkpoints below are historical.
+
 
 owner accepted [formal experiment protocol](specs/006-formal-experiment-handoff.md)
 on 2026-11-07. source recovered into a durable worktree and atlas regenerated.
@@ -179,10 +194,20 @@ the proposal was unchanged by the bootstrap.
 
 ## next useful action
 
-review the observation-only control-plane slice, then agree the task/receipt
-interface with pug before one assignment/acknowledgment/artifact round trip.
-worker concurrency and orchestration spend allocation remain pending. formal
-experiment spec006 separately requires the integrated runtime and measure mapping.
+delegation: independently review pr #22 at its latest head; local offline and
+bounded live transport gates pass. preserve existing trial state and both
+receipts. next proposed slice is a substantive investigator task with explicit
+source and acceptance criteria; remote dispatch and editing agents are not
+implemented. the first attempt's exact failure cause remains unknown.
+
+experiment lane (separate):
+
+receive a reviewed integrated freight + ring/peer-mute revision and exact
+scripted invocation from pug. map the accepted spec006 measures to actual
+job transitions with caduceus, including evidence that the policy consumes
+messages. only after those gates pass, implement the manifest/analyzer and
+run the zero-provider seed-42 pilot. no substitute scaffold batch.
+
 
 ## re-entry notes
 
