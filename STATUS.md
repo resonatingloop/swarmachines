@@ -61,9 +61,6 @@ the proposal was unchanged by the bootstrap.
 
 ## incomplete or broken
 
-- owner acceptance of the seam contract (`add-turn-seam-event-log`) pending;
-  task 8 (update STATUS.md checkpoint, point observatory lane at sample log)
-  is gated on acceptance.
 - adaption access, credit coverage, rates, spend allocation, and model serving
   have not been verified. langfuse tracing has not been connected or exercised.
 - the distributed discord guides do not establish a live connection. no
@@ -101,9 +98,8 @@ the proposal was unchanged by the bootstrap.
   - swarmachines-3x2: **implemented** — renamed delivery_map_sha to delivery_config_sha
     with docstring clarifying it hashes hub/topology config, not delivery graph; tests
     updated.
-  - swarmachines-60c: y50 post-acceptance docs — open, gated on owner
-    acceptance
-- current focus: owner acceptance or amendment of the seam change.
+  - swarmachines-60c: y50 post-acceptance docs — **complete** (2026-11-07: topology ruling merged via PR #2, tasks.md updated, STATUS.md checkpoint recorded)
+- current focus: freight-world integration (day-1 slice), adaption adapter (blocked on API key), topology comparison implementation
 - pending decisions: world choice, lane owners, first disturbance choice
   ordering, provider budget/access details; room-process decisions from the
   09:34 CST huddle: discord/bridge re-enable, claim-before-work ledger
