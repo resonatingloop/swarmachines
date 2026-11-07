@@ -1,7 +1,0 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "embedded",
-  "dolt_database": "swarmachines",
-  "project_id": "8d509a07-94d6-4760-a187-29be1b849010"
-}
