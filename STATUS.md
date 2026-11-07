@@ -1,17 +1,33 @@
 # swarmachines / status
 
 > continuity role: operational checkpoint
-> status: seam contract drafted; awaiting owner acceptance
+> status: v4x runner implemented; seam contract drafted, awaiting owner acceptance
 > last verified: 2026-11-07
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
 ## verified checkpoint
 
-the working entry point is [plans/index.html](plans/index.html). the
-documentation bootstrap preserves the proposal and its existing location.
-the repository has no commits on `master`; the proposal and docs are local
-untracked work. the unrelated `.env` was not read or changed.
+branch `v4x-scripted-runner` (68f66a2) implements the turn-cycle runtime
+from openspec change `add-turn-seam-event-log`. the runner is scripted
+(zero model calls), replay-deterministic (same seed → byte-identical logs),
+and implements the fixed turn cycle observe→exchange→act→record.
+
+test suite (runtime/test_runner.py): 7/7 pass
+- basic run produces valid event log with all required types
+- determinism: same seed produces byte-identical output
+- relay-loss disturbance applied and logged correctly
+- stale-report disturbance applied and logged correctly
+- hub-spoke topology configuration works
+- message lifecycle tracking (sent→delivered→seen) complete
+- zero model/network calls in runner
+
+sample outputs:
+- runtime/sample-run.jsonl: 61 events (seed 7, 3 turns, relay-loss@turn 2)
+- runtime/examples/sample-episode.jsonl: 23-event hand-authored illustrative sample
+- runtime/schema/events.schema.json: JSON schema for event records
+
+the unrelated `.env` was not read or changed.
 
 verification commands and procedures:
 
@@ -42,28 +58,30 @@ the proposal was unchanged by the bootstrap.
 
 ## incomplete or broken
 
-- no world simulation, agent runner, measured event log, replay of real runs,
-  or accepted event/action contract has been implemented.
+- owner acceptance of the seam contract (`add-turn-seam-event-log`) pending;
+  task 8 (update STATUS.md checkpoint, point observatory lane at sample log)
+  is gated on acceptance.
 - adaption access, credit coverage, rates, spend allocation, and model serving
   have not been verified. langfuse tracing has not been connected or exercised.
 - the distributed discord guides do not establish a live connection. no
   project room card, installed adapter, or peer round trip has been verified
   in this work.
-- no committed automated test suite, deployment, or accepted implementation
-  spec exists. the documentation checker reports six casing-only warnings
-  because its expected checkpoint headings use title case.
+- no deployment or accepted implementation spec exists. the documentation
+  checker reports six casing-only warnings because its expected checkpoint
+  headings use title case.
 
 ## active work
 
 - accepted runtime spec: none. drafted, unaccepted: openspec change
   `add-turn-seam-event-log` (turn cycle, event schema, comm topologies,
   message lifecycle, two disturbances, replay determinism, zero-model
-  operation) with a 23-event sample episode under `runtime/`.
-- bd board re-seeded 16:33 UTC after a bd-init wipe (16:22, commit 4f0200d,
-  pug-bot identity; old dolt state under .beads/backup): 81u = 087 closed
-  (schema + sample), lto = v4x (scripted runner, dispatched to dev),
-  459 = my7 (blocked-by lto), a3r = y50 (post-acceptance docs, gated on
-  owner acceptance).
+  operation). implementation complete on branch `v4x-scripted-runner`
+  (68f66a2); awaiting owner acceptance before task 8 (observatory pointer).
+- bd board (re-seeded after 16:22 wipe):
+  - swarmachines-m1p: v4x scripted runner — **closed** (implemented, tests pass)
+  - swarmachines-e4i: my7 sample event log + replay-determinism check — open,
+    blocked by m1p
+  - swarmachines-60c: y50 post-acceptance docs — open, gated on owner acceptance
 - current focus: owner acceptance or amendment of the seam change.
 - pending decisions: world choice, lane owners, first disturbance choice
   ordering, provider budget/access details; room-process decisions from the
