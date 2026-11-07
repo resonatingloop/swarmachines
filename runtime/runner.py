@@ -160,6 +160,25 @@ class CommunicationTopology:
                 if from_agent != to_agent:
                     return True, ""
             return False, "hub-spoke requires hub involvement"
+        elif self.topology == "bidirectional-ring":
+            # Each agent can only communicate with immediate neighbors (left/right, wraparound)
+            # For [a,b,c,d]: a↔b, b↔c, c↔d, d↔a
+            if from_agent == to_agent:
+                return False, "self-communication not allowed"
+            try:
+                from_idx = self.agents.index(from_agent)
+                to_idx = self.agents.index(to_agent)
+            except ValueError:
+                return False, "unknown agent"
+            
+            n = len(self.agents)
+            left_neighbor = (from_idx - 1) % n
+            right_neighbor = (from_idx + 1) % n
+            
+            if to_idx == left_neighbor or to_idx == right_neighbor:
+                return True, ""
+            return False, "bidirectional-ring: agents not neighbors"
+        
         return False, "unknown topology"
 
 
@@ -613,7 +632,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="turn-seam scripted runner")
     parser.add_argument("--seed", type=int, default=42, help="random seed")
-    parser.add_argument("--topology", choices=["mesh", "hub-spoke"], default="mesh",
+    parser.add_argument("--topology", choices=["mesh", "hub-spoke", "bidirectional-ring"], default="mesh",
                         help="communication topology")
     parser.add_argument("--turns", type=int, default=3, help="number of turns (max 100)")
     parser.add_argument("--agents", type=str, default="a,b,c,d", 

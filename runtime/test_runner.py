@@ -176,6 +176,90 @@ def test_peer_mute_disturbance():
     return True, f"OK: peer-mute blocks communication ({len(undelivered_muted)} undelivered), local actions continue"
 
 
+def test_bidirectional_ring_topology():
+    """Test bidirectional-ring topology: only neighbors can communicate."""
+    print("Test: bidirectional-ring topology adjacency...")
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    
+    # Run with bidirectional-ring topology
+    run_runner(["--seed", "42", "--turns", "3", "--topology", "bidirectional-ring"], output)
+    events = load_events(output)
+    
+    Path(output).unlink()
+    
+    # In a ring [a,b,c,d]: neighbors are a↔b, b↔c, c↔d, d↔a
+    # Non-neighbors: a↔c, b↔d should be blocked
+    
+    delivered = [e for e in events if e["type"] == "message.delivered"]
+    undelivered = [e for e in events if e["type"] == "message.delivered" and e["payload"].get("status") == "undelivered"]
+    
+    # Check that undelivered messages have ring topology reason
+    ring_blocked = [e for e in undelivered if "ring" in e["payload"].get("reason", "").lower() or "neighbor" in e["payload"].get("reason", "").lower()]
+    
+    # There should be some blocked messages (non-neighbors trying to communicate)
+    if not ring_blocked:
+        return False, "bidirectional-ring should block non-neighbor communication"
+    
+    # Verify neighbor communication works (some delivered messages should exist)
+    successful_deliveries = [e for e in delivered if e["payload"].get("status") == "delivered"]
+    if not successful_deliveries:
+        return False, "bidirectional-ring should allow neighbor communication"
+    
+    return True, f"OK: bidirectional-ring blocks {len(ring_blocked)} non-neighbor messages, allows {len(successful_deliveries)} neighbor deliveries"
+
+
+def test_topology_independence_with_ring():
+    """Test same seed under mesh vs bidirectional-ring produces identical non-comm events."""
+    print("Test: topology-independence with ring (non-comm events identical)...")
+    
+    def get_non_comm_events(output_path: str) -> list[dict]:
+        events = load_events(output_path)
+        # Exclude communication events, run.config (includes topology name), and disturbance.applied
+        excluded_types = {"message.sent", "message.delivered", "message.seen", "message.acted_on", "run.config", "disturbance.applied"}
+        return [e for e in events if e["type"] not in excluded_types]
+    
+    def normalize_event(e: dict) -> dict:
+        """Remove logging artifacts (seq, ts) for semantic comparison."""
+        return {k: v for k, v in e.items() if k not in ("seq", "ts")}
+    
+    def event_key(e: dict) -> tuple:
+        """Sort key for deterministic ordering: (turn, agent_id, type, payload_hash)."""
+        import hashlib
+        payload_hash = hashlib.sha256(str(sorted(e.get("payload", {}).items())).encode()).hexdigest()[:16]
+        # Handle None agent_id by using empty string for sorting
+        agent_id = e.get("agent_id") or ""
+        return (e["turn"], agent_id, e["type"], payload_hash)
+    
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f_mesh:
+        output_mesh = f_mesh.name
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f_ring:
+        output_ring = f_ring.name
+    
+    # Same seed, different topologies
+    run_runner(["--seed", "42", "--turns", "3", "--topology", "mesh"], output_mesh)
+    run_runner(["--seed", "42", "--turns", "3", "--topology", "bidirectional-ring"], output_ring)
+    
+    mesh_events = get_non_comm_events(output_mesh)
+    ring_events = get_non_comm_events(output_ring)
+    
+    Path(output_mesh).unlink()
+    Path(output_ring).unlink()
+    
+    # Normalize and compare
+    mesh_normalized = sorted([normalize_event(e) for e in mesh_events], key=event_key)
+    ring_normalized = sorted([normalize_event(e) for e in ring_events], key=event_key)
+    
+    if mesh_normalized != ring_normalized:
+        # Find first difference for debugging
+        for i, (m, r) in enumerate(zip(mesh_normalized, ring_normalized)):
+            if m != r:
+                return False, f"First diff at index {i}: mesh={m}, ring={r}"
+        return False, f"Non-comm event counts differ: mesh={len(mesh_events)}, ring={len(ring_events)}"
+    
+    return True, "OK: non-communication events identical across mesh and bidirectional-ring topologies"
+
+
 def test_topology_independence():
     """Test same seed + disturbance under mesh vs hub-spoke produces identical non-comm events."""
     print("Test: topology-independence (non-comm events identical)...")
@@ -522,6 +606,8 @@ def main():
         ("agent_id_validation", test_agent_id_validation),
         ("turns_cap", test_turns_cap),
         ("relay_loss_hub_spoke_payload", test_relay_loss_hub_spoke_payload),
+        ("bidirectional_ring_topology", test_bidirectional_ring_topology),
+        ("topology_independence_with_ring", test_topology_independence_with_ring),
     ]
     
     passed = 0
