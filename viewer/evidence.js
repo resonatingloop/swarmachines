@@ -20,7 +20,8 @@ const CAVEATS = [
  * Map of bidi/control characters to their escaped representations.
  * These characters can visually reorder text in markdown renderers,
  * enabling attacks that hide or misrepresent content.
- * Includes: C0/C1 controls, U+2028/2029, bidi overrides/isolates/marks, ZWJ/ZWNJ/SHY/BOM.
+ * Includes: C0/C1 controls, U+2028/2029, bidi overrides/isolates/marks, ZWJ/ZWNJ/SHY/BOM,
+ * plus invisible format characters (word joiners, annotation chars, language tags, variation selectors).
  * @type {Map<string, string>}
  */
 const BIDI_ESCAPE_MAP = new Map([
@@ -66,6 +67,22 @@ const BIDI_ESCAPE_MAP = new Map([
   ['\u200D', '\\u200D'], // ZWJ (Zero Width Joiner)
   ['\u00AD', '\\u00AD'], // SHY (Soft Hyphen)
   ['\uFEFF', '\\uFEFF'], // BOM/ZWNBSP (Byte Order Mark)
+  // Invisible format characters (Cf category, beyond bidi)
+  ['\u2060', '\\u2060'], // Word Joiner
+  ['\u2061', '\\u2061'], // Function Application
+  ['\u2062', '\\u2062'], // Invisible Times
+  ['\u2063', '\\u2063'], // Invisible Separator
+  ['\u2064', '\\u2064'], // Invisible Plus
+  ['\uFFF9', '\\uFFF9'], // Interlinear Annotation Anchor
+  ['\uFFFA', '\\uFFFA'], // Interlinear Annotation Separator
+  ['\uFFFB', '\\uFFFB'], // Interlinear Annotation Terminator
+  [String.fromCodePoint(0x1D173), '\\uD834\\uDD73'], // Musical Symbol Begin Beam
+  [String.fromCodePoint(0x1D174), '\\uD834\\uDD74'], // Musical Symbol End Beam
+  // Variation Selectors (U+FE00-FE0F)
+  ['\uFE00', '\\uFE00'], ['\uFE01', '\\uFE01'], ['\uFE02', '\\uFE02'], ['\uFE03', '\\uFE03'],
+  ['\uFE04', '\\uFE04'], ['\uFE05', '\\uFE05'], ['\uFE06', '\\uFE06'], ['\uFE07', '\\uFE07'],
+  ['\uFE08', '\\uFE08'], ['\uFE09', '\\uFE09'], ['\uFE0A', '\\uFE0A'], ['\uFE0B', '\\uFE0B'],
+  ['\uFE0C', '\\uFE0C'], ['\uFE0D', '\\uFE0D'], ['\uFE0E', '\\uFE0E'], ['\uFE0F', '\\uFE0F'],
 ]);
 
 // Regex pattern for bidi/control characters (for testing presence)
@@ -104,9 +121,11 @@ function escapeBidi(text) {
  * enable injection attacks. This handles standard markdown metacharacters
  * that are dangerous in inline text context.
  *
- * For general inline text, escapes: backslash, backtick, asterisk, underscore,
+ * For general inline text, escapes: ampersand (first, to block entity injection),
+ * angle brackets (HTML/script), backslash, backtick, asterisk, underscore,
  * curly braces, square brackets, parentheses, hash.
- * For table cells, only escapes: pipe, backtick.
+ * For table cells, escapes: ampersand, angle brackets, pipe, backtick,
+ * square brackets, parentheses, exclamation mark (to block links/images).
  *
  * Note: Dots, dashes, plus, minus are NOT escaped as they are safe in
  * both inline and table contexts. List markers (+, -, *) at line start
@@ -125,17 +144,22 @@ function escapeMarkdown(text, options = {}) {
   if (typeof text !== 'string') {
     return String(text);
   }
-  // Escape backslashes first to avoid double-escaping
-  let result = text.replace(/\\/g, '\\\\');
+  // Escape ampersand FIRST to prevent numeric entity injection (&#x202E; etc.)
+  let result = text.replace(/&/g, '&amp;');
+  // Escape angle brackets to prevent HTML/script injection
+  result = result.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Escape backslashes to avoid double-escaping
+  result = result.replace(/\\/g, '\\\\');
   
   if (forTableCell) {
-    // For table cells, only escape pipe (breaks columns) and backtick (code)
-    result = result.replace(/([`|])/g, '\\$1');
+    // For table cells, escape pipe (breaks columns), backtick (code),
+    // and link/image syntax chars that could forge links in cells
+    result = result.replace(/([`|\[\]()!])/g, '\\$1');
   } else {
     // For inline text, escape chars that could break formatting
     // Backtick (code), asterisk/underscore (emphasis), brackets (links),
     // parens (links/images), braces (mustache), hash (headings)
-    result = result.replace(/([`*_{}[\]()#])/g, '\\$1');
+    result = result.replace(/([`*_{}\[\]()#])/g, '\\$1');
   }
   return result;
 }
@@ -250,21 +274,22 @@ function text(value) {
   str = str.replace(/&/g, '&amp;');
   // Escape < and > to prevent HTML/script injection
   str = str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  // Escape newlines and carriage returns to prevent markdown breakout
-  str = str.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+  // Escape punctuation with numeric entities (original master behavior for safety)
+  // Pattern [!-/:-@\[-`{-~] covers backslash (0x5C) and all punctuation
+  str = str.replace(/[!-/:-@\[-`{-~]/g, c => '&#' + c.charCodeAt(0) + ';');
   // Escape bidi/control characters using the map
   str = escapeBidi(str);
-  // Escape punctuation with numeric entities (original master behavior for safety)
-  // This covers: !-/:-@[-`{-~ range which includes many markdown-sensitive chars
-  str = str.replace(/[!-/:-@[\]-`{-~]/g, c => '&#' + c.charCodeAt(0) + ';');
+  // Escape newlines and carriage returns to prevent markdown breakout
+  // Done after punctuation so the literal \\n sequence isn't re-escaped
+  str = str.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
   return str;
 }
 
 function markdown(packet){
   const lines=['# selected-turn evidence packet','',`packet id: ${packet.packet_id}`,`schema: ${packet.schema_version}`,`exporter: ${packet.exporter_version}`,'',`selected turns: ${packet.selection.turns.join(', ')}`,`alignment: ${packet.selection.alignment}`,'','## sources'];
-  for(const slot of ['left','right']){const s=packet.sources[slot];lines.push('',`### ${slot}`,`sha256: ${s.sha256}`,`bytes: ${s.byte_length}; records: ${s.event_count}; turns: ${s.turn_range.join('–')}; run.end present: ${s.run_end_present}`,`run id: ${text(s.run_id)}`);}
+  for(const slot of ['left','right']){const s=packet.sources[slot];lines.push('',`### ${slot}`,`sha256: ${s.sha256}`,`bytes: ${s.byte_length}; records: ${s.event_count}; turns: ${text(s.turn_range.join('–'))}; run.end present: ${s.run_end_present}`,`run id: ${text(s.run_id)}`);}
   lines.push('','## logged configuration / file-level context');
-  for(const row of packet.configuration.fields)lines.push('',`- ${row.field}: ${row.status}`,`  - left: ${text(stable(row.left))}`,`  - right: ${text(stable(row.right))}`);
+  for(const row of packet.configuration.fields)lines.push('',`- ${text(row.field)}: ${text(row.status)}`,`  - left: ${text(stable(row.left))}`,`  - right: ${text(stable(row.right))}`);
   for(const slot of ['left','right'])lines.push(`- ${slot} configuration references: ${text(stable(packet.configuration.records[slot]))}`);
   for(const turn of packet.turns){
     lines.push('',`## turn ${turn.turn}`,`left: ${turn.left.status}; right: ${turn.right.status}`,'','| event count | left | right | right − left |','|---|---:|---:|---:|');
@@ -306,7 +331,10 @@ if (typeof module !== 'undefined') {
 
 // ESM named export shim for node --test compatibility
 // This allows the ESM test file to import named exports from this CJS module
-if (typeof globalThis.ESM_EXPORTS === 'undefined') {
-  globalThis.ESM_EXPORTS = {};
+// Scoped to avoid polluting globalThis in production
+if (typeof process !== 'undefined' && process.argv?.[1]?.includes?.('evidence.test.js')) {
+  if (typeof globalThis.ESM_EXPORTS === 'undefined') {
+    globalThis.ESM_EXPORTS = {};
+  }
+  globalThis.ESM_EXPORTS['./evidence.js'] = Evidence;
 }
-globalThis.ESM_EXPORTS['./evidence.js'] = Evidence;

@@ -47,15 +47,15 @@ function roundTripTest(original) {
   return typeof escaped === 'string' && escaped.length >= 0;
 }
 
-test('BIDI_ESCAPE_MAP has exactly 82 entries', () => {
-  assert.strictEqual(BIDI_ESCAPE_MAP.size, 82, `Expected 82 entries, got ${BIDI_ESCAPE_MAP.size}`);
+test('BIDI_ESCAPE_MAP has exactly 108 entries', () => {
+  assert.strictEqual(BIDI_ESCAPE_MAP.size, 108, `Expected 108 entries, got ${BIDI_ESCAPE_MAP.size}`);
 });
 
-test('BIDI_ESCAPE_MAP complete coverage - all 82 codepoints tested', () => {
+test('BIDI_ESCAPE_MAP complete coverage - all 108 codepoints tested', () => {
   const testedCodepoints = new Set();
   
   for (const [char, expectedEscape] of BIDI_ESCAPE_MAP) {
-    const codepoint = 'U+' + char.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0');
+    const codepoint = 'U+' + char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
     const result = escapeBidi('X' + char + 'Y');
     
     // Assert the original codepoint does not survive
@@ -77,8 +77,8 @@ test('BIDI_ESCAPE_MAP complete coverage - all 82 codepoints tested', () => {
   
   assert.strictEqual(
     testedCodepoints.size,
-    82,
-    `Expected 82 codepoints tested, got ${testedCodepoints.size}`
+    108,
+    `Expected 108 codepoints tested, got ${testedCodepoints.size}`
   );
 });
 
@@ -469,4 +469,51 @@ test('text() - combined bidi and entity attack', () => {
   assert.ok(result.includes('&#38;')); // & escaped
   assert.ok(result.includes('&#35;')); // # escaped
   assert.strictEqual(result.includes('&#x202E;'), false);
+});
+
+// === SAST Probe Cases (added to address sast gate findings) ===
+
+test('SAST probe: hostile run_id with invisible format characters', () => {
+  // Word joiner U+2060, variation selector U+FE0F
+  const input = 'run\u2060id\uFE0Ftest';
+  const result = text(input);
+  assert.strictEqual(result.includes('\u2060'), false, 'Word joiner should be escaped');
+  assert.strictEqual(result.includes('\uFE0F'), false, 'Variation selector should be escaped');
+  assert.ok(result.includes('\\u2060'), 'Word joiner should appear as visible escape');
+  assert.ok(result.includes('\\uFE0F'), 'Variation selector should appear as visible escape');
+});
+
+test('SAST probe: script tag passthrough blocked', () => {
+  const input = '<script>alert(1)</script>';
+  const result = text(input);
+  assert.strictEqual(result.includes('<script>'), false, 'Raw script tag should not survive');
+  assert.ok(result.includes('&#38;lt&#59;'), 'Script tag should be double-escaped');
+});
+
+test('SAST probe: numeric entity injection blocked', () => {
+  const input = '&#x202E;malicious';
+  const result = text(input);
+  assert.strictEqual(result.includes('&#x202E;'), false, 'Numeric entity should not survive');
+  assert.ok(result.includes('&#38;'), 'Ampersand should be escaped first');
+});
+
+test('SAST probe: table-cell link injection blocked', () => {
+  const input = '[click](evil.com)';
+  const result = escapeMarkdown(input, { forTableCell: true });
+  assert.strictEqual(result.includes('[click]'), false, 'Brackets should be escaped in table cells');
+  assert.strictEqual(result.includes('(evil.com)'), false, 'Parens should be escaped in table cells');
+  assert.ok(result.includes('\\['), 'Open bracket should be escaped');
+  assert.ok(result.includes('\\]'), 'Close bracket should be escaped');
+  assert.ok(result.includes('\\('), 'Open paren should be escaped');
+  assert.ok(result.includes('\\)'), 'Close paren should be escaped');
+});
+
+test('SAST probe: escapeMarkdown HTML entity passthrough blocked', () => {
+  // escapeMarkdown should escape & and <> to prevent HTML injection
+  const input = '<script>&#x202E;</script>';
+  const result = escapeMarkdown(input);
+  assert.strictEqual(result.includes('<script>'), false, 'Raw HTML should not survive escapeMarkdown');
+  assert.ok(result.includes('&amp;'), 'Ampersand should be escaped');
+  assert.ok(result.includes('&lt;'), 'LT should be escaped');
+  assert.ok(result.includes('&gt;'), 'GT should be escaped');
 });
