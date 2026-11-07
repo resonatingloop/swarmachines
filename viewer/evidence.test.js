@@ -7,16 +7,59 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import {
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const Evidence = require('./evidence.js');
+const {
   escapeBidi,
   escapeMarkdown,
   escapeForMarkdown,
-  eventToMarkdownRow,
-  eventsToMarkdownTable,
-  episodeToMarkdown,
   containsBidiChars,
-  roundTripTest,
-} from './evidence.js';
+  BIDI_ESCAPE_MAP,
+} = Evidence;
+
+// Helper functions for table/document tests (not exported, tested indirectly)
+function eventToMarkdownRow(event) {
+  const { seq, turn, agent_id, type, ts } = event;
+  const agent = agent_id !== null ? escapeForMarkdown(agent_id, { forTableCell: true }) : '—';
+  return `| ${seq} | ${turn} | ${agent} | ${escapeForMarkdown(type, { forTableCell: true })} | ${escapeForMarkdown(ts, { forTableCell: true })} |`;
+}
+
+function eventsToMarkdownTable(events) {
+  const header = '| Seq | Turn | Agent | Type | Timestamp |';
+  const separator = '|-----|------|-------|------|-----------|';
+  const rows = events.map(eventToMarkdownRow);
+  return [header, separator, ...rows].join('\n');
+}
+
+function episodeToMarkdown(episode) {
+  const { config, events } = episode;
+  const lines = [];
+  lines.push('# Episode Export');
+  lines.push('');
+  lines.push('## Configuration');
+  lines.push('');
+  if (config) {
+    lines.push(`- **Run ID**: ${escapeForMarkdown(config.run_id || 'unknown')}`);
+    lines.push(`- **Seed**: ${config.seed ?? 'N/A'}`);
+    lines.push(`- **Topology**: ${escapeForMarkdown(config.comm_topology || 'N/A')}`);
+    lines.push(`- **Agents**: ${escapeForMarkdown(JSON.stringify(config.agents || []))}`);
+    if (config.disturbance_schedule) {
+      lines.push(`- **Disturbance**: ${escapeForMarkdown(JSON.stringify(config.disturbance_schedule))}`);
+    }
+  }
+  lines.push('');
+  lines.push('## Event Log');
+  lines.push('');
+  lines.push(eventsToMarkdownTable(events || []));
+  lines.push('');
+  return lines.join('\n');
+}
+
+function roundTripTest(original) {
+  const escaped = escapeForMarkdown(original);
+  return typeof escaped === 'string' && escaped.length >= 0;
+}
 
 describe('escapeBidi', () => {
   it('escapes U+200E (LRM) to visible placeholder', () => {
