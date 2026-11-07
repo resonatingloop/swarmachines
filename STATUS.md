@@ -22,6 +22,14 @@ exact-byte source hashes and slot-scoped references. nineteen model tests and
 all three browser suites pass; downloaded files match previews. independent
 export-boundary review is pending. no raw payload or outcome export is added.
 
+evidence export: rework pushed 2026-11-07 on PR #16 (head 02daf4d). Restored master's
+evidence-packet module API (build/prepare/markdown/sha256, CAVEATS, MAX_BYTES, comparison.js
+integration, CJS/global shim). Added LRM/RLM/ALM + 12-char bidi map coverage ADDITIVELY to
+text() function. Fixed all gate findings: & escaped first (prevents &#x202E; bypass), \n/\r
+escaped in cells, U+2028/2029 + C0/C1 restored, config.seed escaped, optional chars
+(U+200B/200C/200D, U+00AD, U+FEFF) added, JSDoc example corrected. Both test suites green:
+evidence.test.cjs 4/4, evidence.test.js 46/46. Ready for re-gate (sast + verifier).
+
 paired viewer: owner accepted `specs/004-paired-episode-comparison.md`.
 `viewer/compare.html` implements turn-end alignment, slot-scoped evidence,
 per-turn record counts and configuration comparison. fifteen model tests and
@@ -41,7 +49,7 @@ local implementation in `viewer/index.html` opens recorded episodes offline,
 plays append order, and inspects prefix-scoped evidence. see `viewer/README.md`
 for commands and limits. nine model tests and the chrome browser checks pass;
 independent import-boundary review and release remain pending. no runner code
-was changed by this slice. the older runner/board status below is inherited
+was changed by this viewer work. the older runner/board status below is inherited
 context and has not been refreshed by this viewer work.
 
 branch `v4x-scripted-runner` (5e0f4d4) implements the turn-cycle runtime
@@ -72,7 +80,7 @@ verification commands and procedures:
 
 ```sh
 python3 -m http.server 8765 --bind 127.0.0.1 --directory plans
-curl --fail --silent --output /dev/null --write-out '%{http_code}\n' http://127.0.0.1:8765/
+curl --fail --silent --output /dev/null --write-out '%{http_code}\\n' http://127.0.0.1:8765/
 python3 /home/resonatingloop/.resonance/exoresonance/repository-continuity/skills/manage-project-docs/scripts/check_docset.py .
 ```
 
