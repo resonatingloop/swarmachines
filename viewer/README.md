@@ -56,3 +56,32 @@ checks import it, navigate turns, inspect message evidence and rewind. the
 bundled default remains the original scripted sample. no viewer runtime change
 was needed. complete freight acceptance waits for a reviewed runtime handoff
 that derives observations, state transitions and outcomes from its world.
+
+## paired episode comparison
+
+open `compare.html` directly and choose left/right jsonl files. the shared
+turn selector aligns at the last record of each logical turn, while counts
+cover only that turn. click a count to inspect its contributors. record lists
+paginate at 40 entries; all contributors remain reachable. agent labels and
+run/message ids stay scoped to their file slot.
+
+missing turns and shorter horizons yield unavailable deltas, not zeros.
+configuration is file-level metadata, separate from cursor evidence; equal
+logged fields do not certify a matched experiment. reset/reload clears both
+slots. each import uses the original size/utf-8/parser boundaries; comparison
+additionally refuses decreasing turn order. failed replacements preserve the
+previous pair and turn; older asynchronous reads cannot undo newer selections.
+
+```sh
+node --test viewer/*.test.cjs
+node viewer/compare-browser-check.mjs
+```
+
+comparison browser proof covers offline import, both replacement paths,
+configuration differences, colliding ids, missing turns, raw evidence, rewind,
+keyboard controls, reset/reload, late-read races, inert text and no remote
+requests/storage. desktop and 320px renders were inspected. 720px at device
+scale 2 checks zoom-equivalent reflow, not browser-menu zoom. the pure model
+also exercises a 20,000-record input; full UI performance at that ceiling and
+screen-reader operation remain unverified. no automatic matching, causal
+scoring or outcome interpretation is provided.

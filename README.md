@@ -10,6 +10,10 @@ a hackathon project taking shape around one question: what forms of relation
 make an agent collective more capable without flattening distinction,
 provenance, dissent, or recoverability?
 
+**paired inspection:** open the [paired viewer](viewer/compare.html) to compare
+two local episodes at a shared logical turn; matching logged settings do not
+certify an experimental match.
+
 **episode inspection:** open the [local viewer](viewer/index.html); operation and
 verification live in [viewer notes](viewer/README.md). the merged scripted runner
 now supplies a sample; older proposal-phase statements below predate that merge.
