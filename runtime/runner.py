@@ -163,19 +163,30 @@ class DisturbanceScheduler:
         self.schedule = schedule  # {"relay-loss": {"turn": N, "agent": "a"}, "stale-report": {...}}
         self.active: dict = {}
 
-    def apply_at_turn(self, turn: int, log: EventLog) -> None:
+    def apply_at_turn(self, turn: int, log: EventLog, topology: str, hub: str | None = None) -> None:
         """Apply any disturbances scheduled for this turn."""
         for kind, config in self.schedule.items():
             if config.get("turn") == turn and kind not in self.active:
                 if kind == "relay-loss":
-                    self._apply_relay_loss(config, log)
+                    self._apply_relay_loss(config, log, topology, hub)
                 elif kind == "stale-report":
                     self._apply_stale_report(config, log)
 
-    def _apply_relay_loss(self, config: dict, log: EventLog) -> None:
+    def _apply_relay_loss(self, config: dict, log: EventLog, topology: str, hub: str | None = None) -> None:
         agent = config["agent"]
         until = config.get("until", "run-end")
         self.active["relay-loss"] = {"agent": agent, "until": until, "active": True}
+
+        # Describe unaffected edges based on actual topology
+        if topology == "mesh":
+            edge_desc = "mesh edges among others unchanged"
+        elif topology == "hub-spoke":
+            hub_ref = f"via {hub}" if hub else "through hub"
+            edge_desc = f"hub-spoke edges {hub_ref} among others unchanged"
+        elif topology == "bidirectional-ring":
+            edge_desc = "ring edges among others unchanged"
+        else:
+            edge_desc = f"{topology} edges among others unchanged"
 
         log.append(
             turn=config["turn"],
@@ -185,7 +196,7 @@ class DisturbanceScheduler:
                 "kind": "relay-loss",
                 "detail": {"agent": agent, "until": until},
                 "before": f"{agent} reachable by all",
-                "after": f"{agent} unreachable; mesh edges among others unchanged",
+                "after": f"{agent} unreachable; {edge_desc}",
             },
         )
 
@@ -471,7 +482,7 @@ class TurnSeamRunner:
             )
 
             # Apply disturbances at start of turn
-            self.disturbance_scheduler.apply_at_turn(turn, self.log)
+            self.disturbance_scheduler.apply_at_turn(turn, self.log, self.topology.topology, self.topology.hub)
 
             # Phase 1: observe - ALL agents observe before any exchange
             for agent in self.agents:
