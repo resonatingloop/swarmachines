@@ -7,7 +7,7 @@ Reads ADAPTION_API_KEY from environment; never prints or logs the key.
 
 Usage:
     from adaption_adapter import AdaptionAdapter
-    
+
     adapter = AdaptionAdapter()
     response = adapter.chat(
         model="glm-53-flash",
@@ -177,6 +177,7 @@ if __name__ == "__main__":
         result = smoke_test()
         print(json.dumps(result, indent=2))
         sys.exit(0)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - Broad catch for __main__ entry point: surface any failure mode
+        # Broad catch for __main__ entry point: surface any failure mode
         print(f"Smoke test failed: {e}", file=sys.stderr)
         sys.exit(1)

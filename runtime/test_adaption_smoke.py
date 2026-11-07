@@ -17,6 +17,7 @@ from pathlib import Path
 # Add runtime to path
 sys.path.insert(0, str(Path(__file__).parent))
 
+from adaption import AdaptionError
 from adaption_adapter import AdaptionAdapter
 
 
@@ -44,16 +45,21 @@ def run_smoke_test() -> dict:
             model="gemma-4-26b-a4b-it",
             prompt="Reply with exactly one word: hello",
         )
-        results.append({
-            "call": 1,
-            "model": r1.model,
-            "prompt": "Reply with exactly one word: hello",
-            "output": r1.output_text,
-            "latency_ms": round(r1.latency_ms, 2),
-            "input_tokens": r1.usage.input_tokens,
-            "output_tokens": r1.usage.output_tokens,
-        })
-    except Exception as e:
+        results.append(
+            {
+                "call": 1,
+                "model": r1.model,
+                "prompt": "Reply with exactly one word: hello",
+                "output": r1.output_text,
+                "latency_ms": round(r1.latency_ms, 2),
+                "input_tokens": r1.usage.input_tokens,
+                "output_tokens": r1.usage.output_tokens,
+                "estimated_credits_consumed": getattr(
+                    r1.raw_response, "estimated_credits_consumed", None
+                ),
+            }
+        )
+    except AdaptionError as e:
         return {
             "status": "error",
             "call": 1,
@@ -67,21 +73,28 @@ def run_smoke_test() -> dict:
             model="glm-53-flash",
             prompt="What is 2+2? Answer with just the number.",
         )
-        results.append({
-            "call": 2,
-            "model": r2.model,
-            "prompt": "What is 2+2? Answer with just the number.",
-            "output": r2.output_text,
-            "latency_ms": round(r2.latency_ms, 2),
-            "input_tokens": r2.usage.input_tokens,
-            "output_tokens": r2.usage.output_tokens,
-        })
-    except Exception as e:
-        results.append({
-            "call": 2,
-            "model": "glm-53-flash",
-            "error": str(e),
-        })
+        results.append(
+            {
+                "call": 2,
+                "model": r2.model,
+                "prompt": "What is 2+2? Answer with just the number.",
+                "output": r2.output_text,
+                "latency_ms": round(r2.latency_ms, 2),
+                "input_tokens": r2.usage.input_tokens,
+                "output_tokens": r2.usage.output_tokens,
+                "estimated_credits_consumed": getattr(
+                    r2.raw_response, "estimated_credits_consumed", None
+                ),
+            }
+        )
+    except AdaptionError as e:
+        results.append(
+            {
+                "call": 2,
+                "model": "glm-53-flash",
+                "error": str(e),
+            }
+        )
 
     # Call 3: Repeat small model for consistency check
     try:
@@ -89,21 +102,28 @@ def run_smoke_test() -> dict:
             model="gemma-4-26b-a4b-it",
             prompt="Say 'test' exactly once.",
         )
-        results.append({
-            "call": 3,
-            "model": r3.model,
-            "prompt": "Say 'test' exactly once.",
-            "output": r3.output_text,
-            "latency_ms": round(r3.latency_ms, 2),
-            "input_tokens": r3.usage.input_tokens,
-            "output_tokens": r3.usage.output_tokens,
-        })
-    except Exception as e:
-        results.append({
-            "call": 3,
-            "model": "gemma-4-26b-a4b-it",
-            "error": str(e),
-        })
+        results.append(
+            {
+                "call": 3,
+                "model": r3.model,
+                "prompt": "Say 'test' exactly once.",
+                "output": r3.output_text,
+                "latency_ms": round(r3.latency_ms, 2),
+                "input_tokens": r3.usage.input_tokens,
+                "output_tokens": r3.usage.output_tokens,
+                "estimated_credits_consumed": getattr(
+                    r3.raw_response, "estimated_credits_consumed", None
+                ),
+            }
+        )
+    except AdaptionError as e:
+        results.append(
+            {
+                "call": 3,
+                "model": "gemma-4-26b-a4b-it",
+                "error": str(e),
+            }
+        )
 
     # Call 4: Final validation
     try:
@@ -111,21 +131,28 @@ def run_smoke_test() -> dict:
             model="gemma-4-26b-a4b-it",
             prompt="Output: OK",
         )
-        results.append({
-            "call": 4,
-            "model": r4.model,
-            "prompt": "Output: OK",
-            "output": r4.output_text,
-            "latency_ms": round(r4.latency_ms, 2),
-            "input_tokens": r4.usage.input_tokens,
-            "output_tokens": r4.usage.output_tokens,
-        })
-    except Exception as e:
-        results.append({
-            "call": 4,
-            "model": "gemma-4-26b-a4b-it",
-            "error": str(e),
-        })
+        results.append(
+            {
+                "call": 4,
+                "model": r4.model,
+                "prompt": "Output: OK",
+                "output": r4.output_text,
+                "latency_ms": round(r4.latency_ms, 2),
+                "input_tokens": r4.usage.input_tokens,
+                "output_tokens": r4.usage.output_tokens,
+                "estimated_credits_consumed": getattr(
+                    r4.raw_response, "estimated_credits_consumed", None
+                ),
+            }
+        )
+    except AdaptionError as e:
+        results.append(
+            {
+                "call": 4,
+                "model": "gemma-4-26b-a4b-it",
+                "error": str(e),
+            }
+        )
 
     return {
         "status": "success",
@@ -142,7 +169,10 @@ if __name__ == "__main__":
         print("\n⚠️  BLOCKED: ADAPTION_API_KEY not set", file=sys.stderr)
         sys.exit(2)
     elif result["status"] == "error":
-        print(f"\n❌ ERROR on call {result.get('call', '?')}: {result.get('error')}", file=sys.stderr)
+        print(
+            f"\n❌ ERROR on call {result.get('call', '?')}: {result.get('error')}",
+            file=sys.stderr,
+        )
         sys.exit(1)
     else:
         print(f"\n✅ Smoke test passed: {result['calls_made']} calls made")
