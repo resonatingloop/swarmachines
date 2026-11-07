@@ -13,5 +13,5 @@
 - [ ] 6. scripted dispatchers + seed control; produce one complete sample run
       log under `runtime/`
 - [ ] 7. determinism check: two same-seed runs produce byte-identical logs
-- [ ] 8. after owner acceptance: update the STATUS.md checkpoint and point
-      the observatory lane at the sample log
+- [x] 8. after owner acceptance: update the STATUS.md checkpoint and point
+      the observatory lane at the sample log (2026-11-07: topology ruling merged via PR #2)

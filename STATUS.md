@@ -69,9 +69,6 @@ the proposal was unchanged by the bootstrap.
 
 ## incomplete or broken
 
-- owner acceptance of the seam contract (`add-turn-seam-event-log`) pending;
-  task 8 (update STATUS.md checkpoint, point observatory lane at sample log)
-  is gated on acceptance.
 - adaption access, credit coverage, rates, spend allocation, and model serving
   have not been verified. langfuse tracing has not been connected or exercised.
 - the distributed discord guides do not establish a live connection. no
@@ -83,11 +80,10 @@ the proposal was unchanged by the bootstrap.
 
 ## active work
 
-- accepted runtime spec: none. drafted, unaccepted: openspec change
-  `add-turn-seam-event-log` (turn cycle, event schema, comm topologies,
-  message lifecycle, two disturbances, replay determinism, zero-model
-  operation). implementation complete on branch `v4x-scripted-runner`
-  (5e0f4d4); awaiting owner acceptance before task 8 (observatory pointer).
+- seam contract owner-accepted per 2026-11-07 in-channel ruling (swarmachines-1iy);
+  openspec change `add-turn-seam-event-log` implemented on branch
+  `v4x-scripted-runner` (5e0f4d4). task 8 (observatory pointer) unblocked by
+  that ruling.
 - bd board (recreated twice by stray `bd init` — 16:22 UTC by a lost
   dispatch, 16:39 UTC by the dev child working around a bd
   workspace-identity mismatch; rule: never run bd init on this checkout,
@@ -109,9 +105,8 @@ the proposal was unchanged by the bootstrap.
   - swarmachines-3x2: **implemented** — renamed delivery_map_sha to delivery_config_sha
     with docstring clarifying it hashes hub/topology config, not delivery graph; tests
     updated.
-  - swarmachines-60c: y50 post-acceptance docs — open, gated on owner
-    acceptance
-- current focus: owner acceptance or amendment of the seam change.
+  - swarmachines-60c: y50 post-acceptance docs — **complete** (2026-11-07: topology ruling merged via PR #2, tasks.md updated, STATUS.md checkpoint recorded)
+- current focus: freight-world integration (day-1 slice), adaption adapter (blocked on API key), topology comparison implementation
 - pending decisions: world choice, lane owners, first disturbance choice
   ordering, provider budget/access details; room-process decisions from the
   09:34 CST huddle: discord/bridge re-enable, claim-before-work ledger
