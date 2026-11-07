@@ -2,10 +2,13 @@
 """
 Smoke test for the Adaption adapter.
 
-Makes <=4 calls total to validate connectivity and record metrics.
-Requires ADAPTION_API_KEY environment variable.
+OPTIONAL: Requires ADAPTION_API_KEY environment variable and SDK installed.
+This is NOT a CI gate - it is a proof-on-record for the key holder to run.
+The actual CI gate is test_adaption_adapter_unit.py which mocks the SDK.
 
-Usage:
+Makes <=4 calls total to validate connectivity and record metrics.
+
+Usage (key holder only):
     python runtime/test_adaption_smoke.py
 """
 
