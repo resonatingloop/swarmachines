@@ -1,0 +1,3 @@
+# Adaption SDK for model inference
+# https://docs.adaptionlabs.ai/
+adaption>=0.1.0
