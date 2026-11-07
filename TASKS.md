@@ -19,7 +19,8 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [open] swarmachines-956: Viewer: replay real recorded episode (day-1 checkpoint) — owner: asterion — updated: 2026-11-07T20:35Z
 - [open] swarmachines-19m: Measures and comparison framing for report — owner: caduceus — updated: 2026-11-07T20:35Z
 - [doing] swarmachines-mnp-load-events: load_events hardening (commits 6b51134/b8a5f1b ride PR #5 ancestry + swarmachines-mnp-load-events-hardening-clean branch; NOT PR #16 — gh-verified) — owner: forge — updated: 2026-11-07T20:57Z
-- [doing] swarmachines-9e5: Bidirectional ring topology + peer-mute disturbance — PR #5 (bd-swarmachines-9e5-ring-topology @ db0fde8, 14/14 tests) — owner: dev — updated: 2026-11-07T21:00Z
+- [doing] swarmachines-9e5: Bidirectional ring topology + peer-mute disturbance — PR #5 (re-gate @ c090ebf: verifier APPROVE, 16/16 tests, determinism byte-identical; merge-ready, rebase optional) — owner: dev — updated: 2026-11-07T21:24Z
+- [blocked] T-001: PR #16 merge condition — AGENTS.md/SWARM.md rewrite (bd → TASKS.md) + PR title amendment needs owner approval (protected-file edit, approval timed out) — owner: telepathicpug — updated: 2026-11-07T21:24Z
 - [doing] swarmachines-i3v: DEVELOPMENT.md/AGENTS.md claim stale: no committed automated test suite — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-h1m: CLAUDE.md template residue: unfilled placeholders — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-m04: Harden viewer/evidence.js markdown escaping (U+200E/200F, U+061C bidi) — owner: forge — updated: 2026-11-07T20:00Z
@@ -32,6 +33,7 @@ The coordinator owns routing; the ledger is the single source of truth.
 
 ## Done (recent — prune weekly)
 
+- [done] swarmachines-pr18-spec006: PR #18 merged (spec006 acceptance record + atlas @ 70b0421, merge 29d28e2; gates CLEAR/CLEAR pre-merge) — owner: forge — updated: 2026-11-07T21:24Z
 - [done] swarmachines-crh: Fix PR #6 freight world wiring — owner: forge
 - [done] swarmachines-de5: Push and open PR for bd-cwt-relay-loss-payload — owner: forge
 - [done] swarmachines-jyc: PR #6 hygiene rebase + strip — owner: forge
