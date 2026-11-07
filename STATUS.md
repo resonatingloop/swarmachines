@@ -8,6 +8,12 @@
 
 ## verified checkpoint
 
+evidence export: accepted spec005 implemented in the paired viewer. selected
+turns produce bounded json/markdown previews and explicit local downloads with
+exact-byte source hashes and slot-scoped references. nineteen model tests and
+all three browser suites pass; downloaded files match previews. independent
+export-boundary review is pending. no raw payload or outcome export is added.
+
 paired viewer: owner accepted `specs/004-paired-episode-comparison.md`.
 `viewer/compare.html` implements turn-end alignment, slot-scoped evidence,
 per-turn record counts and configuration comparison. fifteen model tests and

@@ -43,6 +43,7 @@ function metadata() {
   }
 }
 function render() {
+  globalThis.ExportUI?.refresh();
   const states={};el('metrics').replaceChildren();
   for(const slot of ['left','right']){
     const state=Comparison.atTurn(slots[slot]?.episode,selectedTurn);states[slot]=state;
@@ -75,16 +76,24 @@ function rebuild() {
   metadata();render();
 }
 for(const slot of ['left','right'])el(`${slot}-file`).onchange=async()=>{
-  const version=++versions[slot],file=el(`${slot}-file`).files[0];if(!file)return;
+  const file=el(`${slot}-file`).files[0];if(!file)return;const version=++versions[slot];
   el('load-status').textContent=`loading ${slot} episode…`;
+  globalThis.ExportUI?.pending(slot,true);
   try{
     if(file.size>Replay.LIMITS.bytes)throw Error('episode exceeds 5 mib');
-    const text=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
+    const bytes=await file.arrayBuffer();
+    const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
     if(version!==versions[slot])return;
-    const episode=Comparison.prepare(text);slots[slot]={episode,name:file.name};el(`${slot}-error`).textContent='';rebuild();
+    const episode=Comparison.prepare(text);
+    let sha256=null,hashError=null;
+    try{sha256=await Evidence.sha256(bytes);}catch(error){hashError=error.message;}
+    if(version!==versions[slot])return;
+    slots[slot]={episode,name:file.name,sha256,byteLength:bytes.byteLength,hashError};
+    globalThis.ExportUI?.sourceAccepted();
+    el(`${slot}-error`).textContent='';rebuild();
   }catch(error){if(version===versions[slot])el(`${slot}-error`).textContent=`${slot}: ${error.message}. previous pair and turn retained.`;}
-  finally{if(version===versions[slot]){el(`${slot}-file`).value='';el('load-status').textContent=slots.left&&slots.right ? 'two local files loaded; generation provenance unverified.' : 'waiting for second episode.';}}
+  finally{if(version===versions[slot]){globalThis.ExportUI?.pending(slot,false);el(`${slot}-file`).value='';el('load-status').textContent=slots.left&&slots.right ? 'two local files loaded; generation provenance unverified.' : 'waiting for second episode.';}}
 };
 el('pair-turn').onchange=()=>{selectedTurn=Number(el('pair-turn').value);render();};
-el('reset').onclick=()=>{for(const slot of ['left','right']){versions[slot]++;slots[slot]=null;el(`${slot}-file`).value='';el(`${slot}-error`).textContent='';}el('load-status').textContent='both episodes cleared.';rebuild();};
+el('reset').onclick=()=>{globalThis.ExportUI?.reset();for(const slot of ['left','right']){versions[slot]++;slots[slot]=null;el(`${slot}-file`).value='';el(`${slot}-error`).textContent='';}el('load-status').textContent='both episodes cleared.';rebuild();};
 rebuild();
