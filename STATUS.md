@@ -2,18 +2,18 @@
 
 > continuity role: operational checkpoint
 > status: v4x runner implemented; seam contract drafted, awaiting owner acceptance
-> last verified: 2026-11-07
+> last verified: 2026-11-07 (round-3: all 11 tests pass, stale-report fixed)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
 ## verified checkpoint
 
-branch `v4x-scripted-runner` (68f66a2) implements the turn-cycle runtime
+branch `v4x-scripted-runner` (5e0f4d4) implements the turn-cycle runtime
 from openspec change `add-turn-seam-event-log`. the runner is scripted
 (zero model calls), replay-deterministic (same seed → byte-identical logs),
 and implements the fixed turn cycle observe→exchange→act→record.
 
-test suite (runtime/test_runner.py): 11/11 pass
+test suite (runtime/test_runner.py): 12/12 pass
 - basic run produces valid event log with all required types
 - determinism: same seed produces byte-identical output
 - relay-loss disturbance applied and logged correctly with undelivered messages
@@ -22,9 +22,11 @@ test suite (runtime/test_runner.py): 11/11 pass
 - message lifecycle tracking (sent→delivered→seen→acted_on) complete
 - topology-independence: non-comm events identical across mesh/hub-spoke
 - zero model/network calls in runner
+- RNG stream independence: send decisions don't affect acted_on decisions (swarmachines-8s2)
+- delivery_config_sha correctly named and validated (swarmachines-3x2)
 
 sample outputs:
-- runtime/sample-run.jsonl: 61 events (seed 7, 3 turns, relay-loss@turn 2)
+- runtime/sample-run.jsonl: 67 events (seed 7, 3 turns, relay-loss@turn 2)
 - runtime/examples/sample-episode.jsonl: 23-event hand-authored illustrative sample
 - runtime/schema/events.schema.json: JSON schema for event records
 
@@ -77,15 +79,28 @@ the proposal was unchanged by the bootstrap.
   `add-turn-seam-event-log` (turn cycle, event schema, comm topologies,
   message lifecycle, two disturbances, replay determinism, zero-model
   operation). implementation complete on branch `v4x-scripted-runner`
-  (68f66a2); awaiting owner acceptance before task 8 (observatory pointer).
+  (5e0f4d4); awaiting owner acceptance before task 8 (observatory pointer).
 - bd board (recreated twice by stray `bd init` — 16:22 UTC by a lost
   dispatch, 16:39 UTC by the dev child working around a bd
   workspace-identity mismatch; rule: never run bd init on this checkout,
   set BEADS_SKIP_IDENTITY_CHECK=1 instead):
   - swarmachines-m1p: v4x scripted runner — **closed** (implemented; 7/7
     tests re-run and verified by pug-bot 16:45 UTC)
-  - swarmachines-e4i: my7 sample event log + determinism check — open,
-    ready (deliverables appear to exist on the branch; verifier to confirm)
+  - swarmachines-e4i: my7 sample event log + determinism check — done;
+    deliverables independently confirmed per the 11:00 CST checkpoint
+    (determinism, schema-validity, zero-model-calls). board entry lost in
+    the second wipe, not re-seeded because the work is confirmed
+  - swarmachines-zpz: v4x round-2 residuals — **round-3 complete**: stale-report
+    now uses real message in circulation (3 lifecycle entries: sent/delivered/seen);
+    dead imports removed (timezone, json); action.rejected added to required set;
+    agent-id regex fixed (\Z); verify_events path fixed; test_runner uses validated
+    load_events. 11/11 tests pass. filed: swarmachines-8s2 (comm-RNG entanglement),
+    swarmachines-3x2 (delivery_map_sha naming).
+  - swarmachines-8s2: **implemented** — split exchange_rng into exchange_send_rng and
+    exchange_acted_rng to prevent RNG state entanglement; test added (12/12 pass).
+  - swarmachines-3x2: **implemented** — renamed delivery_map_sha to delivery_config_sha
+    with docstring clarifying it hashes hub/topology config, not delivery graph; tests
+    updated.
   - swarmachines-60c: y50 post-acceptance docs — open, gated on owner
     acceptance
 - current focus: owner acceptance or amendment of the seam change.

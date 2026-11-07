@@ -1,3 +1,13 @@
+#!/bin/sh
+# GUARD: deny pushes to master/main — swarmachines safety rail (eng-standards).
+while read local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/master|refs/heads/main)
+      echo "BLOCKED: direct push to $remote_ref denied (eng-standards: PR-only merges)" >&2
+      exit 1
+      ;;
+  esac
+done
 #!/usr/bin/env sh
 # --- BEGIN BEADS INTEGRATION v1.3.4 ---
 # This section is managed by beads. Do not remove these markers.

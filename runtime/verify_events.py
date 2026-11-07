@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Verify sample-run.jsonl has all required event types with schema validation."""
-import json
 import sys
 from pathlib import Path
 
@@ -11,7 +10,7 @@ from runner import load_events
 
 
 def main():
-    events = load_events('runtime/sample-run.jsonl')
+    events = load_events(str(Path(__file__).parent / 'sample-run.jsonl'))
     types = set(e['type'] for e in events)
     print('Event types in sample-run.jsonl:')
     for t in sorted(types):

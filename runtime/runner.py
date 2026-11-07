@@ -14,7 +14,7 @@ import hashlib
 import json
 import random
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 
 
@@ -222,9 +222,12 @@ class Agent:
         self.agent_id = agent_id
         # Separate RNG streams for topology-independent non-comm events
         # Each stream is seeded uniquely per agent to ensure determinism
+        # exchange_send_rng and exchange_acted_rng are split to prevent entanglement:
+        # send decisions (topology-dependent) don't affect acted_on decisions (non-comm)
         self.observe_rng = random.Random(base_seed + agent_index * 10)
         self.act_rng = random.Random(base_seed + agent_index * 10 + 1)
-        self.exchange_rng = random.Random(base_seed + agent_index * 10 + 2)
+        self.exchange_send_rng = random.Random(base_seed + agent_index * 10 + 2)
+        self.exchange_acted_rng = random.Random(base_seed + agent_index * 10 + 3)
         self.context: list[dict] = []  # messages seen
         self.actions_proposed: list[dict] = []
         self.message_counter = 0
@@ -259,8 +262,8 @@ class Agent:
             
             allowed, reason = topology.can_communicate(self.agent_id, other.agent_id, disturbances)
             
-            # Decide whether to send a message (using exchange_rng for topology-independence)
-            if self.exchange_rng.random() > 0.6:
+            # Decide whether to send a message (using exchange_send_rng for topology-independence)
+            if self.exchange_send_rng.random() > 0.6:
                 message_id = self._next_message_id()
                 body = {"type": "report", "content": f"status from {self.agent_id}"}
                 body_ref = message_store.store(message_id, self.agent_id, other.agent_id, body)
@@ -299,8 +302,9 @@ class Agent:
                     lifecycle.mark_seen(message_id, turn)
                     other.context.append({"message_id": message_id, "turn": turn})
                     
-                    # Emit message.acted_on immediately after seen (deterministic based on exchange_rng)
-                    if self.exchange_rng.random() > 0.5:
+                    # Emit message.acted_on immediately after seen (deterministic based on exchange_acted_rng)
+                    # Uses separate stream from send decision to prevent RNG entanglement
+                    if self.exchange_acted_rng.random() > 0.5:
                         lifecycle.mark_acted_on(message_id, turn)
                         log.append(
                             turn=turn,
@@ -407,9 +411,11 @@ class TurnSeamRunner:
     def run(self, num_turns: int) -> str:
         """Run the simulation for num_turns turns."""
 
-        # Compute delivery_map_sha
+        # Compute delivery_config_sha (hash of delivery configuration, not delivery graph)
+        # Named delivery_config_sha to clarify it hashes the hub/topology config,
+        # not a graph of message deliveries (which is tracked separately in MessageLifecycle)
         delivery_map_json = json.dumps(self.delivery_map, sort_keys=True)
-        delivery_map_sha = hashlib.sha256(delivery_map_json.encode()).hexdigest()[:16]
+        delivery_config_sha = hashlib.sha256(delivery_map_json.encode()).hexdigest()[:16]
 
         # run.config event
         self.log.append(
@@ -419,7 +425,7 @@ class TurnSeamRunner:
             payload={
                 "seed": self.seed,
                 "comm_topology": self.topology.topology,
-                "delivery_map_sha": delivery_map_sha,
+                "delivery_config_sha": delivery_config_sha,
                 "disturbance_schedule": self.disturbance_scheduler.schedule,
                 "agents": self.agent_ids,
             },
@@ -580,7 +586,7 @@ def main():
 
     # Validate agent ids (alphanumeric + hyphen only)
     agents = [a.strip() for a in args.agents.split(",")]
-    agent_pattern = re.compile(r'^[a-zA-Z0-9-]+$')
+    agent_pattern = re.compile(r'^[a-zA-Z0-9-]+\Z')
     for agent in agents:
         if not agent_pattern.match(agent):
             print(f"Error: invalid agent id '{agent}' (must be alphanumeric + hyphen)")

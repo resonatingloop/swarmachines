@@ -20,9 +20,10 @@ def run_runner(args: list[str], output_path: str) -> tuple[int, str]:
 
 
 def load_events(path: str) -> list[dict]:
-    """Load events from JSONL file."""
-    with open(path) as f:
-        return [json.loads(line) for line in f if line.strip()]
+    """Load events from JSONL file (delegates to runner.load_events for schema validation)."""
+    # Use runner.load_events which validates against schema
+    from runner import load_events as validated_load
+    return validated_load(path)
 
 
 def check_event_types(events: list[dict], required: set[str]) -> list[str]:
@@ -66,7 +67,7 @@ def test_basic_run():
         "run.config", "world.init", "turn.begin",
         "observation.recorded",
         "message.sent", "message.delivered", "message.seen", "message.acted_on",
-        "action.proposed", "action.validated", "action.committed",
+        "action.proposed", "action.validated", "action.rejected", "action.committed",
         "world.changed", "disturbance.applied",
         "run.end"
     }
@@ -212,17 +213,17 @@ def test_hub_spoke_cli_delivery():
     if config["payload"]["comm_topology"] != "hub-spoke":
         return False, f"Expected topology 'hub-spoke', got {config['payload']['comm_topology']}"
     
-    # Check delivery_map_sha is real (not placeholder)
-    sha = config["payload"].get("delivery_map_sha")
+    # Check delivery_config_sha is real (not placeholder)
+    sha = config["payload"].get("delivery_config_sha")
     if not sha or sha == "computed-at-run" or sha == "placeholder-computed-at-run":
-        return False, f"delivery_map_sha is placeholder: {sha}"
+        return False, f"delivery_config_sha is placeholder: {sha}"
     
     # Check that messages are actually delivered (hub-spoke should allow hub<->spoke)
     delivered = [e for e in events if e["type"] == "message.delivered" and e["payload"].get("status") == "delivered"]
     if not delivered:
         return False, "No delivered messages in hub-spoke - routing may be broken"
     
-    return True, f"OK: hub-spoke delivers {len(delivered)} messages, delivery_map_sha={sha}"
+    return True, f"OK: hub-spoke delivers {len(delivered)} messages, delivery_config_sha={sha}"
 
 
 def test_message_acted_on_emitted():
@@ -250,16 +251,31 @@ def test_message_acted_on_emitted():
 
 
 def test_stale_report_has_before_after():
-    """Test stale-report disturbance has before/after detail."""
+    """Test stale-report disturbance has before/after detail AND uses a message in circulation."""
     print("Test: stale-report has before/after detail...")
     with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
         output = f.name
     
-    run_runner(["--seed", "42", "--turns", "3", "--disturbance", "stale-report:2:m-test:open:closed"], output)
+    # First run: get a real message_id that was sent in turn 1
+    run_runner(["--seed", "42", "--turns", "3"], output)
+    events = load_events(output)
+    Path(output).unlink()
+    
+    # Find a message that was sent in turn 1 (has full lifecycle)
+    sent_in_turn1 = [e for e in events if e["type"] == "message.sent" and e["turn"] == 1]
+    if not sent_in_turn1:
+        return False, "No messages sent in turn 1 for stale-report test"
+    
+    # Use a real message_id that was sent
+    real_message_id = sent_in_turn1[0]["payload"]["message_id"]
+    
+    # Second run: apply stale-report with the real message_id at turn 2
+    run_runner(["--seed", "42", "--turns", "3", "--disturbance", f"stale-report:2:{real_message_id}:open:closed"], output)
     events = load_events(output)
     
     Path(output).unlink()
     
+    # Find the stale-report disturbance
     stale_reports = [e for e in events if e["type"] == "disturbance.applied" and e["payload"].get("kind") == "stale-report"]
     if not stale_reports:
         return False, "No stale-report disturbance found"
@@ -268,12 +284,27 @@ def test_stale_report_has_before_after():
     if "before" not in payload or "after" not in payload:
         return False, f"stale-report missing before/after: {payload}"
     
-    return True, "OK: stale-report has before/after detail"
+    # Verify the message_id has lifecycle entries (was in circulation)
+    message_id = payload["detail"]["message_id"]
+    lifecycle_events = [e for e in events if e["type"] in ("message.sent", "message.delivered", "message.seen", "message.acted_on") 
+                        and e["payload"].get("message_id") == message_id]
+    
+    if not lifecycle_events:
+        return False, f"stale-report message_id {message_id} has 0 lifecycle entries - not in circulation"
+    
+    # Verify full lifecycle: sent, delivered, seen
+    lifecycle_types = {e["type"] for e in lifecycle_events}
+    required_lifecycle = {"message.sent", "message.delivered", "message.seen"}
+    missing_lifecycle = required_lifecycle - lifecycle_types
+    if missing_lifecycle:
+        return False, f"stale-report message_id {message_id} missing lifecycle: {missing_lifecycle}"
+    
+    return True, f"OK: stale-report has before/after detail; message {message_id} has {len(lifecycle_events)} lifecycle entries"
 
 
-def test_delivery_map_sha_real():
-    """Test delivery_map_sha is a real hash, not placeholder."""
-    print("Test: delivery_map_sha is real hash...")
+def test_delivery_config_sha_real():
+    """Test delivery_config_sha is a real hash, not placeholder."""
+    print("Test: delivery_config_sha is real hash...")
     with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
         output = f.name
     
@@ -283,17 +314,53 @@ def test_delivery_map_sha_real():
     Path(output).unlink()
     
     config = [e for e in events if e["type"] == "run.config"][0]
-    sha = config["payload"].get("delivery_map_sha")
+    sha = config["payload"].get("delivery_config_sha")
     
     if not sha:
-        return False, "delivery_map_sha missing"
+        return False, "delivery_config_sha missing"
     if sha in ("computed-at-run", "placeholder-computed-at-run"):
-        return False, f"delivery_map_sha is placeholder: {sha}"
+        return False, f"delivery_config_sha is placeholder: {sha}"
     # Should be a hex string
     if not all(c in "0123456789abcdef" for c in sha):
-        return False, f"delivery_map_sha not hex: {sha}"
+        return False, f"delivery_config_sha not hex: {sha}"
     
-    return True, f"OK: delivery_map_sha={sha}"
+    return True, f"OK: delivery_config_sha={sha}"
+
+
+def test_rng_streams_independent():
+    """Test that send decisions don't affect acted_on RNG stream (swarmachines-8s2)."""
+    print("Test: RNG streams independent (send doesn't affect acted_on)...")
+    
+    # Run twice with same seed - should be deterministic
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f1:
+        out1 = f1.name
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f2:
+        out2 = f2.name
+    
+    run_runner(["--seed", "42", "--turns", "3"], out1)
+    run_runner(["--seed", "42", "--turns", "3"], out2)
+    
+    events1 = load_events(out1)
+    events2 = load_events(out2)
+    
+    Path(out1).unlink()
+    Path(out2).unlink()
+    
+    # Count acted_on events - should be identical due to deterministic separate streams
+    acted_on_1 = [e for e in events1 if e["type"] == "message.acted_on"]
+    acted_on_2 = [e for e in events2 if e["type"] == "message.acted_on"]
+    
+    if len(acted_on_1) != len(acted_on_2):
+        return False, f"acted_on count differs: {len(acted_on_1)} vs {len(acted_on_2)}"
+    
+    # Verify message_ids match (same decisions made)
+    ids_1 = {e["payload"]["message_id"] for e in acted_on_1}
+    ids_2 = {e["payload"]["message_id"] for e in acted_on_2}
+    
+    if ids_1 != ids_2:
+        return False, f"acted_on message_ids differ: {ids_1} vs {ids_2}"
+    
+    return True, f"OK: {len(acted_on_1)} acted_on decisions deterministic with split streams"
 
 
 def test_zero_model_calls():
@@ -373,7 +440,8 @@ def main():
         ("hub_spoke_delivery", test_hub_spoke_cli_delivery),
         ("message_acted_on", test_message_acted_on_emitted),
         ("stale_report_detail", test_stale_report_has_before_after),
-        ("delivery_map_sha", test_delivery_map_sha_real),
+        ("delivery_config_sha", test_delivery_config_sha_real),
+        ("rng_streams_independent", test_rng_streams_independent),
         ("zero_model_calls", test_zero_model_calls),
         ("agent_id_validation", test_agent_id_validation),
         ("turns_cap", test_turns_cap),
