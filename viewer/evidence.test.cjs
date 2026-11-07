@@ -47,11 +47,11 @@ function roundTripTest(original) {
   return typeof escaped === 'string' && escaped.length >= 0;
 }
 
-test('BIDI_ESCAPE_MAP has exactly 108 entries', () => {
-  assert.strictEqual(BIDI_ESCAPE_MAP.size, 108, `Expected 108 entries, got ${BIDI_ESCAPE_MAP.size}`);
+test('BIDI_ESCAPE_MAP size is consistent', () => {
+  assert.strictEqual(BIDI_ESCAPE_MAP.size, 482, `Expected 482 entries, got ${BIDI_ESCAPE_MAP.size}`);
 });
 
-test('BIDI_ESCAPE_MAP complete coverage - all 108 codepoints tested', () => {
+test('BIDI_ESCAPE_MAP complete coverage - all codepoints tested', () => {
   const testedCodepoints = new Set();
   
   for (const [char, expectedEscape] of BIDI_ESCAPE_MAP) {
@@ -77,8 +77,8 @@ test('BIDI_ESCAPE_MAP complete coverage - all 108 codepoints tested', () => {
   
   assert.strictEqual(
     testedCodepoints.size,
-    108,
-    `Expected 108 codepoints tested, got ${testedCodepoints.size}`
+    BIDI_ESCAPE_MAP.size,
+    `Expected ${BIDI_ESCAPE_MAP.size} codepoints tested, got ${testedCodepoints.size}`
   );
 });
 
@@ -517,3 +517,45 @@ test('SAST probe: escapeMarkdown HTML entity passthrough blocked', () => {
   assert.ok(result.includes('&lt;'), 'LT should be escaped');
   assert.ok(result.includes('&gt;'), 'GT should be escaped');
 });
+
+// === Language tag plane and musical symbol tests (moved from evidence.test.js) ===
+
+test('escapeBidi escapes language tag plane U+E0001 (LANGUAGE TAG)', () => {
+  const input = 'Hello' + String.fromCodePoint(0xE0001) + 'World';
+  const result = escapeBidi(input);
+  // escapeBidi uses the map directly, which has single-backslash escapes
+  assert.strictEqual(result, 'Hello\\uDB40\\uDC01World');
+});
+
+test('escapeBidi escapes language tag plane U+E0020 (TAG SPACE)', () => {
+  const input = 'Hello' + String.fromCodePoint(0xE0020) + 'World';
+  const result = escapeBidi(input);
+  assert.strictEqual(result, 'Hello\\uDB40\\uDC20World');
+});
+
+test('escapeBidi escapes language tag plane U+E007E (TAG TILDE)', () => {
+  const input = 'Hello' + String.fromCodePoint(0xE007E) + 'World';
+  const result = escapeBidi(input);
+  assert.strictEqual(result, 'Hello\\uDB40\\uDC7EWorld');
+});
+
+test('escapeBidi escapes musical symbol U+1D175 (Begin Slur)', () => {
+  const input = 'Hello' + String.fromCodePoint(0x1D175) + 'World';
+  const result = escapeBidi(input);
+  assert.strictEqual(result, 'Hello\\uD834\\uDD75World');
+});
+
+test('escapeBidi escapes hostile run_id with multiple language tag plane chars', () => {
+  // Adversarial run_id containing U+E0001, U+E0020, U+E007E
+  const input = 'run' + String.fromCodePoint(0xE0001) + String.fromCodePoint(0xE0020) + 'id' + String.fromCodePoint(0xE007E);
+  const result = escapeBidi(input);
+  // All language tag plane chars should be escaped to visible ASCII with single backslash
+  assert.ok(result.includes('\\uDB40\\uDC01'));
+  assert.ok(result.includes('\\uDB40\\uDC20'));
+  assert.ok(result.includes('\\uDB40\\uDC7E'));
+  // No raw surrogate pairs should remain
+  assert.strictEqual(result.indexOf(String.fromCodePoint(0xE0001)), -1);
+  assert.strictEqual(result.indexOf(String.fromCodePoint(0xE0020)), -1);
+  assert.strictEqual(result.indexOf(String.fromCodePoint(0xE007E)), -1);
+});
+
