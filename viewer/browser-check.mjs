@@ -1,6 +1,20 @@
+/**
+ * browser-check.mjs — Headless browser sanity checks for the viewer
+ *
+ * CI assumption (--no-sandbox):
+ *   Headless Chromium runs with --no-sandbox in CI because the user-namespace
+ *   sandbox is unavailable in disposable containers (Docker without --privileged,
+ *   GitHub Actions, etc.). This is safe-ish because CI containers are ephemeral,
+ *   isolated, and already run untrusted code; the container boundary provides
+ *   equivalent isolation for our use case. Never use --no-sandbox on a persistent
+ *   workstation with untrusted pages.
+ */
 import fs from 'node:fs/promises';
-import {spawn} from 'node:child_process';
-const profile=await fs.mkdtemp('/tmp/swarm-replay-browser-');
+import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
+
+const profile = await fs.mkdtemp(tmpdir() + '/swarm-viewer-check-');
 const chrome=spawn(process.env.CHROME_BIN || '/usr/bin/google-chrome',['--headless=new','--no-sandbox','--disable-gpu','--no-first-run','--disable-background-networking','--disable-default-apps','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:'ignore'});
 let ws;
 try {
@@ -26,7 +40,7 @@ try {
  assert(await ev(`document.getElementById('identity').textContent.includes('67 records')`),'sample opens offline');
  await ev(`go(66)`);
  assert(await ev(`document.querySelectorAll('#messages .card').length===8 && document.getElementById('world').textContent.includes('reported summary')`),'end evidence');
- await fs.writeFile('/tmp/replay-desktop.png',Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+ await fs.writeFile(profile + '/replay-desktop.png', Buffer.from((await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })).data, 'base64'));
  await ev(`go(0)`);
  assert(await ev(`!document.querySelectorAll('#messages .card').length && !document.getElementById('world').textContent.includes('reported summary')`),'rewind removes future evidence');
  await ev(`document.getElementById('cursor').focus()`);
@@ -57,7 +71,7 @@ try {
  for(const [w,d,name] of [[320,1,'narrow'],[720,2,'zoom-equivalent']]){
   await size(w,1000,d);
   assert(await ev(`document.documentElement.scrollWidth<=innerWidth`),'no horizontal overflow '+name);
-  await fs.writeFile('/tmp/replay-'+name+'.png',Buffer.from((await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true})).data,'base64'));
+  await fs.writeFile(profile + '/replay-' + name + '.png', Buffer.from((await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })).data, 'base64'));
  }
  await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
  assert(await ev(`matchMedia('(prefers-reduced-motion: reduce)').matches`),'reduced motion');
@@ -66,4 +80,9 @@ try {
  assert(await ev(`document.getElementById('identity').textContent.includes('no episode loaded')`),'reload clears imported data');
  assert(requests.every(url=>url.startsWith('file:') || url==='about:blank'),'no remote requests');
  assert(errors.length===0,'no browser exceptions');
-}finally{ws?.close();chrome.kill();}
+} finally {
+  ws?.close();
+  chrome.kill();
+  // Best-effort cleanup: remove temp profile dir even on failure
+  try { rmSync(profile, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+}
