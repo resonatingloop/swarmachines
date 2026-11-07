@@ -10,12 +10,12 @@ implements:
 - scripted dispatchers + seed control; produces event log
 """
 
+import hashlib
 import json
 import random
-import uuid
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 
 
 class EventLog:
@@ -26,15 +26,26 @@ class EventLog:
         self.seq = 0
         self.events: list[dict] = []
         self.base_ts = base_ts
-        self.logical_offset = 0
+        # Separate counters for comm vs non-comm to ensure topology-independence
+        self.comm_seq = 0
+        self.non_comm_seq = 0
 
     def append(self, turn: int, agent_id: str | None, event_type: str, payload: dict) -> None:
         # Use logical timestamp for determinism: base_ts + seq seconds
-        # Parse base_ts and add seconds
-        from datetime import timedelta
+        # Non-communication events use non_comm_seq for topology-independence
+        comm_types = {"message.sent", "message.delivered", "message.seen", "message.acted_on"}
+        is_comm = event_type in comm_types
+        
+        if is_comm:
+            seq = self.comm_seq
+            self.comm_seq += 1
+        else:
+            seq = self.non_comm_seq
+            self.non_comm_seq += 1
+        
         base = datetime.fromisoformat(self.base_ts.replace("Z", "+00:00"))
-        ts = (base + timedelta(seconds=self.logical_offset)).isoformat().replace("+00:00", "Z")
-        self.logical_offset += 1
+        ts = (base + timedelta(seconds=seq)).isoformat().replace("+00:00", "Z")
+        
         event = {
             "run_id": self.run_id,
             "seq": self.seq,
@@ -118,27 +129,31 @@ class CommunicationTopology:
         self.agents = agents
         self.hub = hub
 
-    def can_communicate(self, from_agent: str, to_agent: str, disturbances: dict) -> bool:
+    def can_communicate(self, from_agent: str, to_agent: str, disturbances: dict) -> tuple[bool, str]:
         """
         Check if communication is allowed given topology and active disturbances.
+        Returns (allowed, reason) tuple.
         """
         # Check relay-loss disturbance
         if "relay-loss" in disturbances:
             loss = disturbances["relay-loss"]
             if loss.get("active") and loss.get("agent") in (from_agent, to_agent):
-                return False
+                return False, "agent unreachable"
 
         if self.topology == "mesh":
             # All agents can communicate with all others (unless disturbed)
-            return from_agent != to_agent
+            if from_agent != to_agent:
+                return True, ""
+            return False, "self-communication not allowed"
         elif self.topology == "hub-spoke":
             # All communication must go through hub
             if self.hub is None:
-                return False
+                return False, "hub not configured"
             if from_agent == self.hub or to_agent == self.hub:
-                return from_agent != to_agent
-            return False
-        return False
+                if from_agent != to_agent:
+                    return True, ""
+            return False, "hub-spoke requires hub involvement"
+        return False, "unknown topology"
 
 
 class DisturbanceScheduler:
@@ -191,6 +206,8 @@ class DisturbanceScheduler:
                     "claimed_state": claimed_state,
                     "actual_state": actual_state,
                 },
+                "before": f"message {message_id} claimed {claimed_state}",
+                "after": f"message {message_id} actually {actual_state}",
             },
         )
 
@@ -201,9 +218,13 @@ class DisturbanceScheduler:
 class Agent:
     """A simulated agent with observation, exchange, act phases."""
 
-    def __init__(self, agent_id: str, seed: int):
+    def __init__(self, agent_id: str, base_seed: int, agent_index: int):
         self.agent_id = agent_id
-        self.rng = random.Random(seed)
+        # Separate RNG streams for topology-independent non-comm events
+        # Each stream is seeded uniquely per agent to ensure determinism
+        self.observe_rng = random.Random(base_seed + agent_index * 10)
+        self.act_rng = random.Random(base_seed + agent_index * 10 + 1)
+        self.exchange_rng = random.Random(base_seed + agent_index * 10 + 2)
         self.context: list[dict] = []  # messages seen
         self.actions_proposed: list[dict] = []
         self.message_counter = 0
@@ -216,10 +237,10 @@ class Agent:
     def observe(self, world_state: dict, turn: int, log: EventLog) -> None:
         """Observe phase: record what the agent sees."""
         visible = {
-            "queue": self.rng.randint(0, 3),
-            "requests": [{"freight": "med-kit", "dest": "south"}] if self.rng.random() > 0.5 else [],
+            "queue": self.observe_rng.randint(0, 3),
+            "requests": [{"freight": "med-kit", "dest": "south"}] if self.observe_rng.random() > 0.5 else [],
             "known_closures": [],
-            "roads_in_view": ["east-bridge"] if self.rng.random() > 0.3 else [],
+            "roads_in_view": ["east-bridge"] if self.observe_rng.random() > 0.3 else [],
         }
         log.append(
             turn=turn,
@@ -235,11 +256,11 @@ class Agent:
         for other in other_agents:
             if other.agent_id == self.agent_id:
                 continue
-            if not topology.can_communicate(self.agent_id, other.agent_id, disturbances):
-                continue
-
-            # Decide whether to send a message
-            if self.rng.random() > 0.6:
+            
+            allowed, reason = topology.can_communicate(self.agent_id, other.agent_id, disturbances)
+            
+            # Decide whether to send a message (using exchange_rng for topology-independence)
+            if self.exchange_rng.random() > 0.6:
                 message_id = self._next_message_id()
                 body = {"type": "report", "content": f"status from {self.agent_id}"}
                 body_ref = message_store.store(message_id, self.agent_id, other.agent_id, body)
@@ -257,15 +278,15 @@ class Agent:
                 )
                 lifecycle.mark_sent(message_id, turn)
 
-                # Deliver immediately (synchronous delivery)
-                status = "delivered"
-                log.append(
-                    turn=turn,
-                    agent_id=other.agent_id,
-                    event_type="message.delivered",
-                    payload={"message_id": message_id, "to": other.agent_id, "status": status},
-                )
-                if status == "delivered":
+                # Attempt delivery
+                if allowed:
+                    status = "delivered"
+                    log.append(
+                        turn=turn,
+                        agent_id=other.agent_id,
+                        event_type="message.delivered",
+                        payload={"message_id": message_id, "to": other.agent_id, "status": status},
+                    )
                     lifecycle.mark_delivered(message_id, turn)
 
                     # Mark as seen
@@ -277,10 +298,36 @@ class Agent:
                     )
                     lifecycle.mark_seen(message_id, turn)
                     other.context.append({"message_id": message_id, "turn": turn})
+                    
+                    # Emit message.acted_on immediately after seen (deterministic based on exchange_rng)
+                    if self.exchange_rng.random() > 0.5:
+                        lifecycle.mark_acted_on(message_id, turn)
+                        log.append(
+                            turn=turn,
+                            agent_id=other.agent_id,
+                            event_type="message.acted_on",
+                            payload={
+                                "message_id": message_id,
+                                "relation": "informed",
+                            },
+                        )
+                else:
+                    # Emit undelivered with reason (relay-loss or topology block)
+                    log.append(
+                        turn=turn,
+                        agent_id=other.agent_id,
+                        event_type="message.delivered",
+                        payload={
+                            "message_id": message_id,
+                            "to": other.agent_id,
+                            "status": "undelivered",
+                            "reason": reason,
+                        },
+                    )
 
-    def act(self, turn: int, log: EventLog) -> None:
+    def act(self, turn: int, log: EventLog, message_lifecycle: MessageLifecycle | None = None) -> None:
         """Act phase: propose and commit actions."""
-        if self.rng.random() > 0.5:
+        if self.act_rng.random() > 0.5:
             action_id = f"act-{self.agent_id}{turn:02d}"
             action = {
                 "action_id": action_id,
@@ -297,21 +344,31 @@ class Agent:
             )
             self.actions_proposed.append(action)
 
-            # Validate
+            # Validate - sometimes reject
+            legal = self.act_rng.random() > 0.2
             log.append(
                 turn=turn,
                 agent_id=self.agent_id,
                 event_type="action.validated",
-                payload={"action_id": action_id, "legal": True},
+                payload={"action_id": action_id, "legal": legal},
             )
 
-            # Commit
-            log.append(
-                turn=turn,
-                agent_id=self.agent_id,
-                event_type="action.committed",
-                payload={"action_id": action_id, "result": "freight queued"},
-            )
+            if legal:
+                # Commit
+                log.append(
+                    turn=turn,
+                    agent_id=self.agent_id,
+                    event_type="action.committed",
+                    payload={"action_id": action_id, "result": "freight queued"},
+                )
+            else:
+                # Reject
+                log.append(
+                    turn=turn,
+                    agent_id=self.agent_id,
+                    event_type="action.rejected",
+                    payload={"action_id": action_id, "reason": "route validation failed"},
+                )
 
 
 class TurnSeamRunner:
@@ -331,7 +388,7 @@ class TurnSeamRunner:
         # Fixed base timestamp for determinism
         self.base_ts = "2026-11-07T14:30:00Z"
 
-        self.agents = [Agent(aid, seed + i) for i, aid in enumerate(agents_config)]
+        self.agents = [Agent(aid, seed, i) for i, aid in enumerate(agents_config)]
         self.agent_ids = agents_config
 
         self.topology = CommunicationTopology(
@@ -350,6 +407,10 @@ class TurnSeamRunner:
     def run(self, num_turns: int) -> str:
         """Run the simulation for num_turns turns."""
 
+        # Compute delivery_map_sha
+        delivery_map_json = json.dumps(self.delivery_map, sort_keys=True)
+        delivery_map_sha = hashlib.sha256(delivery_map_json.encode()).hexdigest()[:16]
+
         # run.config event
         self.log.append(
             turn=0,
@@ -358,7 +419,7 @@ class TurnSeamRunner:
             payload={
                 "seed": self.seed,
                 "comm_topology": self.topology.topology,
-                "delivery_map_sha": "computed-at-run",
+                "delivery_map_sha": delivery_map_sha,
                 "disturbance_schedule": self.disturbance_scheduler.schedule,
                 "agents": self.agent_ids,
             },
@@ -380,6 +441,18 @@ class TurnSeamRunner:
             },
         )
 
+        # Emit world.changed for initial state
+        self.log.append(
+            turn=0,
+            agent_id=None,
+            event_type="world.changed",
+            payload={
+                "what": "initial world state",
+                "effect": "all routes open",
+                "visibility": "all agents",
+            },
+        )
+
         world_state = {"routes_open": True, "closures": []}
 
         for turn in range(1, num_turns + 1):
@@ -394,11 +467,11 @@ class TurnSeamRunner:
             # Apply disturbances at start of turn
             self.disturbance_scheduler.apply_at_turn(turn, self.log)
 
-            # Phase 1: observe
+            # Phase 1: observe - ALL agents observe before any exchange
             for agent in self.agents:
                 agent.observe(world_state, turn, self.log)
 
-            # Phase 2: exchange
+            # Phase 2: exchange - ALL agents exchange before any act
             for agent in self.agents:
                 agent.exchange(
                     topology=self.topology,
@@ -410,9 +483,9 @@ class TurnSeamRunner:
                     disturbances=self.disturbance_scheduler.active,
                 )
 
-            # Phase 3: act
+            # Phase 3: act - ALL agents act before moving to next turn
             for agent in self.agents:
-                agent.act(turn, self.log)
+                agent.act(turn, self.log, self.lifecycle)
 
             # Phase 4: record (implicit in event logging)
 
@@ -435,6 +508,55 @@ class TurnSeamRunner:
         return self.lifecycle.was_in_context_at_turn(message_id, turn)
 
 
+def load_events(path: str, char_limit: int = 10000) -> list[dict]:
+    """
+    Load events from a JSONL file with per-line size cap and error handling.
+    Each line is validated against the events schema before being trusted.
+    Returns a list of valid events; invalid lines are logged but not returned.
+    """
+    import jsonschema
+    
+    schema_path = Path(__file__).parent / "schema" / "events.schema.json"
+    with open(schema_path) as f:
+        schema = json.load(f)
+    
+    events = []
+    errors = []
+    
+    with open(path) as f:
+        for line_num, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Per-line size cap
+            if len(line) > char_limit:
+                errors.append(f"Line {line_num}: exceeds {char_limit} char limit ({len(line)} chars)")
+                continue
+            
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError as e:
+                errors.append(f"Line {line_num}: JSON parse error: {e}")
+                continue
+            
+            # Validate against schema
+            try:
+                jsonschema.validate(event, schema)
+                events.append(event)
+            except jsonschema.ValidationError as e:
+                errors.append(f"Line {line_num}: schema validation failed: {e.message}")
+    
+    if errors:
+        print(f"load_events: {len(errors)} errors loading {path}")
+        for err in errors[:5]:
+            print(f"  {err}")
+        if len(errors) > 5:
+            print(f"  ... and {len(errors) - 5} more")
+    
+    return events
+
+
 def main():
     """Run a sample episode and write to runtime/."""
     import argparse
@@ -443,15 +565,42 @@ def main():
     parser.add_argument("--seed", type=int, default=42, help="random seed")
     parser.add_argument("--topology", choices=["mesh", "hub-spoke"], default="mesh",
                         help="communication topology")
-    parser.add_argument("--turns", type=int, default=3, help="number of turns")
-    parser.add_argument("--agents", type=str, default="a,b,c,d", help="comma-separated agent ids")
+    parser.add_argument("--turns", type=int, default=3, help="number of turns (max 100)")
+    parser.add_argument("--agents", type=str, default="a,b,c,d", 
+                        help="comma-separated agent ids (alphanumeric + hyphen only)")
     parser.add_argument("--output", type=str, default=None, help="output file path")
     parser.add_argument("--disturbance", type=str, default=None,
                         help="disturbance spec: relay-loss:2:a or stale-report:2:m-001:closed:open")
+    parser.add_argument("--hub", type=str, default=None, 
+                        help="hub agent id for hub-spoke topology")
+    parser.add_argument("--delivery-map", type=str, default=None,
+                        help="path to delivery map JSON file")
 
     args = parser.parse_args()
 
+    # Validate agent ids (alphanumeric + hyphen only)
     agents = [a.strip() for a in args.agents.split(",")]
+    agent_pattern = re.compile(r'^[a-zA-Z0-9-]+$')
+    for agent in agents:
+        if not agent_pattern.match(agent):
+            print(f"Error: invalid agent id '{agent}' (must be alphanumeric + hyphen)")
+            sys.exit(1)
+
+    # Cap turns
+    if args.turns > 100:
+        print(f"Error: --turns capped at 100, got {args.turns}")
+        sys.exit(1)
+    if args.turns < 1:
+        print(f"Error: --turns must be >= 1, got {args.turns}")
+        sys.exit(1)
+
+    # Build delivery map
+    delivery_map = {}
+    if args.hub:
+        delivery_map["hub"] = args.hub
+    if args.delivery_map:
+        with open(args.delivery_map) as f:
+            delivery_map.update(json.load(f))
 
     # Parse disturbance schedule
     disturbance_schedule = {}
@@ -476,6 +625,7 @@ def main():
         comm_topology=args.topology,
         agents_config=agents,
         disturbance_schedule=disturbance_schedule,
+        delivery_map=delivery_map if delivery_map else None,
     )
 
     output = runner.run(args.turns)
@@ -498,4 +648,5 @@ def main():
 
 
 if __name__ == "__main__":
+    import sys
     main()

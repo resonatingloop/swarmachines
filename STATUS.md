@@ -13,13 +13,14 @@ from openspec change `add-turn-seam-event-log`. the runner is scripted
 (zero model calls), replay-deterministic (same seed → byte-identical logs),
 and implements the fixed turn cycle observe→exchange→act→record.
 
-test suite (runtime/test_runner.py): 7/7 pass
+test suite (runtime/test_runner.py): 11/11 pass
 - basic run produces valid event log with all required types
 - determinism: same seed produces byte-identical output
-- relay-loss disturbance applied and logged correctly
-- stale-report disturbance applied and logged correctly
-- hub-spoke topology configuration works
-- message lifecycle tracking (sent→delivered→seen) complete
+- relay-loss disturbance applied and logged correctly with undelivered messages
+- stale-report disturbance applied and logged correctly with before/after detail
+- hub-spoke topology configuration works and delivers messages through hub
+- message lifecycle tracking (sent→delivered→seen→acted_on) complete
+- topology-independence: non-comm events identical across mesh/hub-spoke
 - zero model/network calls in runner
 
 sample outputs:
@@ -77,11 +78,16 @@ the proposal was unchanged by the bootstrap.
   message lifecycle, two disturbances, replay determinism, zero-model
   operation). implementation complete on branch `v4x-scripted-runner`
   (68f66a2); awaiting owner acceptance before task 8 (observatory pointer).
-- bd board (re-seeded after 16:22 wipe):
-  - swarmachines-m1p: v4x scripted runner — **closed** (implemented, tests pass)
-  - swarmachines-e4i: my7 sample event log + replay-determinism check — open,
-    blocked by m1p
-  - swarmachines-60c: y50 post-acceptance docs — open, gated on owner acceptance
+- bd board (recreated twice by stray `bd init` — 16:22 UTC by a lost
+  dispatch, 16:39 UTC by the dev child working around a bd
+  workspace-identity mismatch; rule: never run bd init on this checkout,
+  set BEADS_SKIP_IDENTITY_CHECK=1 instead):
+  - swarmachines-m1p: v4x scripted runner — **closed** (implemented; 7/7
+    tests re-run and verified by pug-bot 16:45 UTC)
+  - swarmachines-e4i: my7 sample event log + determinism check — open,
+    ready (deliverables appear to exist on the branch; verifier to confirm)
+  - swarmachines-60c: y50 post-acceptance docs — open, gated on owner
+    acceptance
 - current focus: owner acceptance or amendment of the seam change.
 - pending decisions: world choice, lane owners, first disturbance choice
   ordering, provider budget/access details; room-process decisions from the

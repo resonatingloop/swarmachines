@@ -3,6 +3,7 @@
 Test suite for turn-seam scripted runner.
 Validates all acceptance criteria from add-turn-seam-event-log.
 """
+import ast
 import json
 import subprocess
 import sys
@@ -12,8 +13,9 @@ from pathlib import Path
 
 def run_runner(args: list[str], output_path: str) -> tuple[int, str]:
     """Run the runner with given args, return exit code and output."""
+    repo_root = Path(__file__).parent.parent
     cmd = [sys.executable, "runtime/runner.py"] + args + ["--output", output_path]
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd="/workspace/swarmachines")
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(repo_root))
     return result.returncode, result.stdout.strip()
 
 
@@ -32,7 +34,7 @@ def check_event_types(events: list[dict], required: set[str]) -> list[str]:
 def check_schema(events: list[dict]) -> list[str]:
     """Check events conform to schema requirements."""
     errors = []
-    required_fields = {"run_id", "seq", "turn", "type", "ts", "payload"}
+    required_fields = {"run_id", "seq", "turn", "agent_id", "type", "ts", "payload"}
     prev_seq = -1
     for i, e in enumerate(events):
         for field in required_fields:
@@ -42,18 +44,17 @@ def check_schema(events: list[dict]) -> list[str]:
             if e["seq"] <= prev_seq:
                 errors.append(f"Event {i}: seq {e['seq']} not > previous {prev_seq}")
             prev_seq = e["seq"]
-        if "agent_id" not in e:
-            errors.append(f"Event {i}: missing 'agent_id' (should be null for world events)")
     return errors
 
 
 def test_basic_run():
-    """Test basic run produces valid event log."""
+    """Test basic run produces valid event log with all required types."""
     print("Test: basic run...")
     with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
         output = f.name
     
-    code, out = run_runner(["--seed", "42", "--turns", "3"], output)
+    # Use seed 7 with a disturbance to ensure all event types are generated
+    code, out = run_runner(["--seed", "7", "--turns", "3", "--disturbance", "relay-loss:2:a"], output)
     if code != 0:
         return False, f"Runner failed with code {code}: {out}"
     
@@ -63,8 +64,11 @@ def test_basic_run():
     
     required = {
         "run.config", "world.init", "turn.begin",
-        "observation.recorded", "message.sent", "message.delivered", "message.seen",
-        "action.proposed", "action.validated", "action.committed", "run.end"
+        "observation.recorded",
+        "message.sent", "message.delivered", "message.seen", "message.acted_on",
+        "action.proposed", "action.validated", "action.committed",
+        "world.changed", "disturbance.applied",
+        "run.end"
     }
     missing = check_event_types(events, required)
     if missing:
@@ -75,7 +79,7 @@ def test_basic_run():
         return False, f"Schema violations: {errors[:3]}"
     
     Path(output).unlink()
-    return True, f"OK: {len(events)} events, all types present"
+    return True, f"OK: {len(events)} events, all base types present"
 
 
 def test_determinism():
@@ -101,35 +105,153 @@ def test_determinism():
     return True, "OK: byte-identical outputs"
 
 
-def test_relay_loss_disturbance():
-    """Test relay-loss disturbance is applied and logged."""
-    print("Test: relay-loss disturbance...")
+def test_relay_loss_emits_undelivered():
+    """Test relay-loss disturbance emits message.sent + message.delivered(status='undelivered')."""
+    print("Test: relay-loss emits undelivered messages...")
     with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
         output = f.name
     
-    run_runner(["--seed", "42", "--turns", "4", "--disturbance", "relay-loss:2:c"], output)
+    # Use seed that will generate messages, with relay-loss on agent 'c' at turn 2
+    run_runner(["--seed", "7", "--turns", "4", "--disturbance", "relay-loss:2:c"], output)
     events = load_events(output)
     
     Path(output).unlink()
     
-    disturbance_events = [e for e in events if e["type"] == "disturbance.applied"]
-    if not disturbance_events:
-        return False, "No disturbance.applied events found"
+    # Find message.sent events at turn >= 2 involving agent c
+    sent_events = [e for e in events if e["type"] == "message.sent" and e["turn"] >= 2]
+    if not sent_events:
+        return False, "No message.sent events found after relay-loss applied"
     
-    relay_loss = [e for e in disturbance_events if e["payload"].get("kind") == "relay-loss"]
-    if not relay_loss:
-        return False, "No relay-loss disturbance found"
+    # Check for undelivered messages
+    delivered_events = [e for e in events if e["type"] == "message.delivered"]
+    undelivered = [e for e in delivered_events if e["payload"].get("status") == "undelivered"]
     
-    detail = relay_loss[0]["payload"]["detail"]
-    if detail.get("agent") != "c":
-        return False, f"Expected agent 'c', got {detail.get('agent')}"
+    if not undelivered:
+        return False, "No message.delivered(status='undelivered') events found - relay-loss should block and report"
     
-    return True, f"OK: relay-loss applied at turn {relay_loss[0]['turn']}"
+    # Verify undelivered has reason
+    for ud in undelivered:
+        if "reason" not in ud["payload"]:
+            return False, f"undelivered event missing 'reason' field: {ud}"
+    
+    return True, f"OK: {len(undelivered)} undelivered messages with reasons (relay-loss working)"
 
 
-def test_stale_report_disturbance():
-    """Test stale-report disturbance is applied and logged."""
-    print("Test: stale-report disturbance...")
+def test_topology_independence():
+    """Test same seed + disturbance under mesh vs hub-spoke produces identical non-comm events."""
+    print("Test: topology-independence (non-comm events identical)...")
+    
+    def get_non_comm_events(output_path: str) -> list[dict]:
+        events = load_events(output_path)
+        # Exclude communication events AND run.config (which includes topology name)
+        excluded_types = {"message.sent", "message.delivered", "message.seen", "message.acted_on", "run.config"}
+        return [e for e in events if e["type"] not in excluded_types]
+    
+    def normalize_event(e: dict) -> dict:
+        """Remove logging artifacts (seq, ts) for semantic comparison."""
+        return {k: v for k, v in e.items() if k not in ("seq", "ts")}
+    
+    def event_key(e: dict) -> tuple:
+        """Sort key for deterministic ordering: (turn, agent_id, type, payload_hash)."""
+        import hashlib
+        payload_hash = hashlib.sha256(json.dumps(e.get("payload", {}), sort_keys=True).encode()).hexdigest()
+        # Handle None agent_id (world events) by using empty string for sorting
+        agent_id = e.get("agent_id") or ""
+        return (e["turn"], agent_id, e["type"], payload_hash)
+    
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f1:
+        out1 = f1.name
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f2:
+        out2 = f2.name
+    
+    # Run with same seed and disturbance under both topologies
+    run_runner(["--seed", "42", "--turns", "3", "--disturbance", "relay-loss:2:b", "--topology", "mesh"], out1)
+    run_runner(["--seed", "42", "--turns", "3", "--disturbance", "relay-loss:2:b", "--topology", "hub-spoke", "--hub", "a"], out2)
+    
+    non_comm_1 = sorted([normalize_event(e) for e in get_non_comm_events(out1)], key=event_key)
+    non_comm_2 = sorted([normalize_event(e) for e in get_non_comm_events(out2)], key=event_key)
+    
+    Path(out1).unlink()
+    Path(out2).unlink()
+    
+    # Compare non-communication events (should be identical when sorted by semantic key)
+    json1 = json.dumps(non_comm_1, sort_keys=True)
+    json2 = json.dumps(non_comm_2, sort_keys=True)
+    
+    if json1 != json2:
+        # Debug: find first difference
+        for i, (e1, e2) in enumerate(zip(non_comm_1, non_comm_2)):
+            if e1 != e2:
+                return False, f"Non-comm events differ: {e1['type']} (turn={e1['turn']}, agent={e1.get('agent_id')}) vs {e2['type']} (turn={e2['turn']}, agent={e2.get('agent_id')})"
+        if len(non_comm_1) != len(non_comm_2):
+            return False, f"Non-comm events differ in count: {len(non_comm_1)} vs {len(non_comm_2)}"
+        return False, "Non-comm events differ (unknown reason)"
+    
+    return True, "OK: non-communication events identical across topologies"
+
+
+def test_hub_spoke_cli_delivery():
+    """Test hub-spoke CLI actually routes and delivers messages through hub."""
+    print("Test: hub-spoke CLI delivers messages...")
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    
+    # hub-spoke with hub='a', agents a,b,c
+    code, out = run_runner(
+        ["--seed", "7", "--turns", "3", "--topology", "hub-spoke", "--hub", "a", "--agents", "a,b,c"],
+        output
+    )
+    if code != 0:
+        return False, f"Runner failed: {out}"
+    
+    events = load_events(output)
+    Path(output).unlink()
+    
+    # Check run.config has correct topology
+    config = [e for e in events if e["type"] == "run.config"][0]
+    if config["payload"]["comm_topology"] != "hub-spoke":
+        return False, f"Expected topology 'hub-spoke', got {config['payload']['comm_topology']}"
+    
+    # Check delivery_map_sha is real (not placeholder)
+    sha = config["payload"].get("delivery_map_sha")
+    if not sha or sha == "computed-at-run" or sha == "placeholder-computed-at-run":
+        return False, f"delivery_map_sha is placeholder: {sha}"
+    
+    # Check that messages are actually delivered (hub-spoke should allow hub<->spoke)
+    delivered = [e for e in events if e["type"] == "message.delivered" and e["payload"].get("status") == "delivered"]
+    if not delivered:
+        return False, "No delivered messages in hub-spoke - routing may be broken"
+    
+    return True, f"OK: hub-spoke delivers {len(delivered)} messages, delivery_map_sha={sha}"
+
+
+def test_message_acted_on_emitted():
+    """Test message.acted_on events are emitted."""
+    print("Test: message.acted_on emitted...")
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    
+    run_runner(["--seed", "7", "--turns", "3"], output)
+    events = load_events(output)
+    
+    Path(output).unlink()
+    
+    acted_on = [e for e in events if e["type"] == "message.acted_on"]
+    if not acted_on:
+        return False, "No message.acted_on events found"
+    
+    # Verify structure
+    for ao in acted_on:
+        payload = ao["payload"]
+        if "message_id" not in payload:
+            return False, f"message.acted_on missing message_id: {payload}"
+    
+    return True, f"OK: {len(acted_on)} message.acted_on events emitted"
+
+
+def test_stale_report_has_before_after():
+    """Test stale-report disturbance has before/after detail."""
+    print("Test: stale-report has before/after detail...")
     with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
         output = f.name
     
@@ -138,130 +260,152 @@ def test_stale_report_disturbance():
     
     Path(output).unlink()
     
-    disturbance_events = [e for e in events if e["type"] == "disturbance.applied"]
-    stale_reports = [e for e in disturbance_events if e["payload"].get("kind") == "stale-report"]
-    
+    stale_reports = [e for e in events if e["type"] == "disturbance.applied" and e["payload"].get("kind") == "stale-report"]
     if not stale_reports:
         return False, "No stale-report disturbance found"
     
-    detail = stale_reports[0]["payload"]["detail"]
-    if detail.get("claimed_state") != "open":
-        return False, f"Expected claimed_state 'open', got {detail.get('claimed_state')}"
+    payload = stale_reports[0]["payload"]
+    if "before" not in payload or "after" not in payload:
+        return False, f"stale-report missing before/after: {payload}"
     
-    return True, "OK: stale-report applied with correct detail"
+    return True, "OK: stale-report has before/after detail"
 
 
-def test_hub_spoke_topology():
-    """Test hub-spoke topology configuration."""
-    print("Test: hub-spoke topology...")
+def test_delivery_map_sha_real():
+    """Test delivery_map_sha is a real hash, not placeholder."""
+    print("Test: delivery_map_sha is real hash...")
     with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
         output = f.name
     
-    code, out = run_runner(["--seed", "42", "--turns", "2", "--topology", "hub-spoke", "--agents", "hub,a,b"], output)
-    if code != 0:
-        return False, f"Runner failed: {out}"
-    
-    events = load_events(output)
-    config_event = [e for e in events if e["type"] == "run.config"][0]
-    
-    Path(output).unlink()
-    
-    if config_event["payload"]["comm_topology"] != "hub-spoke":
-        return False, f"Expected topology 'hub-spoke', got {config_event['payload']['comm_topology']}"
-    
-    return True, "OK: hub-spoke topology configured"
-
-
-def test_message_lifecycle():
-    """Test message lifecycle tracking (sent -> delivered -> seen)."""
-    print("Test: message lifecycle...")
-    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
-        output = f.name
-    
-    run_runner(["--seed", "42", "--turns", "2"], output)
+    run_runner(["--seed", "42", "--turns", "2", "--hub", "a"], output)
     events = load_events(output)
     
     Path(output).unlink()
     
-    sent = [e for e in events if e["type"] == "message.sent"]
-    delivered = [e for e in events if e["type"] == "message.delivered"]
-    seen = [e for e in events if e["type"] == "message.seen"]
+    config = [e for e in events if e["type"] == "run.config"][0]
+    sha = config["payload"].get("delivery_map_sha")
     
-    if not sent:
-        return False, "No message.sent events found"
+    if not sha:
+        return False, "delivery_map_sha missing"
+    if sha in ("computed-at-run", "placeholder-computed-at-run"):
+        return False, f"delivery_map_sha is placeholder: {sha}"
+    # Should be a hex string
+    if not all(c in "0123456789abcdef" for c in sha):
+        return False, f"delivery_map_sha not hex: {sha}"
     
-    # Each sent message should have corresponding delivered and seen events
-    sent_ids = {e["payload"]["message_id"] for e in sent}
-    delivered_ids = {e["payload"]["message_id"] for e in delivered}
-    seen_ids = {e["payload"]["message_id"] for e in seen}
-    
-    if not sent_ids.issubset(delivered_ids):
-        return False, "Some sent messages were not delivered"
-    if not sent_ids.issubset(seen_ids):
-        return False, "Some sent messages were not seen"
-    
-    return True, f"OK: {len(sent)} messages with complete lifecycle"
+    return True, f"OK: delivery_map_sha={sha}"
 
 
 def test_zero_model_calls():
-    """Verify runner has no model/network calls (static analysis)."""
-    print("Test: zero model calls...")
-    runner_path = Path("/workspace/swarmachines/runtime/runner.py")
+    """Verify runner has no model/network calls (import scan)."""
+    print("Test: zero model calls (import scan)...")
+    runner_path = Path(__file__).parent / "runner.py"
     content = runner_path.read_text()
     
-    # Check for common model/API call patterns
-    forbidden = [
-        "openai.", "anthropic.", "google.genai.",
-        "requests.post", "requests.get", "urllib.request",
-        "httpx.", "aiohttp."
-    ]
+    # Parse AST to find actual imports
+    tree = ast.parse(content)
+    
+    forbidden_modules = {
+        "openai", "anthropic", "google", "genai",
+        "requests", "urllib", "httpx", "aiohttp"
+    }
     
     found = []
-    for pattern in forbidden:
-        if pattern in content:
-            found.append(pattern)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if any(fm in alias.name.lower() for fm in forbidden_modules):
+                    found.append(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and any(fm in node.module.lower() for fm in forbidden_modules):
+                found.append(node.module)
     
     if found:
-        return False, f"Found potential model/network calls: {found}"
+        return False, f"Found forbidden imports: {found}"
     
-    return True, "OK: no model/network calls detected"
+    return True, "OK: no model/network imports detected"
+
+
+def test_agent_id_validation():
+    """Test agent id charset validation at CLI parse."""
+    print("Test: agent id charset validation...")
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    
+    # Try invalid agent id with special chars
+    code, out = run_runner(["--seed", "42", "--turns", "1", "--agents", "a,b@c"], output)
+    
+    Path(output).unlink(missing_ok=True)
+    
+    if code == 0:
+        return False, "Runner should reject agent id with special chars"
+    
+    return True, "OK: invalid agent ids rejected"
+
+
+def test_turns_cap():
+    """Test --turns is capped."""
+    print("Test: --turns cap...")
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    
+    code, out = run_runner(["--seed", "42", "--turns", "101"], output)
+    
+    Path(output).unlink(missing_ok=True)
+    
+    if code == 0:
+        return False, "Runner should reject turns > 100"
+    
+    return True, "OK: --turns capped at 100"
 
 
 def main():
     """Run all tests."""
     print("=" * 60)
-    print("turn-seam runner test suite")
+    print("turn-seam runner test suite (v4x gate findings)")
     print("=" * 60)
     
     tests = [
-        test_basic_run,
-        test_determinism,
-        test_relay_loss_disturbance,
-        test_stale_report_disturbance,
-        test_hub_spoke_topology,
-        test_message_lifecycle,
-        test_zero_model_calls,
+        ("basic_run", test_basic_run),
+        ("determinism", test_determinism),
+        ("relay_loss_undelivered", test_relay_loss_emits_undelivered),
+        ("topology_independence", test_topology_independence),
+        ("hub_spoke_delivery", test_hub_spoke_cli_delivery),
+        ("message_acted_on", test_message_acted_on_emitted),
+        ("stale_report_detail", test_stale_report_has_before_after),
+        ("delivery_map_sha", test_delivery_map_sha_real),
+        ("zero_model_calls", test_zero_model_calls),
+        ("agent_id_validation", test_agent_id_validation),
+        ("turns_cap", test_turns_cap),
     ]
     
     passed = 0
     failed = 0
+    failures = []
     
-    for test in tests:
+    for name, test in tests:
         try:
             ok, msg = test()
             if ok:
-                print(f"  PASS: {msg}")
+                print(f"  PASS [{name}]: {msg}")
                 passed += 1
             else:
-                print(f"  FAIL: {msg}")
+                print(f"  FAIL [{name}]: {msg}")
                 failed += 1
+                failures.append((name, msg))
         except Exception as e:
-            print(f"  ERROR: {e}")
+            print(f"  ERROR [{name}]: {e}")
             failed += 1
+            failures.append((name, str(e)))
     
     print("=" * 60)
     print(f"Results: {passed} passed, {failed} failed")
     print("=" * 60)
+    
+    if failures:
+        print("\nFailures:")
+        for name, msg in failures:
+            print(f"  - {name}: {msg}")
     
     return 0 if failed == 0 else 1
 

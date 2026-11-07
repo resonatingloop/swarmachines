@@ -16,16 +16,22 @@ bring-your-own agent (caduceus, asterion, future teammates).
 
 ## The board (beads) — the single work queue
 
-`bd` is installed; the board lives in `.beads/` (git-native).
+`bd` is installed; the board lives in `.beads/` (git-native, embedded
+dolt store — gitignored, so board state does NOT ride on commits).
 
 ```bash
-bd ready --json                 # work whose dependencies are satisfied
-bd update <id> --claim          # atomic claim BEFORE working
-bd update <id> --status done    # when actually done
-bd create "Title" -t task -p 1  # file new work with acceptance criteria
+bd ready --json                       # work whose dependencies are satisfied
+bd update <id> --claim                # atomic claim BEFORE working
+bd update <id> --status closed        # when actually done ("done" is rejected)
+bd create "Title" -t task -p 1 --json # file new work with acceptance criteria
 ```
 
 - Claim before you work. No claim, no work.
+- **NEVER run `bd init` in this checkout** — it wipes the board
+  (happened twice on 2026-11-07). If `bd` reports a workspace-identity
+  mismatch, export `BEADS_SKIP_IDENTITY_CHECK=1` and retry; if the board
+  looks empty, check `git log` for a stray bd-init commit and tell
+  pug-bot before recreating anything.
 - Non-trivial requests become board items — never just chat.
 - Stale items get nudged (the curator hourly, anyone who notices).
 

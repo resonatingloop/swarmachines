@@ -4,7 +4,7 @@
   "title": "swarmachines event record",
   "description": "one record per logged event. (run_id, seq) is unique within a run and seq increases in append order; uniqueness is enforced by the runner, not by json schema. message lifecycle: sent, delivered, seen, acted_on are separate transitions and must never be conflated.",
   "type": "object",
-  "required": ["run_id", "seq", "turn", "type", "ts", "payload"],
+  "required": ["run_id", "seq", "turn", "agent_id", "type", "ts", "payload"],
   "properties": {
     "run_id": { "type": "string", "description": "stable identifier for one episode" },
     "seq": { "type": "integer", "minimum": 0, "description": "append-order index, unique with run_id" },
