@@ -93,11 +93,10 @@ class AdaptionAdapter:
         """
         start = time.perf_counter()
 
-        # Convert messages to Adaption's expected format
-        # Adaption uses 'input' for simple text or supports messages format
+        # Adaption uses 'input' parameter (not 'messages') for the prompt/messages
         response = self._client.responses.create(
             model=model,
-            messages=messages,
+            input=messages,
             **kwargs,
         )
 
