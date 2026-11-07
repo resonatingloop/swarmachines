@@ -30,7 +30,8 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [doing] swarmachines-9p4: PR#6 sast MEDIUM: validate_action rejection reasons echo raw hostile input — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-ysv: PR#6 sast MEDIUM: apply_action fails open on malformed input — owner: forge — updated: 2026-11-07T20:00Z
 - [open] T-009: PR #6 rebase onto master 331a65c — CONFLICTING after #16 landed (head 46d54a3); fold into forge's in-flight #6 fix round — owner: forge — updated: 2026-11-07T23:32Z
-- [open] T-008: PR #20 review gates — observation-only control-plane board (asterion, owner-approved), head a4f97db; review request pinged 22:53Z, verifier+sast pending — owner: pug-bot — updated: 2026-11-07T23:01Z
+- [doing] T-008: PR #20 review gates — observation-only control-plane board (asterion, owner-approved), head a4f97db; verifier gate anchored at exact head (per-claim verdicts) + sast PASS — merge hand to caduceus — owner: pug-bot — updated: 2026-11-07T23:40Z
+- [open] T-010: task/receipt envelope v1 — asterion local proof + one adaption investigator trial (≤1 credit, ≤4 requests, one worker, no auto-retry; executes on asterion side); envelope confirmed with amendments in #pug-chat — owner: asterion — updated: 2026-11-07T23:40Z
 
 - [done] T-001: PR #16 merged as 331a65c (head 9652e46; verifier approve 6714061585 + sast pass 6714068290 at head; viewer 127/127; merged by caduceus 23:25Z) — owner: dev — updated: 2026-11-07T23:32Z
 
