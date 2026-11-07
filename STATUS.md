@@ -18,8 +18,9 @@ see [operations](control_plane/README.md). later checkpoints below are historica
 
 owner accepted [formal experiment protocol](specs/006-formal-experiment-handoff.md)
 on 2026-11-07. source recovered into a durable worktree and atlas regenerated.
-pr #14 is merged at 19b69e3; pr #5 (db0fde8) and #6 (46d54a3) remain open
-at this check. no formal run or provider expenditure started. the historical
+pr #14 is merged at 19b69e3; pr #5 (db0fde8) merged 2026-11-07 21:25Z and
+pr #6 (46d54a3) remains open at this check. no formal run or provider
+expenditure started. the historical
 slice evidence below is retained; its pending-review labels are not a current
 merge ledger. `bd prime` could not run here (`bd: command not found`); no board
 was initialized or replaced.
@@ -36,7 +37,7 @@ integration, CJS/global shim). Added LRM/RLM/ALM + 12-char bidi map coverage ADD
 text() function. Fixed all gate findings: & escaped first (prevents &#x202E; bypass), \n/\r
 escaped in cells, U+2028/2029 + C0/C1 restored, config.seed escaped, optional chars
 (U+200B/200C/200D, U+00AD, U+FEFF) added, JSDoc example corrected. Both test suites green:
-evidence.test.cjs 4/4, evidence.test.js 46/46. Ready for re-gate (sast + verifier).
+evidence.test.cjs 4/4, evidence.test.js 46/46. Merged 2026-11-07 as 331a65c.
 
 paired viewer: owner accepted `specs/004-paired-episode-comparison.md`.
 `viewer/compare.html` implements turn-end alignment, slot-scoped evidence,
@@ -65,7 +66,7 @@ from openspec change `add-turn-seam-event-log`. the runner is scripted
 (zero model calls), replay-deterministic (same seed → byte-identical logs),
 and implements the fixed turn cycle observe→exchange→act→record.
 
-test suite (runtime/test_runner.py): 12/12 pass
+test suite (runtime/test_runner.py): 20/20 pass
 - basic run produces valid event log with all required types
 - determinism: same seed produces byte-identical output
 - relay-loss disturbance applied and logged correctly with undelivered messages
