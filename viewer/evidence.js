@@ -21,7 +21,8 @@ const CAVEATS = [
  * These characters can visually reorder text in markdown renderers,
  * enabling attacks that hide or misrepresent content.
  * Includes: C0/C1 controls, U+2028/2029, bidi overrides/isolates/marks, ZWJ/ZWNJ/SHY/BOM,
- * plus invisible format characters (word joiners, annotation chars, language tags, variation selectors).
+ * plus invisible format characters (word joiners, annotation chars, variation selectors),
+ * language tag plane (U+E0000-E007F), and musical formatting controls (U+1D173-1D17A).
  * @type {Map<string, string>}
  */
 const BIDI_ESCAPE_MAP = new Map([
@@ -78,6 +79,111 @@ const BIDI_ESCAPE_MAP = new Map([
   ['\uFFFB', '\\uFFFB'], // Interlinear Annotation Terminator
   [String.fromCodePoint(0x1D173), '\\uD834\\uDD73'], // Musical Symbol Begin Beam
   [String.fromCodePoint(0x1D174), '\\uD834\\uDD74'], // Musical Symbol End Beam
+  [String.fromCodePoint(0x1D175), '\\\\uD834\\\\uDD75'], // Musical Symbol Begin Slur
+  [String.fromCodePoint(0x1D176), '\\\\uD834\\\\uDD76'], // Musical Symbol End Slur
+  [String.fromCodePoint(0x1D177), '\\\\uD834\\\\uDD77'], // Musical Symbol Begin Phrase
+  [String.fromCodePoint(0x1D178), '\\\\uD834\\\\uDD78'], // Musical Symbol End Phrase
+  [String.fromCodePoint(0x1D179), '\\\\uD834\\\\uDD79'], // Musical Symbol Begin Repeat
+  [String.fromCodePoint(0x1D17A), '\\\\uD834\\\\uDD7A'], // Musical Symbol End Repeat
+  // Language tag plane (U+E0000-E007F) - surrogate pairs for astral plane
+  [String.fromCodePoint(0xE0000), '\\\\uDB40\\\\uDC00'], // TAG
+  [String.fromCodePoint(0xE0001), '\\\\uDB40\\\\uDC01'], // LANGUAGE TAG
+  [String.fromCodePoint(0xE0020), '\\\\uDB40\\\\uDC20'], // TAG SPACE
+  [String.fromCodePoint(0xE0021), '\\\\uDB40\\\\uDC21'], // TAG EXCLAMATION MARK
+  [String.fromCodePoint(0xE0022), '\\\\uDB40\\\\uDC22'], // TAG QUOTATION MARK
+  [String.fromCodePoint(0xE0023), '\\\\uDB40\\\\uDC23'], // TAG NUMBER SIGN
+  [String.fromCodePoint(0xE0024), '\\\\uDB40\\\\uDC24'], // TAG DOLLAR SIGN
+  [String.fromCodePoint(0xE0025), '\\\\uDB40\\\\uDC25'], // TAG PERCENT SIGN
+  [String.fromCodePoint(0xE0026), '\\\\uDB40\\\\uDC26'], // TAG AMPERSAND
+  [String.fromCodePoint(0xE0027), '\\\\uDB40\\\\uDC27'], // TAG APOSTROPHE
+  [String.fromCodePoint(0xE0028), '\\\\uDB40\\\\uDC28'], // TAG LEFT PARENTHESIS
+  [String.fromCodePoint(0xE0029), '\\\\uDB40\\\\uDC29'], // TAG RIGHT PARENTHESIS
+  [String.fromCodePoint(0xE002A), '\\\\uDB40\\\\uDC2A'], // TAG ASTERISK
+  [String.fromCodePoint(0xE002B), '\\\\uDB40\\\\uDC2B'], // TAG PLUS SIGN
+  [String.fromCodePoint(0xE002C), '\\\\uDB40\\\\uDC2C'], // TAG COMMA
+  [String.fromCodePoint(0xE002D), '\\\\uDB40\\\\uDC2D'], // TAG HYPHEN-MINUS
+  [String.fromCodePoint(0xE002E), '\\\\uDB40\\\\uDC2E'], // TAG FULL STOP
+  [String.fromCodePoint(0xE002F), '\\\\uDB40\\\\uDC2F'], // TAG SOLIDUS
+  [String.fromCodePoint(0xE0030), '\\\\uDB40\\\\uDC30'], // TAG DIGIT ZERO
+  [String.fromCodePoint(0xE0031), '\\\\uDB40\\\\uDC31'], // TAG DIGIT ONE
+  [String.fromCodePoint(0xE0032), '\\\\uDB40\\\\uDC32'], // TAG DIGIT TWO
+  [String.fromCodePoint(0xE0033), '\\\\uDB40\\\\uDC33'], // TAG DIGIT THREE
+  [String.fromCodePoint(0xE0034), '\\\\uDB40\\\\uDC34'], // TAG DIGIT FOUR
+  [String.fromCodePoint(0xE0035), '\\\\uDB40\\\\uDC35'], // TAG DIGIT FIVE
+  [String.fromCodePoint(0xE0036), '\\\\uDB40\\\\uDC36'], // TAG DIGIT SIX
+  [String.fromCodePoint(0xE0037), '\\\\uDB40\\\\uDC37'], // TAG DIGIT SEVEN
+  [String.fromCodePoint(0xE0038), '\\\\uDB40\\\\uDC38'], // TAG DIGIT EIGHT
+  [String.fromCodePoint(0xE0039), '\\\\uDB40\\\\uDC39'], // TAG DIGIT NINE
+  [String.fromCodePoint(0xE003A), '\\\\uDB40\\\\uDC3A'], // TAG COLON
+  [String.fromCodePoint(0xE003B), '\\\\uDB40\\\\uDC3B'], // TAG SEMICOLON
+  [String.fromCodePoint(0xE003C), '\\\\uDB40\\\\uDC3C'], // TAG LESS-THAN SIGN
+  [String.fromCodePoint(0xE003D), '\\\\uDB40\\\\uDC3D'], // TAG EQUALS SIGN
+  [String.fromCodePoint(0xE003E), '\\\\uDB40\\\\uDC3E'], // TAG GREATER-THAN SIGN
+  [String.fromCodePoint(0xE003F), '\\\\uDB40\\\\uDC3F'], // TAG QUESTION MARK
+  [String.fromCodePoint(0xE0040), '\\\\uDB40\\\\uDC40'], // TAG COMMERCIAL AT
+  [String.fromCodePoint(0xE0041), '\\\\uDB40\\\\uDC41'], // TAG LATIN CAPITAL LETTER A
+  [String.fromCodePoint(0xE0042), '\\\\uDB40\\\\uDC42'], // TAG LATIN CAPITAL LETTER B
+  [String.fromCodePoint(0xE0043), '\\\\uDB40\\\\uDC43'], // TAG LATIN CAPITAL LETTER C
+  [String.fromCodePoint(0xE0044), '\\\\uDB40\\\\uDC44'], // TAG LATIN CAPITAL LETTER D
+  [String.fromCodePoint(0xE0045), '\\\\uDB40\\\\uDC45'], // TAG LATIN CAPITAL LETTER E
+  [String.fromCodePoint(0xE0046), '\\\\uDB40\\\\uDC46'], // TAG LATIN CAPITAL LETTER F
+  [String.fromCodePoint(0xE0047), '\\\\uDB40\\\\uDC47'], // TAG LATIN CAPITAL LETTER G
+  [String.fromCodePoint(0xE0048), '\\\\uDB40\\\\uDC48'], // TAG LATIN CAPITAL LETTER H
+  [String.fromCodePoint(0xE0049), '\\\\uDB40\\\\uDC49'], // TAG LATIN CAPITAL LETTER I
+  [String.fromCodePoint(0xE004A), '\\\\uDB40\\\\uDC4A'], // TAG LATIN CAPITAL LETTER J
+  [String.fromCodePoint(0xE004B), '\\\\uDB40\\\\uDC4B'], // TAG LATIN CAPITAL LETTER K
+  [String.fromCodePoint(0xE004C), '\\\\uDB40\\\\uDC4C'], // TAG LATIN CAPITAL LETTER L
+  [String.fromCodePoint(0xE004D), '\\\\uDB40\\\\uDC4D'], // TAG LATIN CAPITAL LETTER M
+  [String.fromCodePoint(0xE004E), '\\\\uDB40\\\\uDC4E'], // TAG LATIN CAPITAL LETTER N
+  [String.fromCodePoint(0xE004F), '\\\\uDB40\\\\uDC4F'], // TAG LATIN CAPITAL LETTER O
+  [String.fromCodePoint(0xE0050), '\\\\uDB40\\\\uDC50'], // TAG LATIN CAPITAL LETTER P
+  [String.fromCodePoint(0xE0051), '\\\\uDB40\\\\uDC51'], // TAG LATIN CAPITAL LETTER Q
+  [String.fromCodePoint(0xE0052), '\\\\uDB40\\\\uDC52'], // TAG LATIN CAPITAL LETTER R
+  [String.fromCodePoint(0xE0053), '\\\\uDB40\\\\uDC53'], // TAG LATIN CAPITAL LETTER S
+  [String.fromCodePoint(0xE0054), '\\\\uDB40\\\\uDC54'], // TAG LATIN CAPITAL LETTER T
+  [String.fromCodePoint(0xE0055), '\\\\uDB40\\\\uDC55'], // TAG LATIN CAPITAL LETTER U
+  [String.fromCodePoint(0xE0056), '\\\\uDB40\\\\uDC56'], // TAG LATIN CAPITAL LETTER V
+  [String.fromCodePoint(0xE0057), '\\\\uDB40\\\\uDC57'], // TAG LATIN CAPITAL LETTER W
+  [String.fromCodePoint(0xE0058), '\\\\uDB40\\\\uDC58'], // TAG LATIN CAPITAL LETTER X
+  [String.fromCodePoint(0xE0059), '\\\\uDB40\\\\uDC59'], // TAG LATIN CAPITAL LETTER Y
+  [String.fromCodePoint(0xE005A), '\\\\uDB40\\\\uDC5A'], // TAG LATIN CAPITAL LETTER Z
+  [String.fromCodePoint(0xE005B), '\\\\uDB40\\\\uDC5B'], // TAG LEFT SQUARE BRACKET
+  [String.fromCodePoint(0xE005C), '\\\\uDB40\\\\uDC5C'], // TAG REVERSE SOLIDUS
+  [String.fromCodePoint(0xE005D), '\\\\uDB40\\\\uDC5D'], // TAG RIGHT SQUARE BRACKET
+  [String.fromCodePoint(0xE005E), '\\\\uDB40\\\\uDC5E'], // TAG CIRCUMFLEX ACCENT
+  [String.fromCodePoint(0xE005F), '\\\\uDB40\\\\uDC5F'], // TAG LOW LINE
+  [String.fromCodePoint(0xE0060), '\\\\uDB40\\\\uDC60'], // TAG GRAVE ACCENT
+  [String.fromCodePoint(0xE0061), '\\\\uDB40\\\\uDC61'], // TAG LATIN SMALL LETTER A
+  [String.fromCodePoint(0xE0062), '\\\\uDB40\\\\uDC62'], // TAG LATIN SMALL LETTER B
+  [String.fromCodePoint(0xE0063), '\\\\uDB40\\\\uDC63'], // TAG LATIN SMALL LETTER C
+  [String.fromCodePoint(0xE0064), '\\\\uDB40\\\\uDC64'], // TAG LATIN SMALL LETTER D
+  [String.fromCodePoint(0xE0065), '\\\\uDB40\\\\uDC65'], // TAG LATIN SMALL LETTER E
+  [String.fromCodePoint(0xE0066), '\\\\uDB40\\\\uDC66'], // TAG LATIN SMALL LETTER F
+  [String.fromCodePoint(0xE0067), '\\\\uDB40\\\\uDC67'], // TAG LATIN SMALL LETTER G
+  [String.fromCodePoint(0xE0068), '\\\\uDB40\\\\uDC68'], // TAG LATIN SMALL LETTER H
+  [String.fromCodePoint(0xE0069), '\\\\uDB40\\\\uDC69'], // TAG LATIN SMALL LETTER I
+  [String.fromCodePoint(0xE006A), '\\\\uDB40\\\\uDC6A'], // TAG LATIN SMALL LETTER J
+  [String.fromCodePoint(0xE006B), '\\\\uDB40\\\\uDC6B'], // TAG LATIN SMALL LETTER K
+  [String.fromCodePoint(0xE006C), '\\\\uDB40\\\\uDC6C'], // TAG LATIN SMALL LETTER L
+  [String.fromCodePoint(0xE006D), '\\\\uDB40\\\\uDC6D'], // TAG LATIN SMALL LETTER M
+  [String.fromCodePoint(0xE006E), '\\\\uDB40\\\\uDC6E'], // TAG LATIN SMALL LETTER N
+  [String.fromCodePoint(0xE006F), '\\\\uDB40\\\\uDC6F'], // TAG LATIN SMALL LETTER O
+  [String.fromCodePoint(0xE0070), '\\\\uDB40\\\\uDC70'], // TAG LATIN SMALL LETTER P
+  [String.fromCodePoint(0xE0071), '\\\\uDB40\\\\uDC71'], // TAG LATIN SMALL LETTER Q
+  [String.fromCodePoint(0xE0072), '\\\\uDB40\\\\uDC72'], // TAG LATIN SMALL LETTER R
+  [String.fromCodePoint(0xE0073), '\\\\uDB40\\\\uDC73'], // TAG LATIN SMALL LETTER S
+  [String.fromCodePoint(0xE0074), '\\\\uDB40\\\\uDC74'], // TAG LATIN SMALL LETTER T
+  [String.fromCodePoint(0xE0075), '\\\\uDB40\\\\uDC75'], // TAG LATIN SMALL LETTER U
+  [String.fromCodePoint(0xE0076), '\\\\uDB40\\\\uDC76'], // TAG LATIN SMALL LETTER V
+  [String.fromCodePoint(0xE0077), '\\\\uDB40\\\\uDC77'], // TAG LATIN SMALL LETTER W
+  [String.fromCodePoint(0xE0078), '\\\\uDB40\\\\uDC78'], // TAG LATIN SMALL LETTER X
+  [String.fromCodePoint(0xE0079), '\\\\uDB40\\\\uDC79'], // TAG LATIN SMALL LETTER Y
+  [String.fromCodePoint(0xE007A), '\\\\uDB40\\\\uDC7A'], // TAG LATIN SMALL LETTER Z
+  [String.fromCodePoint(0xE007B), '\\\\uDB40\\\\uDC7B'], // TAG LEFT CURLY BRACKET
+  [String.fromCodePoint(0xE007C), '\\\\uDB40\\\\uDC7C'], // TAG VERTICAL LINE
+  [String.fromCodePoint(0xE007D), '\\\\uDB40\\\\uDC7D'], // TAG RIGHT CURLY BRACKET
+  [String.fromCodePoint(0xE007E), '\\\\uDB40\\\\uDC7E'], // TAG TILDE
+  [String.fromCodePoint(0xE007F), '\\\\uDB40\\\\uDC7F'], // TAG DELETE
   // Variation Selectors (U+FE00-FE0F)
   ['\uFE00', '\\uFE00'], ['\uFE01', '\\uFE01'], ['\uFE02', '\\uFE02'], ['\uFE03', '\\uFE03'],
   ['\uFE04', '\\uFE04'], ['\uFE05', '\\uFE05'], ['\uFE06', '\\uFE06'], ['\uFE07', '\\uFE07'],

@@ -161,6 +161,44 @@ describe('escapeBidi', () => {
     const result = escapeBidi(null);
     assert.strictEqual(result, 'null');
   });
+
+  it('escapes language tag plane U+E0001 (LANGUAGE TAG)', () => {
+    const input = 'Hello' + String.fromCodePoint(0xE0001) + 'World';
+    const result = escapeBidi(input);
+    assert.strictEqual(result, 'Hello\\\\uDB40\\\\uDC01World');
+  });
+
+  it('escapes language tag plane U+E0020 (TAG SPACE)', () => {
+    const input = 'Hello' + String.fromCodePoint(0xE0020) + 'World';
+    const result = escapeBidi(input);
+    assert.strictEqual(result, 'Hello\\\\uDB40\\\\uDC20World');
+  });
+
+  it('escapes language tag plane U+E007E (TAG TILDE)', () => {
+    const input = 'Hello' + String.fromCodePoint(0xE007E) + 'World';
+    const result = escapeBidi(input);
+    assert.strictEqual(result, 'Hello\\\\uDB40\\\\uDC7EWorld');
+  });
+
+  it('escapes musical symbol U+1D175 (Begin Slur)', () => {
+    const input = 'Hello' + String.fromCodePoint(0x1D175) + 'World';
+    const result = escapeBidi(input);
+    assert.strictEqual(result, 'Hello\\\\uD834\\\\uDD75World');
+  });
+
+  it('escapes hostile run_id with multiple language tag plane chars', () => {
+    // Adversarial run_id containing U+E0001, U+E0020, U+E007E
+    const input = 'run' + String.fromCodePoint(0xE0001) + String.fromCodePoint(0xE0020) + 'id' + String.fromCodePoint(0xE007E);
+    const result = escapeBidi(input);
+    // All language tag plane chars should be escaped to visible ASCII
+    assert.ok(result.includes('\\\\uDB40\\\\uDC01'));
+    assert.ok(result.includes('\\\\uDB40\\\\uDC20'));
+    assert.ok(result.includes('\\\\uDB40\\\\uDC7E'));
+    // No raw surrogate pairs should remain
+    assert.strictEqual(result.indexOf(String.fromCodePoint(0xE0001)), -1);
+    assert.strictEqual(result.indexOf(String.fromCodePoint(0xE0020)), -1);
+    assert.strictEqual(result.indexOf(String.fromCodePoint(0xE007E)), -1);
+  });
 });
 
 describe('escapeMarkdown', () => {
