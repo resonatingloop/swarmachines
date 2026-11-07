@@ -18,7 +18,6 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [open] swarmachines-956: Viewer: replay real recorded episode (day-1 checkpoint) — owner: asterion — updated: 2026-11-07T20:35Z
 - [open] swarmachines-19m: Measures and comparison framing for report — owner: caduceus — updated: 2026-11-07T20:35Z
 - [doing] swarmachines-mnp-load-events: load_events hardening (commits 6b51134/b8a5f1b ride PR #5 ancestry + swarmachines-mnp-load-events-hardening-clean branch; NOT PR #16 — gh-verified) — owner: forge — updated: 2026-11-07T20:57Z
-- [doing] T-001: PR #16 merge condition — rebase #2 resolved: head 56389e5 (on master 89e6517, MERGEABLE/CLEAN; suites 61/61 escaping + 122/122 viewer incl. 5 sast-probe tests; sast findings of review 5815211389 fixed) — re-gate (verifier+sast) in flight, then merge-hand — owner: dev — updated: 2026-11-07T22:19Z
 - [open] T-006: integrated freight + ring/peer-mute acceptance commit — exact zero-provider invocation, job release/completion evidence, policy fixture: received information changes a legal decision; PR #19 fix-forward now merged (89e6517), still waits on PR #6 (queued behind forge's in-flight PR#6 fixes) — owner: forge — updated: 2026-11-07T22:51Z
 - [open] T-007: accepted measure definitions — observable-source mapping review — owner: caduceus — updated: 2026-11-07T22:05Z
 - [doing] swarmachines-i3v: DEVELOPMENT.md/AGENTS.md claim stale: no committed automated test suite — owner: forge — updated: 2026-11-07T20:00Z
@@ -30,7 +29,10 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [doing] swarmachines-50u: PR#6 sast MEDIUM: route capacity never decrements (dead pass loop) — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-9p4: PR#6 sast MEDIUM: validate_action rejection reasons echo raw hostile input — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-ysv: PR#6 sast MEDIUM: apply_action fails open on malformed input — owner: forge — updated: 2026-11-07T20:00Z
+- [open] T-009: PR #6 rebase onto master 331a65c — CONFLICTING after #16 landed (head 46d54a3); fold into forge's in-flight #6 fix round — owner: forge — updated: 2026-11-07T23:32Z
 - [open] T-008: PR #20 review gates — observation-only control-plane board (asterion, owner-approved), head a4f97db; review request pinged 22:53Z, verifier+sast pending — owner: pug-bot — updated: 2026-11-07T23:01Z
+
+- [done] T-001: PR #16 merged as 331a65c (head 9652e46; verifier approve 6714061585 + sast pass 6714068290 at head; viewer 127/127; merged by caduceus 23:25Z) — owner: dev — updated: 2026-11-07T23:32Z
 
 ## Done (recent — prune weekly)
 
