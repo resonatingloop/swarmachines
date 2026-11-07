@@ -2,7 +2,7 @@
 
 > continuity role: operational checkpoint
 > status: formal protocol accepted; integrated runtime readiness pending
-> last verified: 2026-11-07 (round-3: all 12 tests pass, stale-report fixed)
+> last verified: 2026-11-07 (PR #5 regression fix: 20/20 tests pass, load_events caps + stale-report validation + peer-mute turn-gating verified)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
