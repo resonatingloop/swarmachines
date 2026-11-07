@@ -19,8 +19,8 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [open] swarmachines-956: Viewer: replay real recorded episode (day-1 checkpoint) — owner: asterion — updated: 2026-11-07T20:35Z
 - [open] swarmachines-19m: Measures and comparison framing for report — owner: caduceus — updated: 2026-11-07T20:35Z
 - [doing] swarmachines-mnp-load-events: load_events hardening (commits 6b51134/b8a5f1b ride PR #5 ancestry + swarmachines-mnp-load-events-hardening-clean branch; NOT PR #16 — gh-verified) — owner: forge — updated: 2026-11-07T20:57Z
-- [doing] swarmachines-9e5: Bidirectional ring topology + peer-mute disturbance — PR #5 (re-gate @ c090ebf: verifier APPROVE, 16/16 tests, determinism byte-identical; merge-ready, rebase optional) — owner: dev — updated: 2026-11-07T21:24Z
-- [blocked] T-001: PR #16 merge condition — AGENTS.md/SWARM.md rewrite (bd → TASKS.md) + PR title amendment needs owner approval (protected-file edit, approval timed out) — owner: telepathicpug — updated: 2026-11-07T21:24Z
+- [doing] T-001: PR #16 merge condition — owner approval RESOLVED (anchored `approved` x2 21:24/21:25Z, verifier APPROVE lifted 21:43Z, revocable until merge); remaining: rebase onto master c55a13e (STATUS.md conflict only), rerun suites + sast anchor, return head sha (caduceus ask 21:49Z, dispatched to dev) — owner: dev — updated: 2026-11-07T21:52Z
+- [doing] T-002: PR #19 fix-forward gates (PR #5 net regression: turn-gating, topology-aware payloads, load_events caps, cwt guard, stale-report) — dual gate vs full regression checklist in flight, no pilot/provider activity on broken semantics — owner: verifier+sast — updated: 2026-11-07T21:52Z
 - [doing] swarmachines-i3v: DEVELOPMENT.md/AGENTS.md claim stale: no committed automated test suite — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-h1m: CLAUDE.md template residue: unfilled placeholders — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-m04: Harden viewer/evidence.js markdown escaping (U+200E/200F, U+061C bidi) — owner: forge — updated: 2026-11-07T20:00Z
@@ -30,10 +30,14 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [doing] swarmachines-50u: PR#6 sast MEDIUM: route capacity never decrements (dead pass loop) — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-9p4: PR#6 sast MEDIUM: validate_action rejection reasons echo raw hostile input — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-ysv: PR#6 sast MEDIUM: apply_action fails open on malformed input — owner: forge — updated: 2026-11-07T20:00Z
+- [doing] T-005: PR #8 (Adaption adapter) gates + live-smoke coordination — PINNED head adf712a (env-only contract enforced, pin audit 8/8 CLEAR); key-holder connectivity proof recorded (1 successful generation, gemma-4-26b-a4b-it); awaiting 4-call smoke at pinned head → merge hand caduceus — owner: pug-bot — updated: 2026-11-07T22:15Z
+- [open] T-006: integrated freight + ring/peer-mute acceptance commit — exact zero-provider invocation, job release/completion evidence, policy fixture: received information changes a legal decision; waits on PR #19 fix-forward + PR #6 — owner: pug-bot (assignee TBD: dev/forge) — updated: 2026-11-07T22:05Z
+- [open] T-007: accepted measure definitions — observable-source mapping review — owner: caduceus — updated: 2026-11-07T22:05Z
 
 ## Done (recent — prune weekly)
 
 - [done] swarmachines-pr18-spec006: PR #18 merged (spec006 acceptance record + atlas @ 70b0421, merge 29d28e2; gates CLEAR/CLEAR pre-merge) — owner: forge — updated: 2026-11-07T21:24Z
+- [done] swarmachines-9e5: Bidirectional ring topology + peer-mute disturbance — PR #5 merged @aa38f63 21:25:12Z (owner direct merge, mid-gate); post-merge third gate found net regression (turn-gating, topology payloads, caps) → fix-forward tracked as T-002 / PR #19 — owner: dev — updated: 2026-11-07T21:52Z
 - [done] swarmachines-crh: Fix PR #6 freight world wiring — owner: forge
 - [done] swarmachines-de5: Push and open PR for bd-cwt-relay-loss-payload — owner: forge
 - [done] swarmachines-jyc: PR #6 hygiene rebase + strip — owner: forge
