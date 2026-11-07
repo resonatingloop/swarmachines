@@ -134,6 +134,13 @@ class CommunicationTopology:
         Check if communication is allowed given topology and active disturbances.
         Returns (allowed, reason) tuple.
         """
+        # Check peer-mute disturbance: muted agent cannot send or receive messages
+        # but can still perform local actions (observe, act)
+        if "peer-mute" in disturbances:
+            mute = disturbances["peer-mute"]
+            if mute.get("active") and mute.get("agent") in (from_agent, to_agent):
+                return False, "agent communication muted"
+
         # Check relay-loss disturbance
         if "relay-loss" in disturbances:
             loss = disturbances["relay-loss"]
@@ -171,6 +178,8 @@ class DisturbanceScheduler:
                     self._apply_relay_loss(config, log, topology, hub)
                 elif kind == "stale-report":
                     self._apply_stale_report(config, log)
+                elif kind == "peer-mute":
+                    self._apply_peer_mute(config, log)
 
     def _apply_relay_loss(self, config: dict, log: EventLog, topology: str, hub: str | None = None) -> None:
         agent = config["agent"]
@@ -219,6 +228,23 @@ class DisturbanceScheduler:
                 },
                 "before": f"message {message_id} claimed {claimed_state}",
                 "after": f"message {message_id} actually {actual_state}",
+            },
+        )
+
+    def _apply_peer_mute(self, config: dict, log: EventLog) -> None:
+        """Apply peer-mute disturbance: mute a fixed agent's communication while local actions continue."""
+        agent = config["agent"]
+        self.active["peer-mute"] = {"agent": agent, "active": True}
+
+        log.append(
+            turn=config["turn"],
+            agent_id=None,
+            event_type="disturbance.applied",
+            payload={
+                "kind": "peer-mute",
+                "detail": {"agent": agent},
+                "before": f"{agent} can send and receive messages",
+                "after": f"{agent} communication muted; local actions (observe, act) continue",
             },
         )
 
@@ -642,6 +668,11 @@ def main():
                 "message_id": parts[2],
                 "claimed_state": parts[3],
                 "actual_state": parts[4] if len(parts) > 4 else "different",
+            }
+        elif parts[0] == "peer-mute" and len(parts) >= 3:
+            disturbance_schedule["peer-mute"] = {
+                "turn": int(parts[1]),
+                "agent": parts[2],
             }
 
     runner = TurnSeamRunner(

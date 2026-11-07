@@ -118,7 +118,7 @@ def test_relay_loss_emits_undelivered():
     
     Path(output).unlink()
     
-    # Find message.sent events at turn >= 2 involving agent c
+    # Find message.sent events at turn >= 2 involving agent 'c'
     sent_events = [e for e in events if e["type"] == "message.sent" and e["turn"] >= 2]
     if not sent_events:
         return False, "No message.sent events found after relay-loss applied"
@@ -136,6 +136,44 @@ def test_relay_loss_emits_undelivered():
             return False, f"undelivered event missing 'reason' field: {ud}"
     
     return True, f"OK: {len(undelivered)} undelivered messages with reasons (relay-loss working)"
+
+
+def test_peer_mute_disturbance():
+    """Test peer-mute disturbance blocks muted agent's communication while local actions continue."""
+    print("Test: peer-mute blocks communication, local actions continue...")
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    
+    # Peer-mute agent 'b' at turn 2
+    run_runner(["--seed", "7", "--turns", "4", "--disturbance", "peer-mute:2:b"], output)
+    events = load_events(output)
+    
+    Path(output).unlink()
+    
+    # Check disturbance.applied event for peer-mute
+    disturbance_events = [e for e in events if e["type"] == "disturbance.applied" and e["payload"].get("kind") == "peer-mute"]
+    if not disturbance_events:
+        return False, "No disturbance.applied(peer-mute) event found"
+    
+    mute_event = disturbance_events[0]
+    if mute_event["payload"]["detail"]["agent"] != "b":
+        return False, f"peer-mute applied to wrong agent: {mute_event}"
+    
+    # Check that undelivered messages exist with peer-mute reason
+    delivered_events = [e for e in events if e["type"] == "message.delivered" and e["turn"] >= 2]
+    undelivered = [e for e in delivered_events if e["payload"].get("status") == "undelivered"]
+    undelivered_muted = [e for e in undelivered if e["payload"].get("reason") == "agent communication muted"]
+    
+    if not undelivered_muted:
+        return False, "No undelivered messages with 'agent communication muted' reason - peer-mute should block and report"
+    
+    # Verify local actions (observe, act) still work for muted agent
+    observe_events = [e for e in events if e["type"] == "observation.recorded" and e["agent_id"] == "b" and e["turn"] >= 2]
+    
+    if not observe_events:
+        return False, "Muted agent 'b' should still perform observe actions"
+    
+    return True, f"OK: peer-mute blocks communication ({len(undelivered_muted)} undelivered), local actions continue"
 
 
 def test_topology_independence():
@@ -473,6 +511,7 @@ def main():
         ("basic_run", test_basic_run),
         ("determinism", test_determinism),
         ("relay_loss_undelivered", test_relay_loss_emits_undelivered),
+        ("peer_mute_disturbance", test_peer_mute_disturbance),
         ("topology_independence", test_topology_independence),
         ("hub_spoke_delivery", test_hub_spoke_cli_delivery),
         ("message_acted_on", test_message_acted_on_emitted),

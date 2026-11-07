@@ -51,8 +51,8 @@
     {
       "if": { "properties": { "type": { "const": "disturbance.applied" } } },
       "then": { "properties": { "payload": { "required": ["kind", "detail"], "properties": {
-        "kind": { "enum": ["relay-loss", "stale-report"] },
-        "detail": { "type": "object", "description": "for relay-loss: {agent, until}; for stale-report: {message_id, claimed_state, actual_state}" }
+        "kind": { "enum": ["relay-loss", "stale-report", "peer-mute"] },
+        "detail": { "type": "object", "description": "for relay-loss: {agent, until}; for stale-report: {message_id, claimed_state, actual_state}; for peer-mute: {agent}" }
       } } } }
     }
   ]
