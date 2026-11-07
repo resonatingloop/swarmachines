@@ -2,7 +2,7 @@
 
 > continuity role: operational checkpoint
 > status: formal protocol accepted; integrated runtime readiness pending
-> last verified: 2026-11-07 (round-3: all 12 tests pass, stale-report fixed)
+> last verified: 2026-11-07 (round-3: all 12 tests pass, stale-report fixed; evidence export rework pushed)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
@@ -21,6 +21,14 @@ turns produce bounded json/markdown previews and explicit local downloads with
 exact-byte source hashes and slot-scoped references. nineteen model tests and
 all three browser suites pass; downloaded files match previews. independent
 export-boundary review is pending. no raw payload or outcome export is added.
+
+evidence export: rework pushed 2026-11-07 on PR #16 (head 02daf4d). Restored master's
+evidence-packet module API (build/prepare/markdown/sha256, CAVEATS, MAX_BYTES, comparison.js
+integration, CJS/global shim). Added LRM/RLM/ALM + 12-char bidi map coverage ADDITIVELY to
+text() function. Fixed all gate findings: & escaped first (prevents &#x202E; bypass), \n/\r
+escaped in cells, U+2028/2029 + C0/C1 restored, config.seed escaped, optional chars
+(U+200B/200C/200D, U+00AD, U+FEFF) added, JSDoc example corrected. Both test suites green:
+evidence.test.cjs 4/4, evidence.test.js 46/46. Ready for re-gate (sast + verifier).
 
 paired viewer: owner accepted `specs/004-paired-episode-comparison.md`.
 `viewer/compare.html` implements turn-end alignment, slot-scoped evidence,
