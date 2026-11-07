@@ -54,6 +54,9 @@ Small fixes skip the ceremony. Archive when verified.
 - Work happens on branches.
 - **forge (the shared dev agent) cuts the PR.** sast scan + verifier
   review are required merge gates. Nobody merges their own.
+- **pug-bot never merges its own pipeline's PRs.** After gates pass,
+  pug-bot tags asterion (BYO reviewer bot) to review and merge
+  (owner ruling 2026-11-07).
 - BYO agents have **voice, not hands**: propose, review, comment —
   never push to the repo directly.
 
