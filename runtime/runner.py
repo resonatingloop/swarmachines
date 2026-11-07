@@ -8,14 +8,18 @@ implements:
 - message lifecycle states + per-agent "was this report in context at turn n?" query
 - two disturbances: relay-loss, stale-report with scheduled application
 - scripted dispatchers + seed control; produces event log
+- freight-in-the-fog world integration (optional)
 """
 
 import hashlib
 import json
 import random
 import re
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+
+from freight_world import FreightWorld
 
 
 class EventLog:
@@ -134,6 +138,14 @@ class CommunicationTopology:
         Check if communication is allowed given topology and active disturbances.
         Returns (allowed, reason) tuple.
         """
+        # Check peer-mute disturbance: muted agent cannot send or receive messages
+        # but can still perform local actions (observe, act)
+        if "peer-mute" in disturbances:
+            mute = disturbances["peer-mute"]
+            muted_agent = mute.get("agent")
+            if muted_agent and (from_agent == muted_agent or to_agent == muted_agent):
+                return False, "agent communication muted"
+
         # Check relay-loss disturbance
         if "relay-loss" in disturbances:
             loss = disturbances["relay-loss"]
@@ -171,6 +183,8 @@ class DisturbanceScheduler:
                     self._apply_relay_loss(config, log)
                 elif kind == "stale-report":
                     self._apply_stale_report(config, log)
+                elif kind == "peer-mute":
+                    self._apply_peer_mute(config, log)
 
     def _apply_relay_loss(self, config: dict, log: EventLog) -> None:
         agent = config["agent"]
@@ -208,6 +222,23 @@ class DisturbanceScheduler:
                 },
                 "before": f"message {message_id} claimed {claimed_state}",
                 "after": f"message {message_id} actually {actual_state}",
+            },
+        )
+
+    def _apply_peer_mute(self, config: dict, log: EventLog) -> None:
+        """Apply peer-mute disturbance: mute a fixed agent's communication while local actions continue."""
+        agent = config["agent"]
+        self.active["peer-mute"] = {"agent": agent, "active": True}
+
+        log.append(
+            turn=config["turn"],
+            agent_id=None,
+            event_type="disturbance.applied",
+            payload={
+                "kind": "peer-mute",
+                "detail": {"agent": agent},
+                "before": f"{agent} can send and receive messages",
+                "after": f"{agent} communication muted; local actions (observe, act) continue",
             },
         )
 
@@ -256,6 +287,13 @@ class Agent:
                  message_store: MessageStore, lifecycle: MessageLifecycle,
                  turn: int, log: EventLog, disturbances: dict) -> None:
         """Exchange phase: send messages to other agents."""
+        # Check if this agent is muted (peer-mute disturbance) - if so, skip all communication
+        if "peer-mute" in disturbances:
+            mute = disturbances["peer-mute"]
+            if mute.get("agent") == self.agent_id:
+                # Muted agent cannot send messages (but can still observe and act)
+                return
+        
         for other in other_agents:
             if other.agent_id == self.agent_id:
                 continue
@@ -576,7 +614,7 @@ def main():
                         help="comma-separated agent ids (alphanumeric + hyphen only)")
     parser.add_argument("--output", type=str, default=None, help="output file path")
     parser.add_argument("--disturbance", type=str, default=None,
-                        help="disturbance spec: relay-loss:2:a or stale-report:2:m-001:closed:open")
+                        help="disturbance spec: relay-loss:2:a or stale-report:2:m-001:closed:open or peer-mute:2:b")
     parser.add_argument("--hub", type=str, default=None, 
                         help="hub agent id for hub-spoke topology")
     parser.add_argument("--delivery-map", type=str, default=None,
@@ -624,6 +662,11 @@ def main():
                 "message_id": parts[2],
                 "claimed_state": parts[3],
                 "actual_state": parts[4] if len(parts) > 4 else "different",
+            }
+        elif parts[0] == "peer-mute" and len(parts) >= 3:
+            disturbance_schedule["peer-mute"] = {
+                "turn": int(parts[1]),
+                "agent": parts[2],
             }
 
     runner = TurnSeamRunner(
