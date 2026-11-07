@@ -144,8 +144,8 @@ def test_topology_independence():
     
     def get_non_comm_events(output_path: str) -> list[dict]:
         events = load_events(output_path)
-        # Exclude communication events AND run.config (which includes topology name)
-        excluded_types = {"message.sent", "message.delivered", "message.seen", "message.acted_on", "run.config"}
+        # Exclude communication events, run.config (includes topology name), and disturbance.applied (describes topology-specific state)
+        excluded_types = {"message.sent", "message.delivered", "message.seen", "message.acted_on", "run.config", "disturbance.applied"}
         return [e for e in events if e["type"] not in excluded_types]
     
     def normalize_event(e: dict) -> dict:
@@ -426,6 +426,43 @@ def test_turns_cap():
     return True, "OK: --turns capped at 100"
 
 
+def test_relay_loss_hub_spoke_payload():
+    """Test relay-loss disturbance.applied payload describes actual hub-spoke topology."""
+    print("Test: relay-loss payload wording for hub-spoke topology...")
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    
+    # Run with hub-spoke topology and relay-loss disturbance
+    run_runner(
+        ["--seed", "42", "--turns", "3", "--disturbance", "relay-loss:2:b", "--topology", "hub-spoke", "--hub", "a"],
+        output
+    )
+    
+    events = load_events(output)
+    Path(output).unlink()
+    
+    # Find the disturbance.applied event for relay-loss
+    disturbance_events = [e for e in events if e["type"] == "disturbance.applied" and e["payload"]["kind"] == "relay-loss"]
+    
+    if not disturbance_events:
+        return False, "No relay-loss disturbance.applied event found"
+    
+    payload = disturbance_events[0]["payload"]
+    after_text = payload.get("after", "")
+    
+    # Verify the payload describes hub-spoke topology, not mesh
+    if "mesh edges" in after_text:
+        return False, f"Payload incorrectly says 'mesh edges' for hub-spoke topology: {after_text}"
+    
+    if "hub-spoke" not in after_text:
+        return False, f"Payload should mention 'hub-spoke' topology: {after_text}"
+    
+    if "via a" not in after_text:
+        return False, f"Payload should reference hub 'a': {after_text}"
+    
+    return True, f"OK: hub-spoke payload correctly describes topology: {after_text}"
+
+
 def main():
     """Run all tests."""
     print("=" * 60)
@@ -445,6 +482,7 @@ def main():
         ("zero_model_calls", test_zero_model_calls),
         ("agent_id_validation", test_agent_id_validation),
         ("turns_cap", test_turns_cap),
+        ("relay_loss_hub_spoke_payload", test_relay_loss_hub_spoke_payload),
     ]
     
     passed = 0
