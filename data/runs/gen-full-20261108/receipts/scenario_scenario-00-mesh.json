@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_scenario-00_mesh",
-  "timestamp": "2026-11-08T03:48:10.407180+00:00",
+  "timestamp": "2026-11-08T03:51:18.235546+00:00",
   "model": "gemma-4-26b-a4b-it",
   "input_tokens": 437,
-  "output_tokens": 751,
-  "total_tokens": 1188,
+  "output_tokens": 822,
+  "total_tokens": 1259,
   "item_path": "data/scenarios/scenario-00-mesh.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:46:25.919311+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
   "run_id": "gen-full-20261108"
 }

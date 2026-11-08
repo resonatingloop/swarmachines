@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_route-gossip_ring",
-  "timestamp": "2026-11-08T03:47:39.029366+00:00",
+  "timestamp": "2026-11-08T03:50:40.586710+00:00",
   "model": "gemma-4-26b-a4b-it",
   "input_tokens": 486,
-  "output_tokens": 656,
-  "total_tokens": 1142,
+  "output_tokens": 772,
+  "total_tokens": 1258,
   "item_path": "data/scenarios/route-gossip-ring.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:46:25.919311+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
   "run_id": "gen-full-20261108"
 }
