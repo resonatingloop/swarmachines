@@ -2,11 +2,24 @@
 
 > continuity role: operational checkpoint
 > status: formal protocol accepted; integrated runtime readiness pending
-> last verified: 2026-11-07 (PR #5 regression fix: 20/20 tests pass, load_events caps + stale-report validation + peer-mute turn-gating verified)
+> last verified: 2026-11-08 (master tip c5899d8 via pr #24: read-only worker receipts projection; verifier clear 48/48 and sast clear)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
 ## verified checkpoint
+
+merge ledger (2026-11-07 23:25z to 2026-11-08 00:52z): master tip is c5899d8
+(pr #24: read-only worker receipts projection; verifier clear 48/48 and sast
+clear). this window also merged pr #16 (331a65c: viewer evidence escaping
+chain, suite 127/127), pr #20 (0d0aee8: control-plane observer board), pr #21
+(46d84a5: prior checkpoint refresh), pr #22 (523ee5d: bounded local delegation
+and investigator trial), pr #23 (984448a: smoke outcome/accounting fix) and
+pr #25 (6bbcf4d: trial-narrative correction). open work: pr #6's fix round
+(freight-world integration, sast findings and rebase fold) is stalled on an
+AGENTS.md protected-file owner approval, and draft pr #26 (ecc948d, spec010
+task-submission workflow) is held for owner review with no merge request and
+zero provider calls; the delegation slice below carries a post-merge sast redo
+tracked as task t-011.
 
 receipt-board slice: owner accepted [spec009](specs/009-worker-receipt-board.md)
 on 2026-11-08. optional read-only worker projection implemented; snapshot v2
@@ -16,13 +29,14 @@ empty storage. real private capture shows four live attempts (two completed,
 two failed), one separate offline proof, 0.4 credits reserved and a known-usage
 subtotal of 0.0016241 credits across 3/4 live attempts. actual billing unknown.
 source queue hashes/sizes and directory inventory stayed unchanged. no provider
-calls. WAL sources are refused rather than risking sidecar writes. independent
-review of this privacy boundary remains pending.
+calls. WAL sources are refused rather than risking sidecar writes. pr #24
+merged as master tip c5899d8 after its verifier (48/48) and sast reviews
+cleared.
 
 smoke outcome correction: failures in calls 2–4 now produce aggregate `error`
 and CLI exit 1; failed call 1 counts its attempted invocation. five offline
 regression tests cover outcomes, counting, exit codes and SDK-free blocked
-behavior. no provider calls in this change. independent review pending;
+behavior. no provider calls in this change. pr #23 merged as 984448a;
 provider retry/configuration behavior remains unchanged.
 
 local delegation slice (2026-11-07): accepted spec008 and owner-approved trial
@@ -41,7 +55,9 @@ fourth was a narrow real-code excerpt with its finding independently checked
 offline. this does not establish broad investigator quality. duplicate replays
 reuse receipts without calls or reservations. bounded status/usage diagnostics
 distinguish response-validation failures without logging provider text. pr #23
-corrects smoke failure status and attempted-call accounting. see
+corrects smoke failure status and attempted-call accounting. a post-merge
+sast review on this slice requested changes; the sanitization respin is
+tracked as task t-011. see
 [delegation operations](control_plane/DELEGATION.md). older evidence below is
 historical, not a current merge ledger.
 
