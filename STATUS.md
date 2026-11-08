@@ -29,7 +29,7 @@
 
 **measurement readiness**: `docs/measurement-readiness.md` documents the policy gate (received context not read by action policy), controlled fixtures at seeds 7/42/101, and field mappings for supported measures. Review pending (TASKS.md: T-007, unclaimed).
 
-**board state** (BEADS_DIR=/workspace/.beads-store, read-only): 21 issues total (9 open, 12 in progress). Key unclaimed items: swarmachines-m9p (report skeleton), swarmachines-956 (viewer replay), swarmachines-19m (measures framing), T-007 (measure definitions review).
+**board state** (BEADS_DIR=/workspace/.beads-store, read-only, snapshot 05:11Z): 10 issues total (8 open, 2 in progress).
 
 **open PRs**: 0 (all merged or closed).
 
