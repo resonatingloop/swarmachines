@@ -135,7 +135,7 @@
 {"run_id":"run-seed0042","seq":134,"turn":5,"agent_id":"b","type":"message.acted_on","ts":"2026-11-07T14:31:18Z","payload":{"message_id":"m-c009","relation":"informed"}}
 {"run_id":"run-seed0042","seq":135,"turn":5,"agent_id":"a","type":"action.proposed","ts":"2026-11-07T14:30:56Z","payload":{"action_id":"act-a05","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":136,"turn":5,"agent_id":"a","type":"action.validated","ts":"2026-11-07T14:30:57Z","payload":{"action_id":"act-a05","legal":true}}
-{"run_id":"run-seed0042","seq":137,"turn":5,"agent_id":"a","type":"action.rejected","ts":"2026-11-07T14:30:58Z","payload":{"action_id":"act-a05","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":137,"turn":5,"agent_id":"a","type":"action.committed","ts":"2026-11-07T14:30:58Z","payload":{"action_id":"act-a05","result":"no-op"}}
 {"run_id":"run-seed0042","seq":138,"turn":5,"agent_id":"b","type":"action.proposed","ts":"2026-11-07T14:30:59Z","payload":{"action_id":"act-b05","kind":"route_freight","freight_id":"f-002","freight_type":"supplies","via":"east->relay-a"}}
 {"run_id":"run-seed0042","seq":139,"turn":5,"agent_id":"b","type":"action.validated","ts":"2026-11-07T14:31:00Z","payload":{"action_id":"act-b05","legal":true}}
 {"run_id":"run-seed0042","seq":140,"turn":5,"agent_id":"b","type":"action.committed","ts":"2026-11-07T14:31:01Z","payload":{"action_id":"act-b05","what":"freight moved","freight_id":"f-002","from":"east","to":"relay-a","new_state":"in-transit"}}
@@ -165,14 +165,14 @@
 {"run_id":"run-seed0042","seq":164,"turn":6,"agent_id":"c","type":"message.acted_on","ts":"2026-11-07T14:31:32Z","payload":{"message_id":"m-d005","relation":"informed"}}
 {"run_id":"run-seed0042","seq":165,"turn":6,"agent_id":"a","type":"action.proposed","ts":"2026-11-07T14:31:12Z","payload":{"action_id":"act-a06","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":166,"turn":6,"agent_id":"a","type":"action.validated","ts":"2026-11-07T14:31:13Z","payload":{"action_id":"act-a06","legal":true}}
-{"run_id":"run-seed0042","seq":167,"turn":6,"agent_id":"a","type":"action.rejected","ts":"2026-11-07T14:31:14Z","payload":{"action_id":"act-a06","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":167,"turn":6,"agent_id":"a","type":"action.committed","ts":"2026-11-07T14:31:14Z","payload":{"action_id":"act-a06","result":"no-op"}}
 {"run_id":"run-seed0042","seq":168,"turn":6,"agent_id":"b","type":"action.proposed","ts":"2026-11-07T14:31:15Z","payload":{"action_id":"act-b06","kind":"route_freight","freight_id":"f-001","freight_type":"med-kit","via":"east->relay-a"}}
 {"run_id":"run-seed0042","seq":169,"turn":6,"agent_id":"b","type":"action.validated","ts":"2026-11-07T14:31:16Z","payload":{"action_id":"act-b06","legal":true}}
 {"run_id":"run-seed0042","seq":170,"turn":6,"agent_id":"b","type":"action.committed","ts":"2026-11-07T14:31:17Z","payload":{"action_id":"act-b06","what":"freight moved","freight_id":"f-001","from":"east","to":"relay-a","new_state":"in-transit"}}
 {"run_id":"run-seed0042","seq":171,"turn":6,"agent_id":"b","type":"world.changed","ts":"2026-11-07T14:31:18Z","payload":{"what":"freight f-001 moved","effect":"freight routed","visibility":"all agents"}}
 {"run_id":"run-seed0042","seq":172,"turn":6,"agent_id":"c","type":"action.proposed","ts":"2026-11-07T14:31:19Z","payload":{"action_id":"act-c06","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":173,"turn":6,"agent_id":"c","type":"action.validated","ts":"2026-11-07T14:31:20Z","payload":{"action_id":"act-c06","legal":true}}
-{"run_id":"run-seed0042","seq":174,"turn":6,"agent_id":"c","type":"action.rejected","ts":"2026-11-07T14:31:21Z","payload":{"action_id":"act-c06","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":174,"turn":6,"agent_id":"c","type":"action.committed","ts":"2026-11-07T14:31:21Z","payload":{"action_id":"act-c06","result":"no-op"}}
 {"run_id":"run-seed0042","seq":175,"turn":7,"agent_id":null,"type":"turn.begin","ts":"2026-11-07T14:31:22Z","payload":{}}
 {"run_id":"run-seed0042","seq":176,"turn":7,"agent_id":"a","type":"observation.recorded","ts":"2026-11-07T14:31:23Z","payload":{"visible":{"current_location":"west","visible_freight":[],"adjacent_locations":["east","relay-a","south"],"known_routes":{"west->east":"open","west->south":"open","west->relay-a":"open"},"turn":7}}}
 {"run_id":"run-seed0042","seq":177,"turn":7,"agent_id":"b","type":"observation.recorded","ts":"2026-11-07T14:31:24Z","payload":{"visible":{"current_location":"east","visible_freight":[],"adjacent_locations":["relay-a","south","west"],"known_routes":{"east->west":"open","east->south":"open","east->relay-a":"open"},"turn":7}}}
@@ -190,7 +190,7 @@
 {"run_id":"run-seed0042","seq":189,"turn":7,"agent_id":"b","type":"message.acted_on","ts":"2026-11-07T14:31:42Z","payload":{"message_id":"m-d006","relation":"informed"}}
 {"run_id":"run-seed0042","seq":190,"turn":7,"agent_id":"b","type":"action.proposed","ts":"2026-11-07T14:31:27Z","payload":{"action_id":"act-b07","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":191,"turn":7,"agent_id":"b","type":"action.validated","ts":"2026-11-07T14:31:28Z","payload":{"action_id":"act-b07","legal":true}}
-{"run_id":"run-seed0042","seq":192,"turn":7,"agent_id":"b","type":"action.rejected","ts":"2026-11-07T14:31:29Z","payload":{"action_id":"act-b07","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":192,"turn":7,"agent_id":"b","type":"action.committed","ts":"2026-11-07T14:31:29Z","payload":{"action_id":"act-b07","result":"no-op"}}
 {"run_id":"run-seed0042","seq":193,"turn":7,"agent_id":"d","type":"action.proposed","ts":"2026-11-07T14:31:30Z","payload":{"action_id":"act-d07","kind":"route_freight","freight_id":"f-001","freight_type":"med-kit","via":"relay-a->east"}}
 {"run_id":"run-seed0042","seq":194,"turn":7,"agent_id":"d","type":"action.validated","ts":"2026-11-07T14:31:31Z","payload":{"action_id":"act-d07","legal":true}}
 {"run_id":"run-seed0042","seq":195,"turn":7,"agent_id":"d","type":"action.committed","ts":"2026-11-07T14:31:32Z","payload":{"action_id":"act-d07","what":"freight moved","freight_id":"f-001","from":"relay-a","to":"east","new_state":"in-transit"}}
@@ -239,7 +239,7 @@
 {"run_id":"run-seed0042","seq":238,"turn":9,"agent_id":"c","type":"message.delivered","ts":"2026-11-07T14:32:09Z","payload":{"message_id":"m-d010","to":"c","status":"undelivered","reason":"agent unreachable"}}
 {"run_id":"run-seed0042","seq":239,"turn":9,"agent_id":"b","type":"action.proposed","ts":"2026-11-07T14:31:49Z","payload":{"action_id":"act-b09","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":240,"turn":9,"agent_id":"b","type":"action.validated","ts":"2026-11-07T14:31:50Z","payload":{"action_id":"act-b09","legal":true}}
-{"run_id":"run-seed0042","seq":241,"turn":9,"agent_id":"b","type":"action.rejected","ts":"2026-11-07T14:31:51Z","payload":{"action_id":"act-b09","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":241,"turn":9,"agent_id":"b","type":"action.committed","ts":"2026-11-07T14:31:51Z","payload":{"action_id":"act-b09","result":"no-op"}}
 {"run_id":"run-seed0042","seq":242,"turn":10,"agent_id":null,"type":"turn.begin","ts":"2026-11-07T14:31:52Z","payload":{}}
 {"run_id":"run-seed0042","seq":243,"turn":10,"agent_id":"a","type":"observation.recorded","ts":"2026-11-07T14:31:53Z","payload":{"visible":{"current_location":"west","visible_freight":[],"adjacent_locations":["east","relay-a","south"],"known_routes":{"west->east":"open","west->south":"open","west->relay-a":"open"},"turn":10}}}
 {"run_id":"run-seed0042","seq":244,"turn":10,"agent_id":"b","type":"observation.recorded","ts":"2026-11-07T14:31:54Z","payload":{"visible":{"current_location":"east","visible_freight":[],"adjacent_locations":["relay-a","south","west"],"known_routes":{"east->west":"open","east->south":"open","east->relay-a":"open"},"turn":10}}}
@@ -258,7 +258,7 @@
 {"run_id":"run-seed0042","seq":257,"turn":10,"agent_id":"c","type":"message.delivered","ts":"2026-11-07T14:32:20Z","payload":{"message_id":"m-d012","to":"c","status":"undelivered","reason":"agent unreachable"}}
 {"run_id":"run-seed0042","seq":258,"turn":10,"agent_id":"c","type":"action.proposed","ts":"2026-11-07T14:31:57Z","payload":{"action_id":"act-c10","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":259,"turn":10,"agent_id":"c","type":"action.validated","ts":"2026-11-07T14:31:58Z","payload":{"action_id":"act-c10","legal":true}}
-{"run_id":"run-seed0042","seq":260,"turn":10,"agent_id":"c","type":"action.rejected","ts":"2026-11-07T14:31:59Z","payload":{"action_id":"act-c10","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":260,"turn":10,"agent_id":"c","type":"action.committed","ts":"2026-11-07T14:31:59Z","payload":{"action_id":"act-c10","result":"no-op"}}
 {"run_id":"run-seed0042","seq":261,"turn":11,"agent_id":null,"type":"turn.begin","ts":"2026-11-07T14:32:00Z","payload":{}}
 {"run_id":"run-seed0042","seq":262,"turn":11,"agent_id":"a","type":"observation.recorded","ts":"2026-11-07T14:32:01Z","payload":{"visible":{"current_location":"west","visible_freight":[],"adjacent_locations":["east","relay-a","south"],"known_routes":{"west->east":"open","west->south":"open","west->relay-a":"open"},"turn":11}}}
 {"run_id":"run-seed0042","seq":263,"turn":11,"agent_id":"b","type":"observation.recorded","ts":"2026-11-07T14:32:02Z","payload":{"visible":{"current_location":"east","visible_freight":[],"adjacent_locations":["relay-a","south","west"],"known_routes":{"east->west":"open","east->south":"open","east->relay-a":"open"},"turn":11}}}
@@ -276,7 +276,7 @@
 {"run_id":"run-seed0042","seq":275,"turn":11,"agent_id":"a","type":"message.acted_on","ts":"2026-11-07T14:32:30Z","payload":{"message_id":"m-d013","relation":"informed"}}
 {"run_id":"run-seed0042","seq":276,"turn":11,"agent_id":"c","type":"action.proposed","ts":"2026-11-07T14:32:05Z","payload":{"action_id":"act-c11","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":277,"turn":11,"agent_id":"c","type":"action.validated","ts":"2026-11-07T14:32:06Z","payload":{"action_id":"act-c11","legal":true}}
-{"run_id":"run-seed0042","seq":278,"turn":11,"agent_id":"c","type":"action.rejected","ts":"2026-11-07T14:32:07Z","payload":{"action_id":"act-c11","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":278,"turn":11,"agent_id":"c","type":"action.committed","ts":"2026-11-07T14:32:07Z","payload":{"action_id":"act-c11","result":"no-op"}}
 {"run_id":"run-seed0042","seq":279,"turn":11,"agent_id":"d","type":"action.proposed","ts":"2026-11-07T14:32:08Z","payload":{"action_id":"act-d11","kind":"route_freight","freight_id":"f-001","freight_type":"med-kit","via":"relay-a->east"}}
 {"run_id":"run-seed0042","seq":280,"turn":11,"agent_id":"d","type":"action.validated","ts":"2026-11-07T14:32:09Z","payload":{"action_id":"act-d11","legal":true}}
 {"run_id":"run-seed0042","seq":281,"turn":11,"agent_id":"d","type":"action.committed","ts":"2026-11-07T14:32:10Z","payload":{"action_id":"act-d11","what":"freight moved","freight_id":"f-001","from":"relay-a","to":"east","new_state":"in-transit"}}
@@ -304,14 +304,14 @@
 {"run_id":"run-seed0042","seq":303,"turn":12,"agent_id":"b","type":"message.acted_on","ts":"2026-11-07T14:32:46Z","payload":{"message_id":"m-d015","relation":"informed"}}
 {"run_id":"run-seed0042","seq":304,"turn":12,"agent_id":"a","type":"action.proposed","ts":"2026-11-07T14:32:17Z","payload":{"action_id":"act-a12","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":305,"turn":12,"agent_id":"a","type":"action.validated","ts":"2026-11-07T14:32:18Z","payload":{"action_id":"act-a12","legal":true}}
-{"run_id":"run-seed0042","seq":306,"turn":12,"agent_id":"a","type":"action.rejected","ts":"2026-11-07T14:32:19Z","payload":{"action_id":"act-a12","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":306,"turn":12,"agent_id":"a","type":"action.committed","ts":"2026-11-07T14:32:19Z","payload":{"action_id":"act-a12","result":"no-op"}}
 {"run_id":"run-seed0042","seq":307,"turn":12,"agent_id":"b","type":"action.proposed","ts":"2026-11-07T14:32:20Z","payload":{"action_id":"act-b12","kind":"route_freight","freight_id":"f-001","freight_type":"med-kit","via":"east->relay-a"}}
 {"run_id":"run-seed0042","seq":308,"turn":12,"agent_id":"b","type":"action.validated","ts":"2026-11-07T14:32:21Z","payload":{"action_id":"act-b12","legal":true}}
 {"run_id":"run-seed0042","seq":309,"turn":12,"agent_id":"b","type":"action.committed","ts":"2026-11-07T14:32:22Z","payload":{"action_id":"act-b12","what":"freight moved","freight_id":"f-001","from":"east","to":"relay-a","new_state":"in-transit"}}
 {"run_id":"run-seed0042","seq":310,"turn":12,"agent_id":"b","type":"world.changed","ts":"2026-11-07T14:32:23Z","payload":{"what":"freight f-001 moved","effect":"freight routed","visibility":"all agents"}}
 {"run_id":"run-seed0042","seq":311,"turn":12,"agent_id":"c","type":"action.proposed","ts":"2026-11-07T14:32:24Z","payload":{"action_id":"act-c12","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":312,"turn":12,"agent_id":"c","type":"action.validated","ts":"2026-11-07T14:32:25Z","payload":{"action_id":"act-c12","legal":true}}
-{"run_id":"run-seed0042","seq":313,"turn":12,"agent_id":"c","type":"action.rejected","ts":"2026-11-07T14:32:26Z","payload":{"action_id":"act-c12","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":313,"turn":12,"agent_id":"c","type":"action.committed","ts":"2026-11-07T14:32:26Z","payload":{"action_id":"act-c12","result":"no-op"}}
 {"run_id":"run-seed0042","seq":314,"turn":13,"agent_id":null,"type":"turn.begin","ts":"2026-11-07T14:32:27Z","payload":{}}
 {"run_id":"run-seed0042","seq":315,"turn":13,"agent_id":"a","type":"observation.recorded","ts":"2026-11-07T14:32:28Z","payload":{"visible":{"current_location":"west","visible_freight":[],"adjacent_locations":["east","relay-a","south"],"known_routes":{"west->east":"open","west->south":"open","west->relay-a":"open"},"turn":13}}}
 {"run_id":"run-seed0042","seq":316,"turn":13,"agent_id":"b","type":"observation.recorded","ts":"2026-11-07T14:32:29Z","payload":{"visible":{"current_location":"east","visible_freight":[],"adjacent_locations":["relay-a","south","west"],"known_routes":{"east->west":"open","east->south":"open","east->relay-a":"open"},"turn":13}}}
@@ -330,10 +330,10 @@
 {"run_id":"run-seed0042","seq":329,"turn":13,"agent_id":"a","type":"message.seen","ts":"2026-11-07T14:32:57Z","payload":{"message_id":"m-d016","in_context_at_turn":13}}
 {"run_id":"run-seed0042","seq":330,"turn":13,"agent_id":"a","type":"action.proposed","ts":"2026-11-07T14:32:32Z","payload":{"action_id":"act-a13","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":331,"turn":13,"agent_id":"a","type":"action.validated","ts":"2026-11-07T14:32:33Z","payload":{"action_id":"act-a13","legal":true}}
-{"run_id":"run-seed0042","seq":332,"turn":13,"agent_id":"a","type":"action.rejected","ts":"2026-11-07T14:32:34Z","payload":{"action_id":"act-a13","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":332,"turn":13,"agent_id":"a","type":"action.committed","ts":"2026-11-07T14:32:34Z","payload":{"action_id":"act-a13","result":"no-op"}}
 {"run_id":"run-seed0042","seq":333,"turn":13,"agent_id":"b","type":"action.proposed","ts":"2026-11-07T14:32:35Z","payload":{"action_id":"act-b13","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":334,"turn":13,"agent_id":"b","type":"action.validated","ts":"2026-11-07T14:32:36Z","payload":{"action_id":"act-b13","legal":true}}
-{"run_id":"run-seed0042","seq":335,"turn":13,"agent_id":"b","type":"action.rejected","ts":"2026-11-07T14:32:37Z","payload":{"action_id":"act-b13","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":335,"turn":13,"agent_id":"b","type":"action.committed","ts":"2026-11-07T14:32:37Z","payload":{"action_id":"act-b13","result":"no-op"}}
 {"run_id":"run-seed0042","seq":336,"turn":14,"agent_id":null,"type":"turn.begin","ts":"2026-11-07T14:32:38Z","payload":{}}
 {"run_id":"run-seed0042","seq":337,"turn":14,"agent_id":"a","type":"observation.recorded","ts":"2026-11-07T14:32:39Z","payload":{"visible":{"current_location":"west","visible_freight":[],"adjacent_locations":["east","relay-a","south"],"known_routes":{"west->east":"open","west->south":"open","west->relay-a":"open"},"turn":14}}}
 {"run_id":"run-seed0042","seq":338,"turn":14,"agent_id":"b","type":"observation.recorded","ts":"2026-11-07T14:32:40Z","payload":{"visible":{"current_location":"east","visible_freight":[],"adjacent_locations":["relay-a","south","west"],"known_routes":{"east->west":"open","east->south":"open","east->relay-a":"open"},"turn":14}}}
@@ -360,10 +360,10 @@
 {"run_id":"run-seed0042","seq":359,"turn":14,"agent_id":"c","type":"message.delivered","ts":"2026-11-07T14:33:16Z","payload":{"message_id":"m-d018","to":"c","status":"undelivered","reason":"agent unreachable"}}
 {"run_id":"run-seed0042","seq":360,"turn":14,"agent_id":"a","type":"action.proposed","ts":"2026-11-07T14:32:43Z","payload":{"action_id":"act-a14","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":361,"turn":14,"agent_id":"a","type":"action.validated","ts":"2026-11-07T14:32:44Z","payload":{"action_id":"act-a14","legal":true}}
-{"run_id":"run-seed0042","seq":362,"turn":14,"agent_id":"a","type":"action.rejected","ts":"2026-11-07T14:32:45Z","payload":{"action_id":"act-a14","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":362,"turn":14,"agent_id":"a","type":"action.committed","ts":"2026-11-07T14:32:45Z","payload":{"action_id":"act-a14","result":"no-op"}}
 {"run_id":"run-seed0042","seq":363,"turn":14,"agent_id":"c","type":"action.proposed","ts":"2026-11-07T14:32:46Z","payload":{"action_id":"act-c14","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":364,"turn":14,"agent_id":"c","type":"action.validated","ts":"2026-11-07T14:32:47Z","payload":{"action_id":"act-c14","legal":true}}
-{"run_id":"run-seed0042","seq":365,"turn":14,"agent_id":"c","type":"action.rejected","ts":"2026-11-07T14:32:48Z","payload":{"action_id":"act-c14","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":365,"turn":14,"agent_id":"c","type":"action.committed","ts":"2026-11-07T14:32:48Z","payload":{"action_id":"act-c14","result":"no-op"}}
 {"run_id":"run-seed0042","seq":366,"turn":15,"agent_id":null,"type":"turn.begin","ts":"2026-11-07T14:32:49Z","payload":{}}
 {"run_id":"run-seed0042","seq":367,"turn":15,"agent_id":"a","type":"observation.recorded","ts":"2026-11-07T14:32:50Z","payload":{"visible":{"current_location":"west","visible_freight":[],"adjacent_locations":["east","relay-a","south"],"known_routes":{"west->east":"open","west->south":"open","west->relay-a":"open"},"turn":15}}}
 {"run_id":"run-seed0042","seq":368,"turn":15,"agent_id":"b","type":"observation.recorded","ts":"2026-11-07T14:32:51Z","payload":{"visible":{"current_location":"east","visible_freight":[],"adjacent_locations":["relay-a","south","west"],"known_routes":{"east->west":"open","east->south":"open","east->relay-a":"open"},"turn":15}}}
@@ -383,10 +383,10 @@
 {"run_id":"run-seed0042","seq":382,"turn":15,"agent_id":"c","type":"message.delivered","ts":"2026-11-07T14:33:28Z","payload":{"message_id":"m-d019","to":"c","status":"undelivered","reason":"agent unreachable"}}
 {"run_id":"run-seed0042","seq":383,"turn":15,"agent_id":"b","type":"action.proposed","ts":"2026-11-07T14:32:54Z","payload":{"action_id":"act-b15","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":384,"turn":15,"agent_id":"b","type":"action.validated","ts":"2026-11-07T14:32:55Z","payload":{"action_id":"act-b15","legal":true}}
-{"run_id":"run-seed0042","seq":385,"turn":15,"agent_id":"b","type":"action.rejected","ts":"2026-11-07T14:32:56Z","payload":{"action_id":"act-b15","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":385,"turn":15,"agent_id":"b","type":"action.committed","ts":"2026-11-07T14:32:56Z","payload":{"action_id":"act-b15","result":"no-op"}}
 {"run_id":"run-seed0042","seq":386,"turn":15,"agent_id":"c","type":"action.proposed","ts":"2026-11-07T14:32:57Z","payload":{"action_id":"act-c15","kind":"route_freight","freight_id":"none"}}
 {"run_id":"run-seed0042","seq":387,"turn":15,"agent_id":"c","type":"action.validated","ts":"2026-11-07T14:32:58Z","payload":{"action_id":"act-c15","legal":true}}
-{"run_id":"run-seed0042","seq":388,"turn":15,"agent_id":"c","type":"action.rejected","ts":"2026-11-07T14:32:59Z","payload":{"action_id":"act-c15","reason":"apply failed"}}
+{"run_id":"run-seed0042","seq":388,"turn":15,"agent_id":"c","type":"action.committed","ts":"2026-11-07T14:32:59Z","payload":{"action_id":"act-c15","result":"no-op"}}
 {"run_id":"run-seed0042","seq":389,"turn":15,"agent_id":"d","type":"action.proposed","ts":"2026-11-07T14:33:00Z","payload":{"action_id":"act-d15","kind":"route_freight","freight_id":"f-001","freight_type":"med-kit","via":"relay-a->east"}}
 {"run_id":"run-seed0042","seq":390,"turn":15,"agent_id":"d","type":"action.validated","ts":"2026-11-07T14:33:01Z","payload":{"action_id":"act-d15","legal":true}}
 {"run_id":"run-seed0042","seq":391,"turn":15,"agent_id":"d","type":"action.committed","ts":"2026-11-07T14:33:02Z","payload":{"action_id":"act-d15","what":"freight moved","freight_id":"f-001","from":"relay-a","to":"east","new_state":"in-transit"}}
@@ -403,4 +403,4 @@
 {"run_id":"run-seed0042","seq":402,"turn":16,"agent_id":"d","type":"message.sent","ts":"2026-11-07T14:33:33Z","payload":{"message_id":"m-d020","from":"d","to":"b","body_ref":"messages/m-d020.txt"}}
 {"run_id":"run-seed0042","seq":403,"turn":16,"agent_id":"b","type":"message.delivered","ts":"2026-11-07T14:33:34Z","payload":{"message_id":"m-d020","to":"b","status":"delivered"}}
 {"run_id":"run-seed0042","seq":404,"turn":16,"agent_id":"b","type":"message.seen","ts":"2026-11-07T14:33:35Z","payload":{"message_id":"m-d020","in_context_at_turn":16}}
-{"run_id":"run-seed0042","seq":405,"turn":16,"agent_id":null,"type":"run.end","ts":"2026-11-07T14:33:09Z","payload":{"deliveries_completed":1,"deliveries_stuck":0,"recovery_interval_turns":16}}
+{"run_id":"run-seed0042","seq":405,"turn":16,"agent_id":null,"type":"run.end","ts":"2026-11-07T14:33:09Z","payload":{"recovery_interval_turns":16}}
