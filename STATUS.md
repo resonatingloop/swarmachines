@@ -2,7 +2,7 @@
 
 > continuity role: operational checkpoint
 > status: formal protocol accepted; integrated runtime readiness pending
-> last verified: 2026-11-08 (master tip c5899d8 via pr #24: read-only worker receipts projection; verifier clear 48/48 and sast clear)
+> last verified: 2026-11-08 (master tip 3a95bb0 via pr #31: docs-only measurement mapping; runtime suite 24/24 and control_plane 65/65 re-run at this tip)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
@@ -14,22 +14,25 @@ route-gossip-v1: accepted spec011 implemented on merged freight runtime `7103ac0
 
 measurement readiness: [pinned source mapping](docs/measurement-readiness.md) records the pr #29 policy gate: received context is not read by the action policy. controlled fixtures at seeds 7/42/101 preserve all action events and final counts when context changes. mapping review remains pending; no formal runs or analyzer implementation authorized by this observation.
 
-merge ledger (2026-11-07 23:25z to 2026-11-08 00:52z): master tip is c5899d8
-(pr #24: read-only worker receipts projection; verifier clear 48/48 and sast
-clear). this window also merged pr #16 (331a65c: viewer evidence escaping
-chain, suite 127/127), pr #20 (0d0aee8: control-plane observer board), pr #21
-(46d84a5: prior checkpoint refresh), pr #22 (523ee5d: bounded local delegation
-and investigator trial), pr #23 (984448a: smoke outcome/accounting fix) and
-pr #25 (6bbcf4d: trial-narrative correction). open work: pr #6's fix round
-(freight-world integration, sast findings and rebase fold) is stalled on an
-AGENTS.md protected-file owner approval, and draft pr #26 (ecc948d, spec010
-task-submission workflow) is held for owner review with no merge request and
-zero provider calls; the delegation slice below carries a post-merge sast redo
-tracked as task t-011.
+merge ledger (2026-11-07 23:25z to 2026-11-08 02:43z): master tip is 3a95bb0
+(pr #31: docs-only measurement-readiness mapping). this window also merged
+pr #16 (331a65c: viewer evidence escaping chain, suite 127/127), pr #20
+(0d0aee8: control-plane observer board), pr #21 (46d84a5: prior checkpoint
+refresh), pr #22 (523ee5d: bounded local delegation and investigator trial),
+pr #23 (984448a: smoke outcome/accounting fix), pr #24 (c5899d8: read-only
+worker receipts projection), pr #25 (6bbcf4d: trial-narrative correction),
+pr #29 (7103ac0: freight-world wiring day-1 slice) and pr #26 (e3b7fa8:
+spec010 task-submission workflow, owner-authorized with the independent
+verifier and code-quality review recorded as explicit post-merge
+fix-forward). open work: pr #6 (freight-world integration) remains open,
+last updated 2026-11-07 23:57z; the delegation slice below carries a
+post-merge sast redo tracked as task t-011.
 
 spec010 session planning: [spec010](specs/010-explicit-task-submission.md) drafts explicit
 prepare/inspect/submit and post-run capture within a persistent named paid session.
-implementation and session approval are separate gates; neither has started.
+implementation and session approval are separate gates; the implementation merged
+via pr #26 (see the explicit submission slice below), while independent post-merge
+review remains pending.
 explicit submission slice: owner accepted spec010 and raised the new session
 ceiling to 2 credits; the implementation supports up to 20 requests at 0.1
 credits reserved each, one worker and no automatic retries. pinned-source packet
@@ -139,7 +142,8 @@ from openspec change `add-turn-seam-event-log`. the runner is scripted
 (zero model calls), replay-deterministic (same seed → byte-identical logs),
 and implements the fixed turn cycle observe→exchange→act→record.
 
-test suite (runtime/test_runner.py): 20/20 pass
+test suite (runtime/test_runner.py): 24/24 pass (re-verified 2026-11-08 at
+master tip 3a95bb0; the four freight-wiring tests below were added by pr #29)
 - basic run produces valid event log with all required types
 - determinism: same seed produces byte-identical output
 - relay-loss disturbance applied and logged correctly with undelivered messages
@@ -252,7 +256,8 @@ the proposal was unchanged by the bootstrap.
 
 ## next useful action
 
-independently review pr #26 at its final implementation head. the spec010
+complete the post-merge verifier and code-quality review of merged pr #26
+(e3b7fa8) per its recorded owner mandate. the spec010
 submission workflow is implemented and tested; explicit tasks in the authorized
 read-only session may use its remaining allowance (1/20 used, 0.1 reserved,
 0.0003147 estimated); no automatic loop, task-purpose expansion or new budget
