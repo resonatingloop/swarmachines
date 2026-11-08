@@ -27,6 +27,7 @@ PRODUCERS = {
     "a860c8e65b1add160e8210f4f8fd53d85dff8e49860a1d92e740cb30cb09b2f0",  # spec010: persisted session policy
     "aac56334783a7c7f230dfec5a9c7955375073f9008fb9fdee2f81f4492eaaf62",
     "47553b9faf78c0de5b491376abc5248cc18e4542bc430334f7ac667de3465175",
+    "3cf60e688de7dbc2fda858b59fb1ab6994a134c391c5d991a82065ab8a01e567",  # sanitized model/usage receipts
 }
 COLUMNS = {
     "budget": ["id", "requests", "reserved_micro"],

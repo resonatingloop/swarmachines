@@ -246,6 +246,144 @@ class DelegationTests(unittest.TestCase):
         ):
             d.adaption_worker(packet())
 
+    def test_incomplete_response_keeps_bounded_diagnostics_channel(self):
+        """The failure path must still carry fixed codes and bounded diagnostics."""
+        client = MagicMock()
+        client.responses.create.return_value = SimpleNamespace(
+            status="incomplete", output_text="partial"
+        )
+        sdk = MagicMock()
+        sdk.Adaption.return_value.__enter__.return_value = client
+        with (
+            patch.dict("sys.modules", {"adaption": sdk, "httpx": MagicMock()}),
+            self.assertRaises(d.ProviderResponseError) as caught,
+        ):
+            d.adaption_worker(packet())
+        self.assertEqual(caught.exception.code, "response_not_completed")
+        self.assertEqual(caught.exception.diagnostics["status"], "incomplete")
+
+    def test_hostile_model_string_records_as_unknown(self):
+        """Hostile/garbage model strings must not flow into persisted receipts."""
+        for hostile_model in [
+            "glm-53-flash\ninjected",  # newline injection
+            "glm-53-flash\x00\x1f",  # unicode control chars
+            "x" * 250,  # >200 chars
+            "gpt-4",  # different model
+            "",  # empty
+            "<script>alert(1)</script>",  # XSS attempt
+        ]:
+            client = MagicMock()
+            client.responses.create.return_value = SimpleNamespace(
+                status="completed",
+                output_text="advisory finding",
+                model=hostile_model,
+                usage=SimpleNamespace(input_tokens=10, output_tokens=5),
+            )
+            sdk = MagicMock()
+            sdk.Adaption.return_value.__enter__.return_value = client
+            with patch.dict("sys.modules", {"adaption": sdk, "httpx": MagicMock()}):
+                result = d.adaption_worker(packet())
+            self.assertEqual(
+                result["model"],
+                "unknown",
+                f"hostile model {hostile_model!r} should be sanitized",
+            )
+
+    def test_valid_model_records_correctly(self):
+        """The fixed MODEL constant should be recorded verbatim."""
+        client = MagicMock()
+        client.responses.create.return_value = SimpleNamespace(
+            status="completed",
+            output_text="advisory finding",
+            model=d.MODEL,
+            usage=SimpleNamespace(input_tokens=10, output_tokens=5),
+        )
+        sdk = MagicMock()
+        sdk.Adaption.return_value.__enter__.return_value = client
+        with patch.dict("sys.modules", {"adaption": sdk, "httpx": MagicMock()}):
+            result = d.adaption_worker(packet())
+        self.assertEqual(result["model"], d.MODEL)
+
+    def test_usage_float_coerced_to_null(self):
+        """Float usage values must be coerced to None."""
+        client = MagicMock()
+        client.responses.create.return_value = SimpleNamespace(
+            status="completed",
+            output_text="advisory finding",
+            model=d.MODEL,
+            usage=SimpleNamespace(input_tokens=10.5, output_tokens=5.0),
+        )
+        sdk = MagicMock()
+        sdk.Adaption.return_value.__enter__.return_value = client
+        with patch.dict("sys.modules", {"adaption": sdk, "httpx": MagicMock()}):
+            result = d.adaption_worker(packet())
+        self.assertEqual(result["usage"], {"input_tokens": None, "output_tokens": None})
+        self.assertIsNone(result["estimated_credits"])
+
+    def test_usage_oversized_coerced_to_null(self):
+        """Usage values above MAX_USAGE_TOKENS must be coerced to None."""
+        client = MagicMock()
+        client.responses.create.return_value = SimpleNamespace(
+            status="completed",
+            output_text="advisory finding",
+            model=d.MODEL,
+            usage=SimpleNamespace(input_tokens=d.MAX_USAGE_TOKENS + 1, output_tokens=5),
+        )
+        sdk = MagicMock()
+        sdk.Adaption.return_value.__enter__.return_value = client
+        with patch.dict("sys.modules", {"adaption": sdk, "httpx": MagicMock()}):
+            result = d.adaption_worker(packet())
+        self.assertEqual(result["usage"], {"input_tokens": None, "output_tokens": 5})
+        self.assertIsNone(result["estimated_credits"])
+
+    def test_usage_negative_coerced_to_null(self):
+        """Negative usage values must be coerced to None."""
+        client = MagicMock()
+        client.responses.create.return_value = SimpleNamespace(
+            status="completed",
+            output_text="advisory finding",
+            model=d.MODEL,
+            usage=SimpleNamespace(input_tokens=-1, output_tokens=5),
+        )
+        sdk = MagicMock()
+        sdk.Adaption.return_value.__enter__.return_value = client
+        with patch.dict("sys.modules", {"adaption": sdk, "httpx": MagicMock()}):
+            result = d.adaption_worker(packet())
+        self.assertEqual(result["usage"], {"input_tokens": None, "output_tokens": 5})
+
+    def test_usage_boundary_values_accepted(self):
+        """Boundary values 0 and MAX_USAGE_TOKENS should be accepted."""
+        client = MagicMock()
+        client.responses.create.return_value = SimpleNamespace(
+            status="completed",
+            output_text="advisory finding",
+            model=d.MODEL,
+            usage=SimpleNamespace(input_tokens=0, output_tokens=d.MAX_USAGE_TOKENS),
+        )
+        sdk = MagicMock()
+        sdk.Adaption.return_value.__enter__.return_value = client
+        with patch.dict("sys.modules", {"adaption": sdk, "httpx": MagicMock()}):
+            result = d.adaption_worker(packet())
+        self.assertEqual(
+            result["usage"], {"input_tokens": 0, "output_tokens": d.MAX_USAGE_TOKENS}
+        )
+
+    def test_usage_partial_validity_keeps_valid_channel_without_cost(self):
+        """One invalid token channel must not erase the other or crash costing."""
+        client = MagicMock()
+        client.responses.create.return_value = SimpleNamespace(
+            status="completed",
+            output_text="advisory finding",
+            model=d.MODEL,
+            usage=SimpleNamespace(input_tokens=10, output_tokens=None),
+        )
+        sdk = MagicMock()
+        sdk.Adaption.return_value.__enter__.return_value = client
+        with patch.dict("sys.modules", {"adaption": sdk, "httpx": MagicMock()}):
+            result = d.adaption_worker(packet())
+        self.assertEqual(result["usage"], {"input_tokens": 10, "output_tokens": None})
+        self.assertIsNone(result["estimated_credits"])
+
 
 if __name__ == "__main__":
     unittest.main()
