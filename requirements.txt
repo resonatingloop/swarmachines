@@ -1,3 +1,6 @@
 # Adaption SDK for model inference
 # https://docs.adaptionlabs.ai/
 adaption>=0.1.0
+
+# Schema validation for e2e tests
+jsonschema>=4.0.0
