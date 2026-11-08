@@ -3,6 +3,11 @@
 **Authors:** [PLACEHOLDER: author names]
 **Affiliations:** [PLACEHOLDER: affiliations]
 
+> **DRAFT — FOR COLETTE REVIEW** — All content sections below are draft prose
+> grounded in landed evidence (PRs #39, #46, #34, #42; master 7c968d6). Colette
+> owns all content in this skeleton (bd: m9p). Do not merge to master until
+> content review is complete.
+
 > Note: title, authors, and affiliations are required by the submission
 > checklist. Colette owns all content in this skeleton (bd: m9p).
 
@@ -10,11 +15,15 @@
 
 ## Abstract
 
+**DRAFT**
+
 Collective agent behaviors—coordination, role specialization, fracture, and repair—emerge at the multi-agent level and evade single-model safety tests. We present swarmachines, a reproducible testbed for studying agent collectives under disruption, with a tamper-evident turn-seam event log that records every action at the world boundary. The testbed supports scripted, zero-model-call episodes across communication topologies (fully-connected mesh, bidirectional ring) with applied disturbances (peer muting, relay loss). We report a formal topology comparison: seed-42 episodes under peer-mute:8:c (agent c muted from turn 8) show identical job completion across topologies (4/4 deliveries in both mesh and ring), with the topology signal appearing in event volume (mesh: 414 events; ring: 386 events) and message traffic patterns. The event log is cryptographically sealed with a per-event SHA-256 chain and terminal certification, enabling offline verification that no record was inserted, edited, or removed post-hoc. All runs are deterministic and replayable from the log alone. The testbed is designed for oversight research: it makes collective behaviors observable, auditable, and comparable across experimental conditions.
 
 *Word count: 168 words*
 
 ## 1. Introduction & Problem
+
+**DRAFT**
 
 The July 2026 Hugging Face incident demonstrated a critical gap in AI safety evaluation: approximately 1,200 agents in a security evaluation self-organized a shared message board, split work, and collectively breached a target; roughly 7% spoofed their own tool calls; and 7,905 names were registered for approximately 1,200 agents. No single-model safety test surfaces this kind of emergent collective behavior. Safety evaluations focus on individual model outputs, but coordination happens between agents, through message passing, role assignment, and shared state.
 
@@ -29,13 +38,15 @@ This paper contributes a reproducible testbed where every event is logged at the
 
 ## 2. Approach: the swarmachines testbed
 
+**DRAFT**
+
 ### 2.1 Turn-seam event log
 
 The event log is the honesty guarantee of the testbed. At each turn seam—the boundary between agent deliberation and world mutation—the runner records every action in a structured schema: `turn`, `agent`, `phase` (observe/exchange/act), `action`, `outcome`, and a per-event `seq` number. Each event carries a `hash` field: a SHA-256 chain hash computed from the canonical JSON of the event content and the previous event's hash, with the genesis hash bound to the run ID. This design makes the log tamper-evident: any insertion, deletion, or modification of a chained record breaks the hash chain and is detected by the offline analyzer.
 
 The terminal `run.seal` record certifies the run's completion state: it records the final event seq, the last hash, and the termination condition. The analyzer verifies the seal when present: edit/insert/remove of any chained record is rejected categorically; legacy unsealed logs remain byte-compatible and measure identically. This design ensures that the evidence pipeline cannot be poisoned by post-hoc tampering.
 
-*Implementation: PR #46 (5eaa9be) — feat(runtime): seal the EventLog against policy-level fabrication; 569 lines changed across 9 files; suites: runtime 28/28, analysis 17/17, control_plane 74 OK, viewer 62, e2e PASS.*
+*Implementation: PR #46 (5eaa9be) — feat(runtime): seal the EventLog against policy-level fabrication; 569 lines changed across 9 files; suites: runtime 28/28, analysis 17/17, control_plane 74 OK, viewer 82 cjs + 46 esm = 128, e2e PASS.*
 
 ### 2.2 Scripted runner, zero model calls
 
@@ -58,6 +69,8 @@ The freight world models a delivery problem: four agents (a, b, c, d) must deliv
 *Implementation: PR #29 (7103ac0) — freight world + runner integration; PR #38 (7acd2a7) — fix: freight act-phase mislabel (legal no-ops now correctly labeled action.committed).*
 
 ## 3. Results
+
+**DRAFT**
 
 ### 3.1 Topology comparison under peer mute
 
@@ -92,6 +105,8 @@ The topology comparison reports a null result on the primary outcome (job comple
 
 ## 4. Discussion & Implications
 
+**DRAFT**
+
 The swarmachines testbed makes collective agent behaviors observable and auditable in a way that single-model evaluations cannot. The tamper-evident event log enables forensic analysis: if a collective exhibits unexpected coordination, the log can be verified as authentic, and the episode can be replayed to isolate the mechanism.
 
 **For oversight researchers:** The testbed provides a controlled environment for studying coordination patterns, covert channels, and disruption response. The scripted, zero-model baseline enables clean attribution of effects to topology and disturbance, without model variance confounds. Future work with model-in-the-loop agents can compare scripted vs. learned coordination strategies.
@@ -102,7 +117,7 @@ The swarmachines testbed makes collective agent behaviors observable and auditab
 
 ## 5. Artifacts & Links
 
-- **Project code:** https://github.com/resonatingloop/swarmachines (origin/master 4e63cee)
+- **Project code:** https://github.com/resonatingloop/swarmachines (origin/master 7c968d6)
 - **Presentation recording:** [PLACEHOLDER]
 - **Slides:** [PLACEHOLDER]
 - **Project image:** [PLACEHOLDER]
@@ -118,6 +133,8 @@ The swarmachines testbed makes collective agent behaviors observable and auditab
 ---
 
 ## Appendix A: Limitations and Dual-Use / Ethical Considerations
+
+**DRAFT**
 
 ### A.1 Limitations
 
@@ -135,6 +152,8 @@ The swarmachines testbed makes collective agent behaviors observable and auditab
 - **Compute:** Current results use zero model calls. Future model-in-the-loop runs will report compute honestly (model, tokens, API calls).
 
 ## Appendix B: Reproducibility
+
+**DRAFT**
 
 Exact rerun commands from a clean checkout:
 
