@@ -38,7 +38,9 @@ except ImportError:  # script mode: python3 runtime/runner.py
             create_tracer,
         )
     except ImportError:  # sibling modules missing: fall back gracefully
-        FreightWorld = roster = MAX_REPORTS = POLICY = admit_report = make_report = select = None  # type: ignore
+        FreightWorld = roster = MAX_REPORTS = POLICY = admit_report = make_report = (
+            select
+        ) = None  # type: ignore
         RunStatus = TraceConfig = Tracer = create_tracer = None  # type: ignore
 
 

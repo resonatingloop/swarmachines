@@ -54,7 +54,9 @@ def _sanitize_artifact_id(artifact_id: str, base_dir: Path) -> str:
 
     # Rule 3: Allowlist charset [A-Za-z0-9_-]
     if not re.match(r"^[A-Za-z0-9_-]+$", artifact_id):
-        raise ValueError(f"artifact_id contains invalid chars (allowed: A-Za-z0-9_-): {artifact_id}")
+        raise ValueError(
+            f"artifact_id contains invalid chars (allowed: A-Za-z0-9_-): {artifact_id}"
+        )
 
     # Rule 4: Resolve and verify containment
     resolved_base = base_dir.resolve()
@@ -295,7 +297,9 @@ class ArtifactExtractor:
 
             # Write artifact to disk - sanitize artifact_id to prevent path traversal
             try:
-                safe_artifact_id = _sanitize_artifact_id(artifact.artifact_id, self.artifacts_dir)
+                safe_artifact_id = _sanitize_artifact_id(
+                    artifact.artifact_id, self.artifacts_dir
+                )
             except ValueError as e:
                 # Security rejection - skip this artifact and log the rejection
                 print(f"  SECURITY: Skipping artifact - {e}")

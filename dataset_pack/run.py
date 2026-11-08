@@ -340,10 +340,6 @@ class GovernedRunner:
                 agent_id = event.get("agent_id", "unknown")
                 turn = event.get("turn", 0)
 
-                # Extract prompt and response from payload
-                prompt = payload.get("prompt", "")
-                response = payload.get("response", "")
-
                 # For observation.recorded events with "visible" payload, generate a model call
                 if event_type == "observation.recorded" and "visible" in payload:
                     # Generate observation prompt based on visible data

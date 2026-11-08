@@ -623,12 +623,14 @@ If you use this dataset, please cite the associated hackathon report.
             for idx, event in enumerate(events):
                 payload = event.get("payload", {})
                 if "prompt" in payload and "response" in payload:
-                    events_with_payload.append({
-                        "idx": idx,
-                        "event": event,
-                        "key": (payload["prompt"], payload["response"]),
-                        "used": False,
-                    })
+                    events_with_payload.append(
+                        {
+                            "idx": idx,
+                            "event": event,
+                            "key": (payload["prompt"], payload["response"]),
+                            "used": False,
+                        }
+                    )
 
             # Load calls.jsonl for content
             calls_jsonl_path = run_dir / "logs" / "calls.jsonl"
@@ -636,7 +638,6 @@ If you use this dataset, please cite the associated hackathon report.
                 continue
 
             # B11(b): Track call-to-event matching for collision detection
-            call_matches = []
 
             with open(calls_jsonl_path, "r", encoding="utf-8") as f:
                 for line in f:
@@ -662,7 +663,9 @@ If you use this dataset, please cite the associated hackathon report.
                     # B11(b): Collision guard - if no match found, fail loudly
                     if event_meta is None:
                         # Check if this is a duplicate payload collision
-                        matching_events = [ewp for ewp in events_with_payload if ewp["key"] == key]
+                        matching_events = [
+                            ewp for ewp in events_with_payload if ewp["key"] == key
+                        ]
                         if matching_events:
                             # All matching events already used - this is a collision
                             raise ValueError(
