@@ -31,15 +31,15 @@ This paper contributes a reproducible testbed where every event is logged at the
 
 ### 2.1 Turn-seam event log
 
-The event log is the honesty guarantee of the testbed. At each turn seam—the boundary between agent deliberation and world mutation—the runner records every action in a structured schema: `turn`, `agent`, `phase` (observe/exchange/act), `action`, `outcome`, and a per-event `seq` number. Each event carries a `hash` field: a SHA-256 chain hash computed from the canonical JSON of the event content and the previous event's hash, with the genesis hash bound to the run ID. This design makes the log tamper-evident: any insertion, deletion, or modification of a chained record breaks the hash chain and is detected by the offline analyzer.
+The event log is the honesty guarantee of the testbed. At each turn seam—the boundary between agent deliberation and world mutation—the runner records every action in a structured schema: `turn`, `agent`, `phase` (observe/exchange/act), `action`, `outcome`, and a per-event `seq` number. Each event carries a `chain` field: a SHA-256 chain hash computed from the canonical JSON of the event content and the previous event's chain, with the genesis chain bound to the run ID. This design makes the log tamper-evident: any insertion, deletion, or modification of a chained record breaks the chain and is detected by the offline analyzer.
 
-The terminal `run.seal` record certifies the run's completion state: it records the final event seq, the last hash, and the termination condition. The analyzer verifies the seal when present: edit/insert/remove of any chained record is rejected categorically; legacy unsealed logs remain byte-compatible and measure identically. This design ensures that the evidence pipeline cannot be poisoned by post-hoc tampering.
+The terminal `run.seal` record certifies the run's completion state: it records the final event seq, the last chain link, and the termination condition. The analyzer verifies the seal when present: edit/insert/remove of any chained record is rejected categorically; legacy unsealed logs remain byte-compatible and measure identically. This design ensures that the evidence pipeline cannot be poisoned by post-hoc tampering.
 
-*Implementation: PR #46 (5eaa9be) — feat(runtime): seal the EventLog against policy-level fabrication; 569 lines changed across 9 files; suites: runtime 28/28, analysis 17/17, control_plane 74 OK, viewer 62, e2e PASS.*
+*Implementation: PR #46 (5eaa9be) — feat(runtime): seal the EventLog against policy-level fabrication; 569 lines changed across 9 files; suites: runtime 28/28, analysis 17/17, control_plane 74 OK, viewer 82, e2e PASS.*
 
 ### 2.2 Scripted runner, zero model calls
 
-The first deliverable is deterministic and model-free: reproducibility before intelligence. The runner operates in scripted mode by default, with no model calls. A seed parameter initializes the RNG stream, which is separated from any model-call RNG (when models are added in future work). The turn cap (`--turns`) bounds episode length. "Replay-deterministic" means that two runs with the same seed, topology, disturbance, and world state produce byte-identical logs—verified by hash comparison.
+The first deliverable is deterministic and model-free: reproducibility before intelligence. The runner operates in scripted mode by default, with no model calls. A seed parameter initializes the RNG stream, which is separated from any model-call RNG (when models are added in future work). The turn cap (`--turns`) bounds episode length. "Replay-deterministic" means that two runs with the same seed, topology, disturbance, and world state produce byte-identical logs—verified by byte-identical comparison.
 
 The zero-model guarantee is enforced by design: the scripted policy (`route-gossip-v1`) makes decisions based on local state and received messages, not model outputs. This enables rapid iteration, reproducible debugging, and clean attribution of effects to topology and disturbance rather than model variance.
 
@@ -76,7 +76,7 @@ We ran a formal pair of episodes with identical seed (42), disturbance (peer-mut
 
 ### 3.2 Tamper-evidence verification
 
-The event log seal was verified against four attack vectors: (1) edit a chained record, (2) insert a fabricated record, (3) truncate the log, (4) break the hash chain partially. All four attacks are detected and rejected by the analyzer. The terminal seal (run.seal) is required for verification; unsealed logs are treated as legacy and measure identically but cannot be verified.
+The event log seal was verified against four attack vectors: (1) edit a chained record, (2) insert a fabricated record, (3) truncate the log, (4) break the chain partially. All four attacks are detected and rejected by the analyzer. The terminal seal (run.seal) is required for verification; unsealed logs are treated as legacy and measure identically but cannot be verified.
 
 *Evidence: PR #46 (5eaa9be) — analysis/test_measure_episode.py: 17/17 tests, including tamper detection.*
 
