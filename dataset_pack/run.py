@@ -39,7 +39,9 @@ def _validate_model_call_events(events: list[dict[str, Any]]) -> None:
     """validate each completed or failed provider event against the schema."""
     from jsonschema import Draft202012Validator
 
-    schema_path = Path(__file__).parent.parent / "runtime" / "schema" / "events.schema.json"
+    schema_path = (
+        Path(__file__).parent.parent / "runtime" / "schema" / "events.schema.json"
+    )
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     validator = Draft202012Validator(schema)
     for event in events:
@@ -208,7 +210,9 @@ def _model_call_payload(
 ) -> dict[str, Any]:
     """build the sealed event payload paired with one persisted call record."""
     if record.response_status != "completed" or not record.response_full.strip():
-        raise ValueError("only completed nonempty responses may become model.call events")
+        raise ValueError(
+            "only completed nonempty responses may become model.call events"
+        )
     return {
         "source_event_seq": source_seq,
         "source_event_type": source_event_type,
@@ -938,8 +942,7 @@ class GovernedRunner:
                 "incomplete_reason": record.incomplete_reason,
                 "response_id_sha256": record.response_id_sha256,
                 "output_item_type_counts": record.output_item_type_counts or {},
-                "message_content_type_counts": record.message_content_type_counts
-                or {},
+                "message_content_type_counts": record.message_content_type_counts or {},
                 "visible_response_chars": record.visible_response_chars,
                 "total_tokens": record.total_tokens,
                 "reasoning_tokens": record.reasoning_tokens,
@@ -1055,6 +1058,7 @@ def run_governed_run(
 
 if __name__ == "__main__":
     import sys
+    import tempfile
 
     from .configs import get_task_configs
 
@@ -1065,16 +1069,17 @@ if __name__ == "__main__":
     print(f"Testing governed run for {test_config.instance_id} (dry-run)...")
 
     try:
-        result = run_governed_run(
-            config=test_config,
-            base_dir="/tmp/dataset-pack-test",
-            dry_run=True,
-        )
-        print(f"Run completed: {result['run_id']}")
-        print(f"  Calls: {result['calls_written']}")
-        print(f"  Receipts: {result['receipts_written']}")
-        print(f"  Run JSON: {result['run_json']}")
-        print(f"  Calls JSONL: {result['calls_jsonl']}")
+        with tempfile.TemporaryDirectory(prefix="swarmachines-dataset-pack-") as root:
+            result = run_governed_run(
+                config=test_config,
+                base_dir=root,
+                dry_run=True,
+            )
+            print(f"Run completed: {result['run_id']}")
+            print(f"  Calls: {result['calls_written']}")
+            print(f"  Receipts: {result['receipts_written']}")
+            print(f"  Run JSON: {result['run_json']}")
+            print(f"  Calls JSONL: {result['calls_jsonl']}")
     except (RuntimeError, OSError, json.JSONDecodeError) as e:
         print(f"Run failed: {e}", file=sys.stderr)
         sys.exit(1)

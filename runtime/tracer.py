@@ -51,11 +51,15 @@ class TraceConfig:
         credential_path = Path(path)
         metadata = credential_path.lstat()
         if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
-            raise ValueError("langfuse credential path must be a regular non-symlink file")
+            raise ValueError(
+                "langfuse credential path must be a regular non-symlink file"
+            )
         if metadata.st_uid != os.getuid():
             raise PermissionError("langfuse credential file must be owned by this user")
         if stat.S_IMODE(metadata.st_mode) & 0o077:
-            raise PermissionError("langfuse credential file must have mode 0600 or stricter")
+            raise PermissionError(
+                "langfuse credential file must have mode 0600 or stricter"
+            )
 
         values: dict[str, str] = {}
         for raw_line in credential_path.read_text(encoding="utf-8").splitlines():
@@ -70,7 +74,9 @@ class TraceConfig:
             }:
                 raise ValueError("langfuse credential file has an invalid field")
             if key in values or not value.strip():
-                raise ValueError("langfuse credential file has a duplicate or empty field")
+                raise ValueError(
+                    "langfuse credential file has a duplicate or empty field"
+                )
             values[key] = value.strip()
 
         required = {
@@ -259,9 +265,7 @@ def _safe_generation_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     if "source_event_type" in metadata:
         source = metadata["source_event_type"]
         safe["source_event_type"] = (
-            source
-            if source in {"observation.recorded", "policy.decision"}
-            else "other"
+            source if source in {"observation.recorded", "policy.decision"} else "other"
         )
     if "condition" in metadata:
         safe["condition"] = _bounded_label(
@@ -461,9 +465,7 @@ class Tracer:
         if self.exporter is not None:
             return True
         if not (
-            self.config.public_key
-            and self.config.secret_key
-            and self.config.base_url
+            self.config.public_key and self.config.secret_key and self.config.base_url
         ):
             self._failure("trace_config_incomplete")
             return False
@@ -733,7 +735,11 @@ class Tracer:
             self.exporter.span(
                 {
                     "name": f"model:{model_id}",
-                    "metadata": {"model_id": model_id, "type": "model_call", "latency_ms": latency_ms},
+                    "metadata": {
+                        "model_id": model_id,
+                        "type": "model_call",
+                        "latency_ms": latency_ms,
+                    },
                     "usage": usage,
                     "error": error,
                 }

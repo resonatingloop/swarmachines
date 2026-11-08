@@ -156,7 +156,9 @@ class AdaptionAdapter:
         try:
             usage_raw = _get(response, "usage")
             input_tokens = _bounded_int(_get(usage_raw, "input_tokens"), "input_tokens")
-            output_tokens = _bounded_int(_get(usage_raw, "output_tokens"), "output_tokens")
+            output_tokens = _bounded_int(
+                _get(usage_raw, "output_tokens"), "output_tokens"
+            )
             total_raw = _get(usage_raw, "total_tokens")
             total_tokens = (
                 input_tokens + output_tokens
@@ -187,7 +189,9 @@ class AdaptionAdapter:
 
         output_text = _get(response, "output_text", "")
         if not isinstance(output_text, str):
-            diagnostics = self._diagnostics(response, model, "", "malformed_output_text")
+            diagnostics = self._diagnostics(
+                response, model, "", "malformed_output_text"
+            )
             raise ResponseShapeError("malformed_output_text", diagnostics)
 
         diagnostics = self._diagnostics(response, model, output_text)

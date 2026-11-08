@@ -103,9 +103,10 @@ def test_completed_visible_response_preserves_bounded_shape():
     )
     response.validate_complete()
     assert response.output_text == "visible answer"
-    assert response.diagnostics.response_id_sha256 == hashlib.sha256(
-        b"resp-secret-id"
-    ).hexdigest()
+    assert (
+        response.diagnostics.response_id_sha256
+        == hashlib.sha256(b"resp-secret-id").hexdigest()
+    )
     assert response.diagnostics.output_item_type_counts == {"message": 1}
     assert response.diagnostics.message_content_type_counts == {"output_text": 1}
     assert response.usage.reasoning_tokens == 3
@@ -290,9 +291,7 @@ def test_v5_export_mask_returns_attribute_patches():
         },
         resource_attributes={},
     )
-    result = _mask_otel_spans(
-        params=MaskOtelSpansParams(spans={identifier: span})
-    )
+    result = _mask_otel_spans(params=MaskOtelSpansParams(spans={identifier: span}))
     patch = result.span_patches[identifier]
     assert patch is not None
     assert set(patch.delete_attributes) == {
