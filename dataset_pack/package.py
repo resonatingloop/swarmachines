@@ -602,18 +602,26 @@ If you use this dataset, please cite the associated hackathon report.
                         if line:
                             events.append(json.loads(line))
 
-            # Build a map from event payload to event metadata
-            event_by_payload = {}
-            for event in events:
+            # B11(b): Build an ordered list of events with prompt/response payloads
+            # Track usage to detect duplicate-payload collisions
+            events_with_payload = []
+            for idx, event in enumerate(events):
                 payload = event.get("payload", {})
                 if "prompt" in payload and "response" in payload:
-                    key = (payload["prompt"], payload["response"])
-                    event_by_payload[key] = event
+                    events_with_payload.append({
+                        "idx": idx,
+                        "event": event,
+                        "key": (payload["prompt"], payload["response"]),
+                        "used": False,
+                    })
 
             # Load calls.jsonl for content
             calls_jsonl_path = run_dir / "logs" / "calls.jsonl"
             if not calls_jsonl_path.exists():
                 continue
+
+            # B11(b): Track call-to-event matching for collision detection
+            call_matches = []
 
             with open(calls_jsonl_path, "r", encoding="utf-8") as f:
                 for line in f:
@@ -628,12 +636,42 @@ If you use this dataset, please cite the associated hackathon report.
                     response = call.get("response_full", "")
                     key = (prompt, response)
 
-                    # Look up in event log
-                    event_meta = event_by_payload.get(key, {})
-                    turn = event_meta.get("turn", 0)  # From sealed event log
-                    event_type = event_meta.get(
-                        "type", "observation.recorded"
-                    )  # From sealed event log
+                    # B11(b): Find the next unused event with matching payload (positional matching)
+                    event_meta = None
+                    for ewp in events_with_payload:
+                        if ewp["key"] == key and not ewp["used"]:
+                            event_meta = ewp["event"]
+                            ewp["used"] = True
+                            break
+
+                    # B11(b): Collision guard - if no match found, fail loudly
+                    if event_meta is None:
+                        # Check if this is a duplicate payload collision
+                        matching_events = [ewp for ewp in events_with_payload if ewp["key"] == key]
+                        if matching_events:
+                            # All matching events already used - this is a collision
+                            raise ValueError(
+                                f"Duplicate payload collision in run {run_id}: "
+                                f"payload key {key[0][:50]}... matches {len(matching_events)} events, "
+                                f"but all have been consumed. Cannot uniquely assign turn/event_type."
+                            )
+                        else:
+                            # No matching event at all - this is a data integrity issue
+                            raise ValueError(
+                                f"No matching event in sealed log for call in run {run_id}: "
+                                f"prompt {key[0][:50]}... not found in events.jsonl"
+                            )
+
+                    turn = event_meta.get("turn")
+                    if turn is None:
+                        raise ValueError(
+                            f"Event missing turn field in run {run_id}: {event_meta}"
+                        )
+                    event_type = event_meta.get("type")
+                    if event_type is None:
+                        raise ValueError(
+                            f"Event missing type field in run {run_id}: {event_meta}"
+                        )
 
                     role = call.get("role", "unknown")
                     # B11 fix: Every record must carry non-empty agent_id
