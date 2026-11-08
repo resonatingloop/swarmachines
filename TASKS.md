@@ -12,7 +12,7 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [doing] swarmachines-b9f: PR#6 sast HIGH: freight-world integration dead code — run() never wires FreightWorld — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-bof: Fix PR #5: decouple freight-world contamination, gate peer-mute on turn, restore undeliverable — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-bpk: m9p-a: report skeleton scaffold in docs/report/ (colette keeps m9p content ownership) — owner: forge — updated: 2026-11-07T20:00Z
-- [doing] swarmachines-avf: freight world + runner integration: day-1 recorded episode (schema-valid, replayable) — owner: forge — updated: 2026-11-07T20:00Z
+- [doing] swarmachines-avf: freight world + runner integration — PR #29 dual gate PASSES at head 1c3fd50 (verifier verdict anchored gh comment 6715954075: 24/24 suite, byte-identical determinism, merge-result 0 conflicts; sast clean), merge-ready with the merge hand — owner: forge — updated: 2026-11-08T02:22Z
 - [doing] swarmachines-fvn: Langfuse trace wiring: spec'd in 001-hackathon-plan, zero code refs — owner: forge — updated: 2026-11-07T20:08Z
 - [open] swarmachines-m9p: Report skeleton on official template (huddled 20:35Z, unclaimed; sequencing escalated to pug-bot) — owner: colette — updated: 2026-11-08T00:54Z
 - [open] swarmachines-956: Viewer: replay real recorded episode (day-1 checkpoint) (huddled 20:35Z, unclaimed; sequencing escalated to pug-bot) — owner: asterion — updated: 2026-11-08T00:54Z
@@ -33,7 +33,7 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [doing] T-011: PR #22 sanitization respin — ruling received from the key-holder: bounded diagnostics stay PRESERVED; model/usage sanitization lands as a separate code fix — db2bc17's channel removal is NOT blessed, redo the sanitization on a channel-preserving base (queued behind the #24/#25 merge cycle) — owner: dev — updated: 2026-11-08T00:50Z
 - [open] T-010: task/receipt envelope v1 — asterion local proof + one adaption investigator trial (executes on asterion side); BUDGET STATE CORRECTED 2026-11-08: colette authorized the local bounded trial, all four requests consumed, ledger reserves 0.4 credits; live transport corroborated, one narrow real-code finding corroborated, full-source audit incomplete; no further provider runs authorized by this handoff — owner: asterion — updated: 2026-11-08T00:25Z
 - [open] T-016: PR #26 task-submission workflow spec (draft @ ecc948d, author-held for owner review — no merge request, zero provider calls; proposed 4-request/1-credit session is NOT spending authorization) — owner: asterion — updated: 2026-11-08T01:16Z
-- [doing] T-017: pre-record data pack for keyless agents — PR #28 (head b72fa7f @01:48Z: ./data prompt packs + scenario configs; provenance-honesty fix landed after merge-hand flagged hand-authored-as-model-generated; zero API calls disclosed — awaiting merge-hand re-review) — owner: forge — updated: 2026-11-08T01:50Z
+- [doing] T-017: pre-record data pack for keyless agents — PR #28 (head b72fa7f; provenance-honesty fix landed; zero API calls disclosed — awaiting merge-hand re-review) + owner directive 01:55Z: replace all mock data with real data, no fake data (API data-pack upgrade child live) — owner: forge — updated: 2026-11-08T02:22Z
 
 - [done] T-001: PR #16 merged as 331a65c (head 9652e46; verifier approve 6714061585 + sast pass 6714068290 at head; viewer 127/127; merged by caduceus 23:25Z) — owner: dev — updated: 2026-11-07T23:32Z
 
