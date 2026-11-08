@@ -777,6 +777,65 @@ class TurnSeamRunner:
         if use_freight_world:
             self.freight_world = FreightWorld(seed=seed)
 
+    def _run_phase(
+        self,
+        turn: int,
+        phase: str,
+        trace_id: str | None,
+        world_state: dict | None = None,
+    ) -> None:
+        """Run a single phase (observe/exchange/act) for all agents with optional tracing.
+
+        Args:
+            turn: Current turn number
+            phase: Phase name (\"observe\", \"exchange\", or \"act\")
+            trace_id: Parent trace id for span nesting (None if tracing disabled)
+            world_state: Optional world state dict (used only for observe phase)
+        """
+        for agent in self.agents:
+            if self.tracer is not None:
+                with self.tracer.turn_span(
+                    turn, phase, agent.agent_id, parent_id=trace_id
+                ):
+                    self._invoke_phase(agent, phase, turn, world_state)
+            else:
+                self._invoke_phase(agent, phase, turn, world_state)
+
+    def _invoke_phase(
+        self,
+        agent: Agent,
+        phase: str,
+        turn: int,
+        world_state: dict | None = None,
+    ) -> None:
+        """Invoke a phase method on an agent with the correct arguments.
+
+        Args:
+            agent: Agent instance
+            phase: Phase name ("observe", "exchange", or "act")
+            turn: Current turn number
+            world_state: Optional world state dict (used only for observe phase)
+        """
+        if phase == "observe":
+            agent.observe(
+                world_state if world_state is not None else {},
+                turn,
+                self.log,
+                self.freight_world,
+            )
+        elif phase == "exchange":
+            agent.exchange(
+                topology=self.topology,
+                other_agents=self.agents,
+                message_store=self.message_store,
+                lifecycle=self.lifecycle,
+                turn=turn,
+                log=self.log,
+                disturbances=self.disturbance_scheduler.active,
+            )
+        elif phase == "act":
+            agent.act(turn, self.log, self.lifecycle, self.freight_world)
+
     def run(self, num_turns: int) -> str:
         """Run the simulation for num_turns turns."""
 
@@ -899,63 +958,13 @@ class TurnSeamRunner:
                 )
 
                 # Phase 1: observe - ALL agents observe before any exchange
-                for agent in self.agents:
-                    if self.tracer is not None:
-                        with self.tracer.turn_span(
-                            turn,
-                            "observe",
-                            agent.agent_id,
-                            parent_id=trace_id,
-                        ):
-                            agent.observe(
-                                world_state, turn, self.log, self.freight_world
-                            )
-                    else:
-                        agent.observe(world_state, turn, self.log, self.freight_world)
+                self._run_phase(turn, "observe", trace_id, world_state)
 
                 # Phase 2: exchange - ALL agents exchange before any act
-                for agent in self.agents:
-                    if self.tracer is not None:
-                        with self.tracer.turn_span(
-                            turn,
-                            "exchange",
-                            agent.agent_id,
-                            parent_id=trace_id,
-                        ):
-                            agent.exchange(
-                                topology=self.topology,
-                                other_agents=self.agents,
-                                message_store=self.message_store,
-                                lifecycle=self.lifecycle,
-                                turn=turn,
-                                log=self.log,
-                                disturbances=self.disturbance_scheduler.active,
-                            )
-                    else:
-                        agent.exchange(
-                            topology=self.topology,
-                            other_agents=self.agents,
-                            message_store=self.message_store,
-                            lifecycle=self.lifecycle,
-                            turn=turn,
-                            log=self.log,
-                            disturbances=self.disturbance_scheduler.active,
-                        )
+                self._run_phase(turn, "exchange", trace_id)
 
                 # Phase 3: act - ALL agents act before moving to next turn
-                for agent in self.agents:
-                    if self.tracer is not None:
-                        with self.tracer.turn_span(
-                            turn,
-                            "act",
-                            agent.agent_id,
-                            parent_id=trace_id,
-                        ):
-                            agent.act(
-                                turn, self.log, self.lifecycle, self.freight_world
-                            )
-                    else:
-                        agent.act(turn, self.log, self.lifecycle, self.freight_world)
+                self._run_phase(turn, "act", trace_id)
 
                 # Phase 4: record (implicit in event logging)
         except BaseException as exc:
@@ -1167,6 +1176,9 @@ def main():
 
     tracer = None
     if create_tracer is not None and getattr(args, "trace", False):
+        import os
+
+        os.environ["TRACE_ENABLED"] = "true"
         tracer, _trace_exporter = create_tracer(
             run_id=f"run-seed{args.seed:04d}",
             condition=(delivery_map or {}).get("condition"),
@@ -1193,6 +1205,10 @@ def main():
 
     output_path.write_text(output + "\n")
     print(f"Wrote {len(runner.log.events)} events to {output_path}")
+
+    # Flush trace data if tracing was enabled
+    if tracer is not None:
+        tracer.flush()
 
     # Demonstrate the per-agent context query
     if runner.log.events:

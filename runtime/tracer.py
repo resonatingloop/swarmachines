@@ -87,7 +87,6 @@ class FakeExporter:
     """
 
     def __init__(self):
-        self.events: list[dict] = []
         self.traces: list[dict] = []
         self.spans: list[dict] = []
         self.errors: list[dict] = []
@@ -106,7 +105,6 @@ class FakeExporter:
 
     def clear(self) -> None:
         """Clear all recorded events."""
-        self.events.clear()
         self.traces.clear()
         self.spans.clear()
         self.errors.clear()
