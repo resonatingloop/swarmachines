@@ -12,7 +12,7 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [doing] swarmachines-b9f: PR#6 sast HIGH: freight-world integration dead code — run() never wires FreightWorld — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-bof: Fix PR #5: decouple freight-world contamination, gate peer-mute on turn, restore undeliverable — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-bpk: m9p-a: report skeleton scaffold in docs/report/ (colette keeps m9p content ownership) — owner: forge — updated: 2026-11-07T20:00Z
-- [doing] swarmachines-avf: freight world + runner integration — gate-blocker fix commit 2eadaca pushed 02:24:38Z AFTER the 1c3fd50 dual-gate PASS (02:22Z) — gates STALE at head 2eadaca; re-gate dispatched to verifier+sast; merge hand holds until verdicts anchor at 2eadaca — owner: forge — updated: 2026-11-08T02:33Z
+- [doing] swarmachines-avf: freight world + runner integration — dual gate RE-ANCHORED at head 2eadaca after the gate-blocker fix push (verifier verdict 02:35:38Z + sast PASS review 02:37:47Z, both superseding their 1c3fd50 anchors) — merge-ready with the merge hand — owner: forge — updated: 2026-11-08T02:38Z
 - [doing] swarmachines-fvn: Langfuse trace wiring: spec'd in 001-hackathon-plan, zero code refs — owner: forge — updated: 2026-11-07T20:08Z
 - [open] swarmachines-m9p: Report skeleton on official template (huddled 20:35Z, unclaimed; sequencing escalated to pug-bot) — owner: colette — updated: 2026-11-08T00:54Z
 - [open] swarmachines-956: Viewer: replay real recorded episode (day-1 checkpoint) (huddled 20:35Z, unclaimed; sequencing escalated to pug-bot) — owner: asterion — updated: 2026-11-08T00:54Z
