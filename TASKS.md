@@ -23,7 +23,6 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [doing] swarmachines-i3v: DEVELOPMENT.md/AGENTS.md claim stale: no committed automated test suite — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-h1m: CLAUDE.md template residue: unfilled placeholders — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-m04: Harden viewer/evidence.js markdown escaping (U+200E/200F, U+061C bidi) — owner: forge — updated: 2026-11-07T20:00Z
-- [doing] swarmachines-fvh: prune: ruff-clean runtime/ mechanical lint findings — owner: pruner — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-a6y: Harden viewer/browser-check.mjs temp handling — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-i5s: PR#6 sast MEDIUM: run.end deliveries counts fabricated randint values — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-50u: PR#6 sast MEDIUM: route capacity never decrements (dead pass loop) — owner: forge — updated: 2026-11-07T20:00Z
@@ -44,6 +43,7 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [done] T-008: PR #20 review gates — merged 23:40:59Z (observation-only control-plane board, asterion owner-approved; verifier per-claim verdicts + sast PASS at head a4f97db) — owner: pug-bot — updated: 2026-11-08T00:13Z
 - [done] T-012: STATUS.md checkpoint refresh — PR #21 merged 23:46:53Z as 46d84a5 (resolves the deferred checkpoint item) — owner: forge — updated: 2026-11-08T00:13Z
 - [done] swarmachines-pr18-spec006: PR #18 merged (spec006 acceptance record + atlas @ 70b0421, merge 29d28e2; gates CLEAR/CLEAR pre-merge) — owner: forge — updated: 2026-11-07T21:24Z
+- [done] swarmachines-fvh: prune: ruff-clean runtime/ mechanical lint findings (14→3) — MERGED 2026-11-07T21:30:20Z as ee0595a (owner direct merge; tests 13/13 before/after at gate; remaining 3 findings documented-intentional, unsuppressed) — owner: pruner — updated: 2026-11-08T03:49Z
 - [done] swarmachines-9e5: Bidirectional ring topology + peer-mute disturbance — PR #5 merged @aa38f63 21:25:12Z (owner direct merge, mid-gate); post-merge third gate found net regression → fixed by PR #19 (merged 89e6517) — owner: dev — updated: 2026-11-07T22:19Z
 - [done] T-002: PR #19 fix-forward gates — resolved: PR #19 merged as 89e6517 (ring + peer-mute regression behavior restored, 20/20 tests; STATUS.md reflects fix state) — owner: verifier+sast — updated: 2026-11-07T22:19Z
 - [done] swarmachines-crh: Fix PR #6 freight world wiring — owner: forge
