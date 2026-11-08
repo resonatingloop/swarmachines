@@ -6,7 +6,7 @@
   "input_tokens": 533,
   "output_tokens": 1699,
   "total_tokens": 2232,
-  "item_path": "data/examples/stale-info-recovery.md",
+  "item_path": "data/runs/gen-full-20261108/artifacts/examples/stale-info-recovery.md",
   "kind": "example",
   "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "run_id": "gen-full-20261108"

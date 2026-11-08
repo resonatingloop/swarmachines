@@ -230,24 +230,10 @@
     },
     {
       "kind": "example",
-      "path": "examples/relay-loss-reroute.md",
-      "role": "narrator",
-      "topology": "ring",
-      "tokens": 2123
-    },
-    {
-      "kind": "example",
       "path": "examples/capacity-conflict.md",
       "role": "narrator",
       "topology": "mesh",
       "tokens": 2196
-    },
-    {
-      "kind": "example",
-      "path": "examples/capacity-conflict.md",
-      "role": "narrator",
-      "topology": "ring",
-      "tokens": 1861
     },
     {
       "kind": "example",
@@ -258,27 +244,13 @@
     },
     {
       "kind": "example",
-      "path": "examples/stale-info-recovery.md",
-      "role": "narrator",
-      "topology": "ring",
-      "tokens": 2232
-    },
-    {
-      "kind": "example",
       "path": "examples/ring-neighbor-routing.md",
       "role": "narrator",
       "topology": "mesh",
       "tokens": 2188
-    },
-    {
-      "kind": "example",
-      "path": "examples/ring-neighbor-routing.md",
-      "role": "narrator",
-      "topology": "ring",
-      "tokens": 2363
     }
   ],
-  "notes": "Full regeneration run \u2014 38 calls. After audit FIX-FIRST: 22 scenarios contain model-enhanced JSON (calls 9-30), 4 examples contain MESH responses (calls 31,33,35,37), 8 prompts are team-authored base templates (calls 1-8 recorded model acknowledgments). 4 team-authored files restored from 0dca625 (not in this run).",
+  "notes": "Full regeneration run \u2014 38 calls. After audit FIX-FIRST: 22 scenarios contain model-enhanced JSON (calls 9-30), 4 examples contain MESH responses (calls 31,33,35,37), 8 prompts are team-authored base templates (calls 1-8 recorded model acknowledgments). 4 team-authored files restored from 0dca625 (not in this run). Artifacts array deduplicated to 34 distinct paths; ring example outputs live under artifacts/examples/.",
   "provenance_summary": {
     "total_artifacts_on_disk": 38,
     "model_generated": 26,

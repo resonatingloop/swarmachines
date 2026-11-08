@@ -2,6 +2,12 @@
 """
 Pre-record data generation script for swarmachines hackathon.
 Generates prompts, scenarios, and coordination examples using Adaption API.
+
+HONEST HEADER (provenance correction 2026-11-08):
+- This script regenerates via the Adaption API when ADAPTION_API_KEY is present
+- The shipped data pack was produced through the governed run logged in data/GENERATION-LOG.md
+- The "0 calls" string in provenance footers applies to team-authored seeds ONLY
+- Model-generated artifacts (26 total) carry per-file provenance with call numbers
 """
 
 import json
