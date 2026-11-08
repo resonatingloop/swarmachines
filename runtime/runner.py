@@ -22,15 +22,6 @@ from typing import ClassVar
 
 from freight_world import FreightWorld
 
-# Optional tracing support (no-op when not configured)
-try:
-    from tracer import RunStatus, TraceConfig, Tracer
-except ImportError:
-    # Tracing module not available - will be no-op
-    Tracer = None  # type: ignore
-    TraceConfig = None  # type: ignore
-    RunStatus = None  # type: ignore
-
 
 class EventLog:
     """Append-only event log with (run_id, seq) uniqueness."""
@@ -608,7 +599,6 @@ class TurnSeamRunner:
         disturbance_schedule: dict,
         delivery_map: dict | None = None,
         use_freight_world: bool = False,
-        tracer=None,  # Optional[Tracer] - avoid forward ref issues
     ):
         self.seed = seed
         self.rng = random.Random(seed)
@@ -639,19 +629,8 @@ class TurnSeamRunner:
         if use_freight_world:
             self.freight_world = FreightWorld(seed=seed)
 
-        # Tracing support
-        self.tracer = tracer
-
     def run(self, num_turns: int) -> str:
         """Run the simulation for num_turns turns."""
-
-        # Start tracing if configured
-        if self.tracer is not None:
-            self.tracer.start_trace(
-                run_id=self.run_id,
-                condition=self.topology.topology,
-                seed=self.seed,
-            )
 
         # Compute delivery_config_sha (hash of delivery configuration, not delivery graph)
         # Named delivery_config_sha to clarify it hashes the hub/topology config,
@@ -763,36 +742,17 @@ class TurnSeamRunner:
 
             # Phase 4: record (implicit in event logging)
 
-        # run.end - use actual world counts if freight_world is available
-        if self.freight_world is not None:
-            stats = self.freight_world.get_delivery_stats()
-            deliveries_completed = stats["delivered"]
-            deliveries_stuck = stats["stuck"]
-        else:
-            # Scripted mode: drop fabricated fields entirely (absent is better than lying)
-            deliveries_completed = 0
-            deliveries_stuck = 0
-
+        # run.end - omit fabricated delivery stats entirely (absent is better than lying)
         self.log.append(
             turn=num_turns,
             agent_id=None,
             event_type="run.end",
             payload={
-                "deliveries_completed": deliveries_completed,
-                "deliveries_stuck": deliveries_stuck,
                 "recovery_interval_turns": num_turns,
             },
         )
 
         # End tracing if configured
-        if self.tracer is not None:
-            from tracer import RunStatus
-
-            self.tracer.end_trace(
-                status=RunStatus.COMPLETED,
-                reason=f"completed {num_turns} turns",
-            )
-
         return self.log.to_jsonl()
 
     def query_message_context(self, message_id: str, turn: int) -> bool:
@@ -961,21 +921,6 @@ def main():
                 "agent": parts[2],
             }
 
-    # Create tracer if --trace flag is set
-    tracer = None
-    if args.trace:
-        try:
-            from tracer import create_tracer
-
-            tracer, _ = create_tracer(
-                run_id=f"run-seed{args.seed:04d}",
-                condition=args.topology,
-                seed=args.seed,
-                use_fake_exporter=False,  # Real tracing (or no-op if no keys)
-            )
-        except ImportError:
-            print("Warning: --trace specified but tracer module not available")
-
     runner = TurnSeamRunner(
         seed=args.seed,
         comm_topology=args.topology,
@@ -983,7 +928,6 @@ def main():
         disturbance_schedule=disturbance_schedule,
         delivery_map=delivery_map if delivery_map else None,
         use_freight_world=args.world == "freight",
-        tracer=tracer,
     )
 
     output = runner.run(args.turns)

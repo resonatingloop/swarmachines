@@ -11,9 +11,19 @@ from runner import load_events
 
 
 def main():
-    events = load_events(str(Path(__file__).parent / "sample-run.jsonl"))
+    # Accept path from CLI argument, default to sample-run.jsonl for backward compat
+    if len(sys.argv) > 1:
+        event_path = Path(sys.argv[1])
+    else:
+        event_path = Path(__file__).parent / "sample-run.jsonl"
+
+    if not event_path.exists():
+        print(f"ERROR: File not found: {event_path}", file=sys.stderr)
+        return 1
+
+    events = load_events(str(event_path))
     types = {e["type"] for e in events}
-    print("Event types in sample-run.jsonl:")
+    print(f"Event types in {event_path.name}:")
     for t in sorted(types):
         count = sum(1 for e in events if e["type"] == t)
         print(f"  {t}: {count}")
