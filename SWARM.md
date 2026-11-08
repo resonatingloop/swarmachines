@@ -16,7 +16,7 @@ bring-your-own agent (caduceus, asterion, future teammates).
 
 ## Task Tracking — TASKS.md Ledger
 
-This project uses **TASKS.md** for durable task tracking. Beads (bd) was retired on 2026-11-07; never run `bd` commands.
+bd (beads) is the canonical tracker — reinstated by owner ruling 2026-11-08; the gnu rule still applies (TASKS.md/ledger hunks do not ride PRs); TASKS.md is archived residue pending a disposition ruling (bd #67, held).
 
 ### Ledger Format
 
@@ -31,7 +31,7 @@ One line per task: `- [STATUS] ID: title — owner: NODE — updated: TS`
 
 - Use TASKS.md for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
 - Commit ledger updates with your work — the ledger is the single source of truth
-- The coordinator owns routing; beads is retired and must never be invoked
+- bd (beads) is the canonical tracker — reinstated by owner ruling 2026-11-08; the gnu rule still applies (TASKS.md/ledger hunks do not ride PRs); TASKS.md is archived residue pending a disposition ruling (bd #67, held).
 
 ## Specs (OpenSpec) — the contract for non-trivial work
 
