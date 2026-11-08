@@ -1,0 +1,475 @@
+{
+  "status": "candidate_not_frozen",
+  "runtime_commit": "0f84075c58c5f52c43fe7888d58ff51c9de18773",
+  "schema": "swarmachines/events/v1",
+  "policy": "route-gossip-v1",
+  "python_version": "3.12.3",
+  "dependencies": {
+    "jsonschema": "4.26.0",
+    "attrs": "26.1.0",
+    "jsonschema-specifications": "2025.9.1",
+    "referencing": "0.37.0",
+    "rpds-py": "2026.9.1"
+  },
+  "ordered_agents": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ],
+  "agent_locations": {
+    "a": [
+      "west"
+    ],
+    "b": [
+      "east"
+    ],
+    "c": [
+      "south"
+    ],
+    "d": [
+      "relay-a"
+    ]
+  },
+  "horizon": 16,
+  "disturbance": {
+    "kind": "peer-mute",
+    "agent": "c",
+    "start_turn": 8,
+    "phase": "after turn.begin, before observations",
+    "through_turn": 16
+  },
+  "provider_mode": "scripted_zero_provider",
+  "credential_environment": "use clean allowlisted child environment; no provider keys",
+  "expected_stop": "completed run.end at turn 16 with terminal roster",
+  "planned_execution_order": [
+    "pilot-seed42-mesh",
+    "pilot-seed42-ring"
+  ],
+  "actual_execution_order": [],
+  "attempts": [],
+  "conditions": [
+    {
+      "condition_id": "pilot-seed42-mesh",
+      "seed": 42,
+      "topology": "mesh",
+      "adjacency_before_mute": [
+        [
+          "a",
+          "b"
+        ],
+        [
+          "a",
+          "c"
+        ],
+        [
+          "a",
+          "d"
+        ],
+        [
+          "b",
+          "a"
+        ],
+        [
+          "b",
+          "c"
+        ],
+        [
+          "b",
+          "d"
+        ],
+        [
+          "c",
+          "a"
+        ],
+        [
+          "c",
+          "b"
+        ],
+        [
+          "c",
+          "d"
+        ],
+        [
+          "d",
+          "a"
+        ],
+        [
+          "d",
+          "b"
+        ],
+        [
+          "d",
+          "c"
+        ]
+      ],
+      "adjacency_after_mute": [
+        [
+          "a",
+          "b"
+        ],
+        [
+          "a",
+          "d"
+        ],
+        [
+          "b",
+          "a"
+        ],
+        [
+          "b",
+          "d"
+        ],
+        [
+          "d",
+          "a"
+        ],
+        [
+          "d",
+          "b"
+        ]
+      ],
+      "physical_world_sha256": "9f679f3acf6a819fe0306f10907ce22f11e1a09041a4368f533a1f17a13cc521",
+      "jobs_release_sha256": "05d24968aa747a4ccf6023eae270b4be038afbba9065534bbaaceb57d379a5e3",
+      "action_rng_initial_sha256": {
+        "a": "26d79743c5966f71e3d3fd50e2225d82b02b9553334f329624f63d3f5753ab65",
+        "b": "a0fccde1f354a96663efd414fbd6ae4bb0acc81027a680092f16914e9122f2b3",
+        "c": "e49b4bfd102f9a2aac4001d0c5bb33ab860f7eaffc85b67e25327f2edb611180",
+        "d": "ca2e509a1d2b59d19cd56a1e24b3127a4a1feb7d95febd1f6c7fc9b8d07cb481"
+      },
+      "invocation": [
+        "python3",
+        "runtime/runner.py",
+        "--world",
+        "freight",
+        "--policy",
+        "route-gossip-v1",
+        "--seed",
+        "42",
+        "--turns",
+        "16",
+        "--agents",
+        "a,b,c,d",
+        "--topology",
+        "mesh",
+        "--disturbance",
+        "peer-mute:8:c",
+        "--output",
+        "artifacts/pilot-seed42-mesh/attempt-01/episode.jsonl"
+      ],
+      "rerun_output": "artifacts/pilot-seed42-mesh/rerun-01/episode.jsonl"
+    },
+    {
+      "condition_id": "pilot-seed42-ring",
+      "seed": 42,
+      "topology": "bidirectional-ring",
+      "adjacency_before_mute": [
+        [
+          "a",
+          "b"
+        ],
+        [
+          "a",
+          "d"
+        ],
+        [
+          "b",
+          "a"
+        ],
+        [
+          "b",
+          "c"
+        ],
+        [
+          "c",
+          "b"
+        ],
+        [
+          "c",
+          "d"
+        ],
+        [
+          "d",
+          "a"
+        ],
+        [
+          "d",
+          "c"
+        ]
+      ],
+      "adjacency_after_mute": [
+        [
+          "a",
+          "b"
+        ],
+        [
+          "a",
+          "d"
+        ],
+        [
+          "b",
+          "a"
+        ],
+        [
+          "d",
+          "a"
+        ]
+      ],
+      "physical_world_sha256": "9f679f3acf6a819fe0306f10907ce22f11e1a09041a4368f533a1f17a13cc521",
+      "jobs_release_sha256": "05d24968aa747a4ccf6023eae270b4be038afbba9065534bbaaceb57d379a5e3",
+      "action_rng_initial_sha256": {
+        "a": "26d79743c5966f71e3d3fd50e2225d82b02b9553334f329624f63d3f5753ab65",
+        "b": "a0fccde1f354a96663efd414fbd6ae4bb0acc81027a680092f16914e9122f2b3",
+        "c": "e49b4bfd102f9a2aac4001d0c5bb33ab860f7eaffc85b67e25327f2edb611180",
+        "d": "ca2e509a1d2b59d19cd56a1e24b3127a4a1feb7d95febd1f6c7fc9b8d07cb481"
+      },
+      "invocation": [
+        "python3",
+        "runtime/runner.py",
+        "--world",
+        "freight",
+        "--policy",
+        "route-gossip-v1",
+        "--seed",
+        "42",
+        "--turns",
+        "16",
+        "--agents",
+        "a,b,c,d",
+        "--topology",
+        "bidirectional-ring",
+        "--disturbance",
+        "peer-mute:8:c",
+        "--output",
+        "artifacts/pilot-seed42-ring/attempt-01/episode.jsonl"
+      ],
+      "rerun_output": "artifacts/pilot-seed42-ring/rerun-01/episode.jsonl"
+    }
+  ],
+  "initial_world": {
+    "depots": [
+      "west",
+      "east",
+      "south"
+    ],
+    "hubs": [
+      "relay-a"
+    ],
+    "routes": [
+      {
+        "from_loc": "east",
+        "to_loc": "relay-a",
+        "status": "open",
+        "bridge": null,
+        "capacity": 3,
+        "current_load": 0
+      },
+      {
+        "from_loc": "east",
+        "to_loc": "south",
+        "status": "open",
+        "bridge": "east-bridge",
+        "capacity": 3,
+        "current_load": 0
+      },
+      {
+        "from_loc": "east",
+        "to_loc": "west",
+        "status": "open",
+        "bridge": null,
+        "capacity": 3,
+        "current_load": 0
+      },
+      {
+        "from_loc": "relay-a",
+        "to_loc": "east",
+        "status": "open",
+        "bridge": null,
+        "capacity": 3,
+        "current_load": 0
+      },
+      {
+        "from_loc": "relay-a",
+        "to_loc": "south",
+        "status": "open",
+        "bridge": null,
+        "capacity": 3,
+        "current_load": 0
+      },
+      {
+        "from_loc": "relay-a",
+        "to_loc": "west",
+        "status": "open",
+        "bridge": null,
+        "capacity": 3,
+        "current_load": 0
+      },
+      {
+        "from_loc": "south",
+        "to_loc": "east",
+        "status": "open",
+        "bridge": "east-bridge",
+        "capacity": 3,
+        "current_load": 0
+      },
+      {
+        "from_loc": "south",
+        "to_loc": "relay-a",
+        "status": "open",
+        "bridge": null,
+        "capacity": 3,
+        "current_load": 0
+      },
+      {
+        "from_loc": "south",
+        "to_loc": "west",
+        "status": "open",
+        "bridge": null,
+        "capacity": 3,
+        "current_load": 0
+      },
+      {
+        "from_loc": "west",
+        "to_loc": "east",
+        "status": "open",
+        "bridge": null,
+        "capacity": 3,
+        "current_load": 0
+      },
+      {
+        "from_loc": "west",
+        "to_loc": "relay-a",
+        "status": "open",
+        "bridge": null,
+        "capacity": 3,
+        "current_load": 0
+      },
+      {
+        "from_loc": "west",
+        "to_loc": "south",
+        "status": "open",
+        "bridge": null,
+        "capacity": 3,
+        "current_load": 0
+      }
+    ],
+    "freight": [
+      {
+        "item_id": "f-001",
+        "freight_type": "med-kit",
+        "origin": "west",
+        "destination": "south",
+        "current_location": "west",
+        "state": "pending"
+      },
+      {
+        "item_id": "f-002",
+        "freight_type": "supplies",
+        "origin": "east",
+        "destination": "west",
+        "current_location": "east",
+        "state": "pending"
+      },
+      {
+        "item_id": "f-003",
+        "freight_type": "equipment",
+        "origin": "south",
+        "destination": "east",
+        "current_location": "south",
+        "state": "pending"
+      },
+      {
+        "item_id": "f-004",
+        "freight_type": "med-kit",
+        "origin": "relay-a",
+        "destination": "west",
+        "current_location": "relay-a",
+        "state": "pending"
+      }
+    ],
+    "agent_depots": {
+      "a": [
+        "west"
+      ],
+      "b": [
+        "east"
+      ],
+      "c": [
+        "south"
+      ],
+      "d": [
+        "relay-a"
+      ]
+    }
+  },
+  "initial_jobs": [
+    {
+      "job_id": "j-f-001",
+      "freight_id": "f-001",
+      "origin": "west",
+      "destination": "south",
+      "state": "pending",
+      "via_path": [],
+      "release_turn": 0
+    },
+    {
+      "job_id": "j-f-002",
+      "freight_id": "f-002",
+      "origin": "east",
+      "destination": "west",
+      "state": "pending",
+      "via_path": [],
+      "release_turn": 0
+    },
+    {
+      "job_id": "j-f-003",
+      "freight_id": "f-003",
+      "origin": "south",
+      "destination": "east",
+      "state": "pending",
+      "via_path": [],
+      "release_turn": 0
+    },
+    {
+      "job_id": "j-f-004",
+      "freight_id": "f-004",
+      "origin": "relay-a",
+      "destination": "west",
+      "state": "pending",
+      "via_path": [],
+      "release_turn": 0
+    }
+  ],
+  "release_turn_provenance": "derived constant 0: all actual jobs are constructed before turn 1; not a DeliveryJob field",
+  "source_sha256": {
+    "runtime/runner.py": "09a6941c711005bddda0a380690a6d540ac982753946b7415d67492d980b8a59",
+    "runtime/freight_world.py": "112061d3888a617587f8bab88b33dfea3975f250f985ef53228748b70ff093ed",
+    "runtime/route_gossip.py": "ff20f5edfb82036df7ae0c8516179f0541177d984a3d9c8489cb3fd037fda3da",
+    "runtime/job_evidence.py": "3ab1b9f010f312ac6c1737ef87d69732026a65afb606cbf37cad60a57d150075",
+    "runtime/schema/events.schema.json": "8e873df23dc8f9e9f697743282b8cb430f5712b6baa9ec0a93b089354bf136bb",
+    "analysis/measure_episode.py": "2315586bac594d8d191a4e1f97f57bf03f25a25b8f589bc88255f401978909b4"
+  },
+  "readiness": {
+    "paired_initial_world": "verified_equal",
+    "paired_jobs_releases": "verified_equal",
+    "paired_action_rng": "verified_equal",
+    "ring_adjacency_and_mute": "verified",
+    "policy_capability": "independent review recorded for merged #33; focused tests rerun separately",
+    "job_mapping": "approved; implementation merged #34",
+    "independent_security_review": "pending: #34 merged under explicit deferral",
+    "formal_runs": "not_started",
+    "offline_fixture_suite": {
+      "tests": 28,
+      "failures": 0,
+      "errors": 0,
+      "network_events": []
+    }
+  },
+  "constraints": [
+    "no no-mute control; cannot estimate causal effect of mute",
+    "reruns are reproducibility checks, not added sample size",
+    "do not expand beyond accepted seeds/conditions",
+    "no benefit claim from capability proof",
+    "freeze only after independent review gate clears"
+  ]
+}

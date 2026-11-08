@@ -1,0 +1,12 @@
+{
+  "kind": "readiness_unit_and_integration_fixtures_not_formal_attempts",
+  "runtime_commit": "0f84075c58c5f52c43fe7888d58ff51c9de18773",
+  "exit_status": 0,
+  "credential_environment": "fresh allowlist, no provider credentials",
+  "result": {
+    "tests": 28,
+    "failures": 0,
+    "errors": 0,
+    "network_events": []
+  }
+}
