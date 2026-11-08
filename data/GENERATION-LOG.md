@@ -40,11 +40,12 @@ synthetic receipts reconstructed from gen-run-001-tally.log. This full
 regeneration run supersedes that work with:
 
 - Real per-call JSONL logs (no reconstruction)
-- Real captured receipts (not synthetic)
+- Real captured receipts for 34 calls; 4 MESH example receipts reconstructed from calls.jsonl
 - Complete provenance chain
 
 The synthetic receipts have been removed — reconstruction is documented in
-this log. All current receipts are real captured receipts in
+this log. Of the 38 current receipts, 34 are real captured receipts and 4
+(MESH example calls 31, 33, 35, 37) are reconstructed from calls.jsonl in
 `data/runs/gen-full-20261108/receipts/`.
 
 ## Regeneration
