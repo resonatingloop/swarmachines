@@ -194,15 +194,30 @@ class DatasetPackager:
         """
         Scan directory for API key leaks.
 
+        Scans the WHOLE pack (data/records.jsonl included), not just data/runs.
+        Patterns include: ADAPTION_API_KEY env var name, adk_/hf_/sk- prefixes,
+        and the actual credential value from the environment.
+
         Returns:
             List of files containing potential API key patterns.
         """
+        import os
+
         api_key_patterns = [
             "ADAPTION_API_KEY",
             "adaption_api_key",
             "sk-adaption",
             "adaption-key",
+            # Additional key shapes per security scan widening
+            "adk_",
+            "hf_",
+            "sk-",
         ]
+
+        # Add the actual credential value from environment if present
+        env_credential = os.environ.get("ADAPTION_API_KEY")
+        if env_credential:
+            api_key_patterns.append(env_credential)
 
         found = []
         for file_path in directory.rglob("*"):
@@ -499,7 +514,7 @@ One record per event with the following fields:
 - `seed`: Random seed for deterministic replay
 - `topology`: Communication topology (mesh, hub-spoke, bidirectional-ring)
 - `turn`: Turn number
-- `agent_id`: Agent ID (null for world-level events)
+- `agent_id`: Agent ID (system-labeled for world-level events, never null)
 - `agent_role`: Agent role in the event
 - `event_type`: Event type (observation.recorded, message.sent, action.committed, etc.)
 - `content`: Full event content/text

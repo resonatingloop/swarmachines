@@ -489,12 +489,12 @@ class HFUploader:
                 raise RuntimeError(f"Required file missing: {filename}")
 
         # Upload README.md first (dataset card) - Defect 10 fix: check return code
+        # Fix: use 'hf upload' instead of 'upload-file'
         result = self._run_hf_command(
             [
-                "upload-file",
+                "upload",
                 self.repo_id,
                 str(self.pack_dir / "README.md"),
-                "README.md",
                 "--repo-type",
                 "dataset",
             ]
@@ -505,10 +505,9 @@ class HFUploader:
         # Upload MANIFEST.md - Defect 10 fix: check return code
         result = self._run_hf_command(
             [
-                "upload-file",
+                "upload",
                 self.repo_id,
                 str(self.pack_dir / "MANIFEST.md"),
-                "MANIFEST.md",
                 "--repo-type",
                 "dataset",
             ]
@@ -519,10 +518,9 @@ class HFUploader:
         # Upload data/records.jsonl (B5: spec-conformant, no train/test split) - Defect 10 fix
         result = self._run_hf_command(
             [
-                "upload-file",
+                "upload",
                 self.repo_id,
                 str(self.pack_dir / "data" / "records.jsonl"),
-                "data/records.jsonl",
                 "--repo-type",
                 "dataset",
             ]
@@ -535,10 +533,9 @@ class HFUploader:
         # Upload data/runs.jsonl - Defect 10 fix
         result = self._run_hf_command(
             [
-                "upload-file",
+                "upload",
                 self.repo_id,
                 str(self.pack_dir / "data" / "runs.jsonl"),
-                "data/runs.jsonl",
                 "--repo-type",
                 "dataset",
             ]
@@ -549,12 +546,12 @@ class HFUploader:
         # Upload data/runs/ directory (raw per-run layer) - Defect 10 fix
         runs_dir = self.pack_dir / "data" / "runs"
         if runs_dir.exists():
+            # Fix: use 'hf upload' instead of 'upload-folder'
             result = self._run_hf_command(
                 [
-                    "upload-folder",
+                    "upload",
                     self.repo_id,
                     str(runs_dir),
-                    "data/runs",
                     "--repo-type",
                     "dataset",
                 ]
