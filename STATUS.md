@@ -2,7 +2,7 @@
 
 > continuity role: operational checkpoint
 > status: event-log seal merged to master (PR #46, fabrication-detectable logs); formal protocol accepted; seed-42 pair recorded; report synthesis pending
-> last verified: 2026-11-08 (origin/master 4ea45df)
+> last verified: 2026-11-08 (origin/master ba409be)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
@@ -24,13 +24,13 @@ sample-run.jsonl stays legacy (byte-compat fixture).
 
 ## verified checkpoint
 
-**master tip**: `4ea45df` — Merge pull request #46 from resonatingloop/swarmachines-i64-eventlog-seal (feat(runtime): seal the EventLog against policy-level fabrication)
+**master tip**: `ba409be` — Merge pull request #47 from resonatingloop/prune-status-rot3 (docs: refresh STATUS.md checkpoint for post-#46 master tip)
 
 **sanitization respin (2026-11-08)**: delegation receipts now persist the model name only when the provider reports the fixed `glm-53-flash` constant (otherwise `unknown`) and validate each usage token count independently within 0..10^9, estimating cost only from a complete valid pair. This is the owner-ruled redo of the db2bc17 sanitization on a channel-preserving base: the bounded response-diagnostics channel from pr #22 (fixed reason codes, allowlisted status, receipt usage fallback) is untouched and no channel was removed. The sanitized delegation harness sha256 is registered in the read-only projection's recognized producers next to the legacy hashes, so budget provenance stays known for new receipts while prior receipts still project. 160 offline tests passed at its df73cd1 merge across control_plane, runtime and viewer (74+24+62) with mocked sdks and zero provider calls; control_plane ruff check and format are clean. Landed via PR #42 (2026-11-08 05:52Z).
 
 job-evidence slice: spec012 mapping approved; settled policy base `18218e706cf950c89161b6588166d14529f76726`. Versioned job instrumentation and an offline analyzer are implemented; 28 focused tests, legacy 24/24 runtime tests and 82 viewer tests pass. Noninterference against the pinned base and 386-record integration reconciliation pass; independent review pending. [operations](analysis/README.md). No formal experimental batch or provider calls.
 
-**merge ledger (2026-11-08 01:26Z to 06:44Z)**: nine recent merges are listed below; this is not the complete merge history since c5899d8:
+**merge ledger (2026-11-08 01:26Z to 07:45Z)**: ten recent merges are listed below; this is not the complete merge history since c5899d8:
 - PR #28 (3491180): feat(data): real Adaption-generated data pack with full provenance (38 seed artifacts, per-run logs)
 - PR #39 (572612a): feat(spec006): seed-42 formal pair — mesh vs ring under peer-mute:8:c (frozen manifest)
 - PR #37 (12b819d): docs: prepare seed-42 candidate manifest and readiness gate
@@ -40,6 +40,7 @@ job-evidence slice: spec012 mapping approved; settled policy base `18218e706cf95
 - PR #41 (e42b23d): docs: refresh STATUS.md checkpoint for tip 7acd2a7
 - PR #42 (df73cd1): T-011: channel-preserving model/usage sanitization (swarmachines-t011)
 - PR #46 (4ea45df): feat(runtime): seal the EventLog against policy-level fabrication (swarmachines-i64)
+- PR #47 (ba409be): docs: refresh STATUS.md checkpoint for post-#46 master tip
 
 **closed superseded work**:
 - PR #6: CLOSED — feat: freight-in-the-fog world integration (day-1 slice) — superseded by the merged freight-world wiring in PR #29 + subsequent fixes
@@ -54,7 +55,7 @@ job-evidence slice: spec012 mapping approved; settled policy base `18218e706cf95
 
 **board state**: pug reported 52 issues at 05:11z: 8 open, 2 in progress, 42 closed (10 active). this is an attributed snapshot, not a local live-board verification; later filings may change the count. beads is authoritative.
 
-**pr snapshot**: #41 (this checkpoint refresh) was the only open pr during review. query github for current state; merging this document does not make its snapshot a live count.
+**pr snapshot**: #43/#44/#45/#48 were open alongside this refresh (PR #47) at its merge. query github for current state; merging this document does not make its snapshot a live count.
 
 **regression test filed**: swarmachines-oe3 — act-phase no-op labeling: freight acceptance tests pass on BOTH the pre-#38 mislabeled code and fixed code; needs a test that FAILS on false action.rejected for legal no-ops and PASSES on master.
 
@@ -95,4 +96,4 @@ colette drafts report prose from `docs/report/report-skeleton.md`. use the recor
 
 ## provenance
 
-this checkpoint refreshed at master tip 4ea45df, extending the 7acd2a7 regeneration (PR #41) with merges #42 and #46. Supersedes closed PR #35 (prune-status-rot2) whose snapshot predated the merges listed above. Zero model/API/provider calls — docs-only refresh.
+this checkpoint refreshed at master tip ba409be, extending the 4ea45df regeneration (PR #47) with its own landing merge (#47). Supersedes the PR #47 snapshot and the closed PR #35 (prune-status-rot2) chain. Zero model/API/provider calls — docs-only refresh.
