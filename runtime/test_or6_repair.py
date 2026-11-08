@@ -359,6 +359,12 @@ class TestLangfuseWiring(unittest.TestCase):
             self.assertEqual(gen["metadata"]["run_id"], "r1")
             self.assertEqual(gen["metadata"]["status"], "completed")
             self.assertEqual(calls[-1], "flush")
+            # privacy contract: hashes only, no raw prompt/output text
+            self.assertIn("sha256", gen["input"])
+            self.assertIn("sha256", gen["output"])
+            self.assertNotIn("prompt", str(gen["input"]))
+            self.assertNotIn("answer", str(gen["output"]))
+            self.assertEqual(gen["input"]["chars"], len("prompt"))
         finally:
             lw._LANGFUSE_CLIENT = None
 
@@ -389,7 +395,9 @@ class TestLangfuseWiring(unittest.TestCase):
             self.assertTrue(ok)
             gen = calls[0]
             self.assertTrue(gen["metadata"]["failed"])
-            self.assertIn("IncompleteResponseError", gen["output"])
+            self.assertEqual(gen["metadata"]["error_class"], "IncompleteResponseError")
+            self.assertEqual(len(gen["metadata"]["error_sha256"]), 64)  # sha256 hex
+            self.assertNotIn("boom", str(gen["output"]))  # no raw error text
             self.assertEqual(gen["metadata"]["incomplete_reason"], "max_output_tokens")
         finally:
             lw._LANGFUSE_CLIENT = None
@@ -428,6 +436,49 @@ class TestLangfuseWiring(unittest.TestCase):
         lw.shutdown_langfuse()
         self.assertEqual(flushed, [1])
         self.assertIn("shutdown complete", lw.langfuse_state()["reason"])
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class TestProviderExceptionTrace(unittest.TestCase):
+    """Provider exceptions before a response also emit a failure trace."""
+
+    def test_provider_exception_traced(self):
+        """A raising provider call traces error_class + hash, not message."""
+        import sys as _sys
+
+        _sys.path.insert(0, str(Path(__file__).parent.parent))
+        import dataset_pack.langfuse_wiring as lw
+
+        calls = []
+
+        class FakeClient:
+            def create_generation(self, **kw):
+                calls.append(kw)
+
+            def flush(self):
+                pass
+
+        lw._LANGFUSE_CLIENT = FakeClient()
+        lw._LANGFUSE_STATE = {"enabled": True, "reason": "test"}
+        try:
+            ok = lw.trace_provider_exception(
+                "glm-53-flash",
+                "the prompt text",
+                ConnectionError("429 rate limited"),
+                latency_ms=42.0,
+            )
+            self.assertTrue(ok)
+            gen = calls[0]
+            self.assertEqual(gen["metadata"]["error_class"], "ConnectionError")
+            self.assertEqual(len(gen["metadata"]["error_sha256"]), 64)  # sha256 hex
+            self.assertEqual(gen["metadata"]["status"], "provider-error")
+            self.assertNotIn("rate limited", str(gen))  # no raw message
+            self.assertNotIn("the prompt text", str(gen))  # no raw prompt
+        finally:
+            lw._LANGFUSE_CLIENT = None
 
 
 if __name__ == "__main__":

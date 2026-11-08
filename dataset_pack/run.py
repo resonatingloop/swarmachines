@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import random
 import sys
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -31,7 +32,12 @@ from runtime.runner import EventLog
 
 from .budget import CreditBudget
 from .configs import TaskInstanceConfig
-from .langfuse_wiring import trace_failure, trace_generation
+from .langfuse_wiring import (
+    shutdown_langfuse,
+    trace_failure,
+    trace_generation,
+    trace_provider_exception,
+)
 
 
 @dataclass
@@ -405,8 +411,13 @@ class GovernedRunner:
         if self.dry_run:
             self._simulate_run()
         else:
-            # Live execution via governed workflow
-            self._execute_live_run()
+            # Live execution via governed workflow. The Langfuse client
+            # is explicitly flushed and closed on EVERY exit path (or6
+            # contract: lifecycle close in finally, never left dangling).
+            try:
+                self._execute_live_run()
+            finally:
+                shutdown_langfuse()
         self.status = "dry-run" if self.dry_run else "completed"
 
     def _execute_live_run(self) -> None:
@@ -495,6 +506,7 @@ class GovernedRunner:
         if self.budget is None:
             raise RuntimeError("live provider call attempted without credit budget")
         reservation = self.budget.begin(prompt)
+        _call_start = time.perf_counter()
         try:
             model_response = adapter.chat(
                 model="glm-53-flash",
@@ -547,7 +559,15 @@ class GovernedRunner:
                         },
                     )
                 raise
-        except Exception:
+        except Exception as prov_err:
+            # or6 contract: provider exceptions (before any response existed)
+            # also emit a failure trace — error class allowlisted, message hashed.
+            trace_provider_exception(
+                model="glm-53-flash",
+                prompt=prompt,
+                error=prov_err,
+                latency_ms=(time.perf_counter() - _call_start) * 1000,
+            )
             self.budget.fail(reservation)
             raise
         try:

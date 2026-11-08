@@ -15,6 +15,7 @@ degradation, per the cc1 governing contract:
 
 from __future__ import annotations
 
+import hashlib
 import os
 from typing import Any
 
@@ -66,6 +67,11 @@ def langfuse_state() -> dict[str, Any]:
     return dict(_LANGFUSE_STATE)
 
 
+def _sha256(text: str) -> str:
+    """SHA-256 hex digest of a text payload (hashes-only Langfuse policy)."""
+    return hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
+
+
 def trace_generation(
     model: str,
     prompt: str,
@@ -78,15 +84,19 @@ def trace_generation(
 ) -> bool:
     """Record one generation trace with explicit flush.
 
+    Privacy contract: RAW PROMPTS AND OUTPUTS NEVER LEAVE THE RUN. Only
+    allowlisted metadata and SHA-256 hashes are sent (prompt/output
+    digests and lengths); the governing cc1 scope permits nothing richer.
+
     Args:
         model: Model id.
-        prompt: Full prompt text.
-        output_text: Visible output text (may be empty on failure).
+        prompt: Full prompt text (hashed locally; never transmitted).
+        output_text: Visible output text (hashed; never transmitted).
         usage: AdapterUsage (input_tokens, output_tokens, reasoning_tokens).
         status: Response status ("completed", "incomplete", ...).
         incomplete_reason: incomplete_details.reason when present.
         latency_ms: Call latency in milliseconds.
-        metadata: Extra metadata merged into the trace.
+        metadata: Extra ALLOWLISTED metadata (ids, hashes, metrics only).
 
     Returns:
         True when a trace was recorded and flushed; False when the
@@ -99,8 +109,8 @@ def trace_generation(
         client.create_generation(
             name="adapter.chat",
             model=model,
-            input=prompt,
-            output=output_text,
+            input={"sha256": _sha256(prompt), "chars": len(prompt)},
+            output={"sha256": _sha256(output_text), "chars": len(output_text)},
             usage={
                 "input": getattr(usage, "input_tokens", 0),
                 "output": getattr(usage, "output_tokens", 0),
@@ -132,9 +142,57 @@ def trace_failure(
 ) -> bool:
     """Record a failed/validation-rejected call as a generation trace.
 
-    The failure trace carries the same fields as a success plus the error
-    text as the output, so lifecycle/error/interruption events are visible
-    in the trace stream alongside healthy generations.
+    Privacy contract: the error text is hashed (its class name is an
+    allowlisted category); no raw error strings — they can embed response
+    fragments — are transmitted.
+
+    Args:
+        model: Model id.
+        prompt: Full prompt text (hashed locally).
+        error: The error text (hashed; only the exception class name is sent).
+        usage: AdapterUsage.
+        status: Response status.
+        incomplete_reason: incomplete_details.reason when present.
+        latency_ms: Call latency in milliseconds.
+
+    Returns:
+        True when recorded and flushed; False when offline.
+    """
+    error_class = error.split(":", 1)[0] if ":" in error else error[:60]
+    return trace_generation(
+        model=model,
+        prompt=prompt,
+        output_text=error,
+        usage=usage,
+        status=status,
+        incomplete_reason=incomplete_reason,
+        latency_ms=latency_ms,
+        metadata={
+            "failed": True,
+            "error_class": error_class,
+            "error_sha256": _sha256(error),
+        },
+    )
+
+
+def trace_provider_exception(
+    model: str,
+    prompt: str,
+    error: BaseException,
+    latency_ms: float,
+) -> bool:
+    """Trace a provider exception raised BEFORE any response existed.
+
+    The or6 contract: provider-level failures (connection, auth, rate
+    limit) emit a failure trace too — not only validation failures.
+    Usage is unknown (zeros); the error class name is allowlisted,
+    the message hashed.
+
+    Args:
+        model: Model id.
+        prompt: Full prompt text (hashed locally).
+        error: The raised exception.
+        latency_ms: Time spent before the raise.
 
     Returns:
         True when recorded and flushed; False when offline.
@@ -142,12 +200,16 @@ def trace_failure(
     return trace_generation(
         model=model,
         prompt=prompt,
-        output_text=f"FAILED: {error}",
-        usage=usage,
-        status=status,
-        incomplete_reason=incomplete_reason,
+        output_text=str(error),
+        usage=None,
+        status="provider-error",
+        incomplete_reason=None,
         latency_ms=latency_ms,
-        metadata={"failed": True},
+        metadata={
+            "failed": True,
+            "error_class": type(error).__name__,
+            "error_sha256": _sha256(str(error)),
+        },
     )
 
 
