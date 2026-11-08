@@ -8,6 +8,17 @@
 
 ## verified checkpoint
 
+receipt-board slice: owner accepted [spec009](specs/009-worker-receipt-board.md)
+on 2026-11-08. optional read-only worker projection implemented; snapshot v2
+preserves v1 rendering. 48 offline tests pass, scoped ruff passes, and browser
+checks cover 1440/720/320 reflow, keyboard disclosure, no external requests and
+empty storage. real private capture shows four live attempts (two completed,
+two failed), one separate offline proof, 0.4 credits reserved and a known-usage
+subtotal of 0.0016241 credits across 3/4 live attempts. actual billing unknown.
+source queue hashes/sizes and directory inventory stayed unchanged. no provider
+calls. WAL sources are refused rather than risking sidecar writes. independent
+review of this privacy boundary remains pending.
+
 smoke outcome correction: failures in calls 2–4 now produce aggregate `error`
 and CLI exit 1; failed call 1 counts its attempted invocation. five offline
 regression tests cover outcomes, counting, exit codes and SDK-free blocked
@@ -207,20 +218,10 @@ the proposal was unchanged by the bootstrap.
 
 ## next useful action
 
-delegation: independently review pr #22 at its latest head; local offline and
-bounded live transport gates pass. preserve existing trial state and both
-receipts. next proposed slice is a substantive investigator task with explicit
-source and acceptance criteria; remote dispatch and editing agents are not
-implemented. the first attempt's exact failure cause remains unknown.
-
-experiment lane (separate):
-
-receive a reviewed integrated freight + ring/peer-mute revision and exact
-scripted invocation from pug. map the accepted spec006 measures to actual
-job transitions with caduceus, including evidence that the policy consumes
-messages. only after those gates pass, implement the manifest/analyzer and
-run the zero-provider seed-42 pilot. no substitute scaffold batch.
-
+review pr #24's receipt projection at its current head before merging. refresh
+private captures deliberately after task/receipt changes; existing HTML is frozen.
+no dispatch, retries or new provider budget are implied by the board. separate
+runtime integration and provider-sanitization work remain with their owners.
 
 ## re-entry notes
 

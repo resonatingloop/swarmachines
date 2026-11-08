@@ -144,14 +144,14 @@ def command(args, cwd):
     return result.stdout.decode("utf-8")
 
 
-def collect(repo, github_repo, ledger_ref):
+def collect(repo, github_repo, ledger_ref, worker_state_dir=None):
     """Collect independent source snapshots; unavailable never means empty."""
     if not re.fullmatch(r"[\w.-]+/[\w.-]+", github_repo):
         raise ValueError("use an owner/repository identifier")
     if not re.fullmatch(r"[\w./-]+", ledger_ref) or ledger_ref.startswith("-"):
         raise ValueError("invalid ledger ref")
     snapshot = {
-        "schema_version": 1,
+        "schema_version": 2,
         "observed_at": now(),
         "github_repo": github_repo,
         "tasks": [],
@@ -226,11 +226,71 @@ def collect(repo, github_repo, ledger_ref):
                 snapshot["diagnostics"].append(
                     f"{task['id']}: nonterminal task mentions merged PR #{number}; reconcile scope, do not auto-close"
                 )
+    snapshot["workers"] = worker_reader(worker_state_dir)
     return snapshot
+
+
+def worker_reader(directory=None):
+    """Import the standalone reader without constructing the writable queue."""
+    if __package__:
+        from .worker_projection import collect_workers
+    else:
+        from worker_projection import collect_workers
+    return collect_workers(directory)
+
+
+def render_workers(workers):
+    """Render only the validated worker projection, separate from ledger claims."""
+
+    def fields(values):
+        return (
+            "<dl>"
+            + "".join(
+                f"<dt>{display(key.replace('_', ' '))}</dt><dd>{display('unknown' if value is None else value)}</dd>"
+                for key, value in values.items()
+            )
+            + "</dl>"
+        )
+
+    status = workers.get("status", "not supplied")
+    body = f"<p class='id'>worker source · {display(status)}</p>"
+    body += fields({"read_at": workers.get("read_at"), "source": "local worker queue"})
+    if workers.get("budget"):
+        body += (
+            "<div class='sources'><article><h3>local reservations</h3>"
+            + fields(workers["budget"])
+            + "</article>"
+        )
+        body += (
+            "<article><h3>known-usage estimate · not a bill</h3>"
+            + fields(workers["accounting"])
+            + "</article></div>"
+        )
+    body += (
+        "<ul>"
+        + "".join(
+            f"<li>{display(item)}</li>" for item in workers.get("diagnostics", [])
+        )
+        + "</ul>"
+    )
+    attempts = workers.get("attempts", [])
+    if status == "available" and not attempts:
+        body += "<p>no valid worker attempts observed; inspect diagnostics before treating this as empty.</p>"
+    for attempt in attempts:
+        body += (
+            "<details class='worker-attempt'><summary>"
+            + display(f"{attempt['task_id']} · {attempt['mode']} · {attempt['state']}")
+            + "</summary>"
+            + fields(attempt)
+            + "</details>"
+        )
+    return body
 
 
 def render(snapshot):
     """Render source text only as escaped text in a script-free local board."""
+    if snapshot.get("schema_version") not in (1, 2):
+        raise ValueError("unsupported snapshot version")
     template = Path(__file__).with_name("board.html").read_text()
     sources = "".join(
         f"<article><h3>{display(name)}</h3><dl>"
@@ -278,6 +338,7 @@ def render(snapshot):
         "warnings": warnings,
         "lanes": "".join(lanes),
         "prs": prs,
+        "workers": render_workers(snapshot.get("workers", {"status": "not supplied"})),
     }
     # A single substitution prevents source text from becoming a template token.
     return re.sub(r"@@(\w+)@@", lambda m: values[m.group(1)], template)
@@ -289,9 +350,12 @@ def main():
     parser.add_argument("--repo", type=Path, default=Path.cwd())
     parser.add_argument("--github-repo", default="resonatingloop/swarmachines")
     parser.add_argument("--ledger-ref", default="origin/ledger")
+    parser.add_argument("--worker-state-dir", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    snapshot = collect(args.repo, args.github_repo, args.ledger_ref)
+    snapshot = collect(
+        args.repo, args.github_repo, args.ledger_ref, args.worker_state_dir
+    )
     args.output.mkdir(mode=0o700, parents=False, exist_ok=False)
     for name, content in (
         ("snapshot.json", json.dumps(snapshot, indent=2) + "\n"),
@@ -307,6 +371,7 @@ def main():
     return (
         0
         if all(s["status"] == "available" for s in snapshot["sources"].values())
+        and snapshot["workers"]["status"] in ("available", "not supplied")
         else 2
     )
 
