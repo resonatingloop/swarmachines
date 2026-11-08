@@ -8,6 +8,8 @@
 
 ## verified checkpoint
 
+job-evidence slice: spec012 mapping approved; settled policy base `18218e706cf950c89161b6588166d14529f76726`. versioned job instrumentation and an offline analyzer are implemented; 28 focused tests, legacy 24/24 runtime tests and 82 viewer tests pass. noninterference against the pinned base and 386-record integration reconciliation pass; independent review pending. [operations](analysis/README.md). no formal experimental batch or provider calls.
+
 route-gossip-v1: accepted spec011 implemented on merged freight runtime `7103ac0`, with an explicit policy option. 18 focused tests, legacy 24/24 runtime tests and 82 viewer tests pass. capability fixtures change legal first hops through reports; legacy outputs match the base byte-for-byte. [operations and limitations](runtime/ROUTE_GOSSIP.md). independent review and formal experiment readiness remain pending.
 
 measurement readiness: [pinned source mapping](docs/measurement-readiness.md) records the pr #29 policy gate: received context is not read by the action policy. controlled fixtures at seeds 7/42/101 preserve all action events and final counts when context changes. mapping review remains pending; no formal runs or analyzer implementation authorized by this observation.

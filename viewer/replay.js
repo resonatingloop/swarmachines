@@ -2,7 +2,7 @@
 'use strict';
 
 const LIMITS = Object.freeze({ bytes: 5 * 1024 * 1024, events: 20000, line: 10000 });
-const TYPES = new Set('run.config world.init turn.begin observation.recorded message.sent message.delivered message.seen message.acted_on action.proposed action.validated action.rejected action.committed world.changed disturbance.applied run.end policy.decision policy.report'.split(' '));
+const TYPES = new Set('run.config world.init turn.begin observation.recorded message.sent message.delivered message.seen message.acted_on action.proposed action.validated action.rejected action.committed world.changed disturbance.applied run.end policy.decision policy.report jobs.initialized job.completed'.split(' '));
 const LIFECYCLE = new Set('message.sent message.delivered message.seen message.acted_on'.split(' '));
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 

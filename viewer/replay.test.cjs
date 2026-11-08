@@ -113,12 +113,12 @@ test('pinned freight candidate is reproducible compatibility data, not world-bac
 
  test('policy records remain recorded evidence without fabricated influence', () => {
   const { TYPES } = require('./replay.cjs');
-  const records = ['policy.report', 'policy.decision'].map((type, seq) => ({
+  const records = ['policy.report', 'policy.decision', 'jobs.initialized', 'job.completed'].map((type, seq) => ({
     run_id: 'fixture', seq, turn: 1, agent_id: 'a', type,
     ts: '2026-11-07T14:30:00Z', payload: { reason: 'fixture only' }
   }));
   const parsed = parseEpisode(records.map(JSON.stringify).join('\n'));
   for (const record of parsed.events) assert.ok(TYPES.has(record.type));
-  assert.equal(snapshot(parsed, 1).messages.size, 0);
+  assert.equal(snapshot(parsed, parsed.events.length - 1).messages.size, 0);
   assert.deepEqual(parsed.events, records);
 });

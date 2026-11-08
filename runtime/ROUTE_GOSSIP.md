@@ -99,3 +99,5 @@ new-policy ring/mute integration produced 381 schema-valid records, including
 counts establishes performance improvement. direct routes in the unchanged
 world may make peer information redundant. spec006's remaining job evidence,
 metric mapping and formal-run gates still apply.
+
+job audit instrumentation is documented in [offline measures](../analysis/README.md). the 381-record integration count above is the pre-instrumentation snapshot; current runs add roster/completion records without changing decisions.
