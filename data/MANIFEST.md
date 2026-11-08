@@ -92,14 +92,6 @@ evidence — these are inputs, not results.
 - `receipts/` — real captured receipts
 - `run.json` — run manifest with totals
 
-## Prior Synthetic Receipts
-
-The 20 synthetic receipts in `data/receipts/` from the pre-workflow generation
-(commit 0dca625) are **SUPERSEDED** and **RETAINED FOR HISTORICAL REFERENCE ONLY**.
-They are reconstructed from gen-run-001-tally.log and do not represent actual
-captured API calls. This regeneration run (gen-full-20261108) provides complete, real
-receipts for all model-generated artifacts.
-
 ## Regeneration Path
 
 To regenerate this pack faithfully:

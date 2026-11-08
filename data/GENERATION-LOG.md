@@ -43,8 +43,9 @@ regeneration run supersedes that work with:
 - Real captured receipts (not synthetic)
 - Complete provenance chain
 
-The synthetic receipts are retained in `data/receipts/` for historical
-reference but are marked as superseded.
+The synthetic receipts have been removed — reconstruction is documented in
+this log. All current receipts are real captured receipts in
+`data/runs/gen-full-20261108/receipts/`.
 
 ## Regeneration
 
