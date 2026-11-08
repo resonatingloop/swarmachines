@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_contested-deliveries_mesh",
-  "timestamp": "2026-11-08T03:47:24.796786+00:00",
+  "timestamp": "2026-11-08T03:50:25.413325+00:00",
   "model": "gemma-4-26b-a4b-it",
   "input_tokens": 448,
-  "output_tokens": 640,
-  "total_tokens": 1088,
+  "output_tokens": 800,
+  "total_tokens": 1248,
   "item_path": "data/scenarios/contested-deliveries-mesh.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:46:25.919311+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
   "run_id": "gen-full-20261108"
 }

@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_stale-report_mesh",
-  "timestamp": "2026-11-08T03:47:10.997938+00:00",
+  "timestamp": "2026-11-08T03:50:08.812147+00:00",
   "model": "gemma-4-26b-a4b-it",
   "input_tokens": 457,
-  "output_tokens": 930,
-  "total_tokens": 1387,
+  "output_tokens": 984,
+  "total_tokens": 1441,
   "item_path": "data/scenarios/stale-report-mesh.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:46:25.919311+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
   "run_id": "gen-full-20261108"
 }

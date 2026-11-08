@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_relay-loss_mesh",
-  "timestamp": "2026-11-08T03:46:52.597950+00:00",
+  "timestamp": "2026-11-08T03:49:50.744471+00:00",
   "model": "gemma-4-26b-a4b-it",
   "input_tokens": 455,
-  "output_tokens": 805,
-  "total_tokens": 1260,
+  "output_tokens": 790,
+  "total_tokens": 1245,
   "item_path": "data/scenarios/relay-loss-mesh.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:46:25.919311+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
   "run_id": "gen-full-20261108"
 }
