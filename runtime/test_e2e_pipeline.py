@@ -360,7 +360,9 @@ def run_e2e_test(repo_path: Path | None = None) -> dict:
             results["overall"] = "FAIL"
             return results
 
-        event_count = sum(1 for _ in open(episode_path) if _.strip())
+        event_count = sum(
+            1 for line in episode_path.read_text().splitlines() if line.strip()
+        )
         results["runner_execution"] = {
             "status": "PASS",
             "message": f"Generated {event_count} events to {episode_path.name}",
@@ -378,7 +380,10 @@ def run_e2e_test(repo_path: Path | None = None) -> dict:
             results["overall"] = "FAIL"
             return results
 
-        results["schema_validation"] = {"status": "PASS", "message": out.split("\n")[-1]}
+        results["schema_validation"] = {
+            "status": "PASS",
+            "message": out.split("\n")[-1],
+        }
         print(f"  {results['schema_validation']['message']}")
 
         # Step 4: Determinism check
