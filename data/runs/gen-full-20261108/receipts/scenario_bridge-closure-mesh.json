@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_bridge-closure_mesh",
-  "timestamp": "2026-11-08T03:44:58.887639+00:00",
+  "timestamp": "2026-11-08T03:47:43.907389+00:00",
   "model": "gemma-4-26b-a4b-it",
   "input_tokens": 443,
-  "output_tokens": 784,
-  "total_tokens": 1227,
+  "output_tokens": 875,
+  "total_tokens": 1318,
   "item_path": "data/scenarios/bridge-closure-mesh.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:43:40.800174+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:46:25.919311+00:00",
   "run_id": "gen-full-20261108"
 }

@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_dual-disruption_ring",
-  "timestamp": "2026-11-08T03:45:12.297221+00:00",
+  "timestamp": "2026-11-08T03:47:56.614883+00:00",
   "model": "gemma-4-26b-a4b-it",
   "input_tokens": 490,
-  "output_tokens": 816,
-  "total_tokens": 1306,
+  "output_tokens": 695,
+  "total_tokens": 1185,
   "item_path": "data/scenarios/dual-disruption-ring.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:43:40.800174+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:46:25.919311+00:00",
   "run_id": "gen-full-20261108"
 }

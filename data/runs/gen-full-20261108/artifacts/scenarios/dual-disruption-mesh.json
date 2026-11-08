@@ -44,5 +44,5 @@
     "deliveries_baseline": 3,
     "recovery_turns_expected": "2-4"
   },
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:43:40.800174+00:00"
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:46:25.919311+00:00"
 }
