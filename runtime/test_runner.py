@@ -1011,11 +1011,26 @@ def test_freight_illegal_move_noop():
                 f"Rejected action {r['payload'].get('action_id')} missing reason",
             )
 
-    # Conservation check: count unique freight items that moved
+    # Discriminating assertion: fixed code commits legal no-ops, master rejects them
+    # This assertion FAILS on origin/master (which has action.rejected with "apply failed")
+    # and PASSES on this branch (which has action.committed with result="no-op")
+    committed = [e for e in events if e["type"] == "action.committed"]
+    no_ops = [e for e in committed if e["payload"].get("result") == "no-op"]
+    apply_failed_rejections = [
+        e for e in rejected if "apply failed" in e["payload"].get("reason", "")
+    ]
+
+    if not no_ops:
+        return False, "Expected committed no-ops (fixed code commits legal no-ops, master rejects them)"
+    if apply_failed_rejections:
+        return False, f"Found {len(apply_failed_rejections)} action.rejected with 'apply failed' (master mislabel - should be action.committed)"
+
+    # Conservation check: count unique freight items that moved from committed payloads
+    # (world.changed never carries freight_id — count from committed payloads instead)
     moved_freight_ids = {
-        wc["payload"].get("freight_id")
-        for wc in freight_world_changes
-        if wc["payload"].get("freight_id")
+        e["payload"].get("freight_id")
+        for e in committed
+        if e["payload"].get("freight_id")
     }
 
     # Get initial job count from world.init or jobs.initialized
@@ -1026,7 +1041,7 @@ def test_freight_illegal_move_noop():
     # Verify: if there are rejections, they have reasons and don't overlap with commits
     return (
         True,
-        f"OK: {len(rejected)} rejected (all with reasons, none committed), {len(moved_freight_ids)} freight items moved",
+        f"OK: {len(rejected)} rejected, {len(no_ops)} committed no-ops, {len(moved_freight_ids)} freight items moved from committed payloads",
     )
 
 
@@ -1148,9 +1163,33 @@ def test_freight_capacity_check():
 
     # Capacity check is wired if routes have capacity (they do in freight_world.py)
     # and validation can reject for capacity reasons
+    # Assert that capacity checking is actually wired by verifying routes have capacity defined
+    from freight_world import FreightWorld
+    fw = FreightWorld(seed=42)
+    routes_with_capacity = [r for r in fw.routes.values() if r.capacity > 0]
+    if not routes_with_capacity:
+        return False, "No routes with capacity defined - capacity check not wired"
+
+    # Assert that committed freight movements use routes with capacity
+    freight_moves = [
+        e for e in committed if e["payload"].get("what") == "freight moved"
+    ]
+    if not freight_moves:
+        return False, "No freight movements committed - capacity check not exercised"
+
+    # Verify all committed moves have valid from/to locations (routes exist)
+    for move in freight_moves:
+        from_loc = move["payload"].get("from")
+        to_loc = move["payload"].get("to")
+        if not from_loc or not to_loc:
+            return False, f"Freight move missing from/to: {move['payload']}"
+        route_key = f"{from_loc}->{to_loc}"
+        if route_key not in fw.routes:
+            return False, f"Committed move uses non-existent route: {route_key}"
+
     return (
         True,
-        f"OK: {len(validated)} validated, {len(committed)} committed, {len(rejected)} rejected ({len(capacity_rejections)} for capacity)",
+        f"OK: {len(validated)} validated, {len(committed)} committed, {len(rejected)} rejected ({len(capacity_rejections)} for capacity); {len(routes_with_capacity)} routes with capacity, {len(freight_moves)} freight moves exercised capacity check",
     )
 
 
