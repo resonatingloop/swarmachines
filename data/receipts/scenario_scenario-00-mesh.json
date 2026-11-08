@@ -1,6 +1,6 @@
 {
   "call_name": "scenario_scenario-00-mesh",
-  "call_number": 9,
+  "call_number": "estimated-9 (from tally ordering)",
   "timestamp": "2026-11-08T03:14:42+00:00",
   "model": "gemma-4-26b-a4b-it",
   "input_tokens": 193,
@@ -8,6 +8,9 @@
   "total_tokens": 559,
   "item_path": "data/scenarios/scenario-00-mesh.json",
   "kind": "scenario config",
-  "provenance": "model-generated via adaption (gemma-4-26b-a4b-it, receipt: scenario_scenario-00-mesh, 2026-11-08)",
-  "note": "Synthetic receipt reconstructed from gen-run.log tally; individual call metrics not preserved"
+  "provenance": "RECONSTRUCTED from gen-run-001 tally \u2014 per-call logs not captured in the pre-workflow run",
+  "note": "Synthetic receipt reconstructed from gen-run.log tally; individual call metrics not preserved",
+  "reconstruction_note": "This receipt was synthetically reconstructed from the gen-run-001-tally.log aggregate. Individual call metrics (exact tokens, timestamps) were not preserved during the pre-workflow generation pass (commit 0dca625). Per-call logging begins with batch-001.",
+  "source_tally": "data/logs/gen-run-001-tally.log",
+  "capture_method": "reconstructed-from-tally"
 }
