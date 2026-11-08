@@ -1,72 +1,77 @@
-# Coordination Narrative: Resolving Capacity Contention
+# Coordination Example: Freight-in-the-Fog
+
+## Resolving Capacity Contention
 
 ### 1. Context
-*   **Turn:** Turn 14 (Mid-mission deployment)
-*   **Topology:** Ring (Nodes A $\rightarrow$ B $\rightarrow$ C $\rightarrow$ D $\rightarrow$ A)
-*   **Agents:** 
-    *   **Agent B (Scout):** Moving toward Node C.
-    *   **Agent C (Transporter):** Moving toward Node D.
-*   **Situation:** Agent B and Agent C have both identified the same high-priority corridor between Node C and Node D as their optimal path. However, the local bandwidth/capacity of that corridor is limited. If both agents enter the corridor simultaneously, signal interference (fog latency) will cause both to lose synchronization with the command center.
-
----
+* **Turn:** 4 (Active Coordination Phase)
+* **Topology:** Ring (Nodes: A $\rightarrow$ B $\rightarrow$ C $\rightarrow$ A)
+* **Agents:** 
+    * `Truck_Alpha` (Agent A)
+    * `Truck_Beta` (Agent B)
+    * `Truck_Gamma` (Agent C)
+* **Situation:** Low visibility (fog) has reduced safe operational speeds. Due to a localized obstacle on the ring segment between B and C, the throughput capacity of the link has dropped by 50%. Both `Truck_Alpha` and `Truck_Beta` are attempting to enter the constrained segment simultaneously, creating a contention for the limited "safe-distance" buffer zones required for fog navigation.
 
 ### 2. Message Exchange
 
-**Message 1: Intent Broadcast (Agent B to Neighbors)**
-Agent B broadcasts its intention to occupy the C-D segment to prevent collision/interference.
+**Message 1: Contention Detection**
+`Truck_Beta` detects a mismatch between its intended velocity and the projected buffer availability on the upcoming segment. It broadcasts a contention alert to its immediate neighbors in the ring.
 
 ```json
 {
-  "sender": "Agent_B",
-  "type": "INTENT_PROPOSAL",
-  "target_segment": "C-D",
-  "priority": 7,
-  "timestamp": "10:44:02.01",
-  "estimated_duration": 45
+  "sender": "Truck_Beta",
+  "receiver": "All",
+  "type": "CONTENTION_ALERT",
+  "payload": {
+    "segment_id": "B-C_Link",
+    "contention_type": "buffer_exhaustion",
+    "severity": "high",
+    "estimated_arrival_time": "T+45s"
+  }
 }
 ```
 
-**Message 2: Conflict Detection & Counter-Proposal (Agent C to Agent B)**
-Agent C receives the intent, realizes it also needs the segment, and issues a priority-based contention message.
+**Message 2: Resource Proposal**
+`Truck_Alpha`, sensing the alert and recognizing its own priority (based on fuel efficiency/load urgency), proposes a staggered entry sequence to prevent a collision or emergency braking event.
 
 ```json
 {
-  "sender": "Agent_C",
-  "type": "CONFLICT_NOTIFICATION",
-  "conflicting_agent": "Agent_B",
-  "target_segment": "C-D",
-  "my_priority": 9,
-  "timestamp": "10:44:02.05"
+  "sender": "Truck_Alpha",
+  "receiver": "Truck_Beta",
+  "type": "COORDINATION_PROPOSAL",
+  "payload": {
+    "strategy": "staggered_entry",
+    "alpha_entry_time": "T+10s",
+    "beta_entry_time": "T+35s",
+    "required_buffer_gap": "15m"
+  }
 }
 ```
 
-**Message 3: Resolution Acknowledgment (Agent B to Agent C)**
-Agent B compares the priorities ($9 > 7$) and yields the segment.
+**Message 3: Acknowledgement & Commitment**
+`Truck_Beta` calculates the feasibility of the delay against its own safety constraints and accepts the proposal.
 
 ```json
 {
-  "sender": "Agent_B",
-  "type": "YIELD_CONFIRMATION",
-  "yielding_segment": "C-D",
-  "new_route_segment": "D-A",
-  "timestamp": "10:44:02.12"
+  "sender": "Truck_Beta",
+  "receiver": "Truck_Alpha",
+  "type": "COMMITMENT",
+  "payload": {
+    "status": "accepted",
+    "planned_velocity_adjustment": "-12km/h",
+    "new_entry_timestamp": "T+35s"
+  }
 }
 ```
-
----
 
 ### 3. Action Resolution
-Upon receiving the `YIELD_CONFIRMATION`, Agent B recalculates its trajectory. Instead of proceeding directly to Node C and then attempting the C-D corridor, Agent B adjusts its velocity to dwell at Node C for 50 seconds, effectively "waiting out" the high-priority Transporter. Agent C proceeds into the C-D segment immediately, utilizing the full available bandwidth.
-
----
+`Truck_Alpha` maintains its current cruising speed to clear the segment first. Simultaneously, `Truck_Beta` executes a deceleration maneuver to adjust its arrival time to the proposed $T+35s$ window. The fog-induced sensor noise is mitigated by the synchronized timing, ensuring that the gap between the two vehicles remains within the calculated safety buffer despite reduced visibility.
 
 ### 4. Outcome and Analysis
-*   **Outcome:** Successful avoidance of capacity contention. Agent C completed its delivery via the C-D corridor without signal degradation. Agent B reached Node D via the D-A segment shortly after Agent C cleared the corridor.
-*   **Analysis:** The coordination succeeded because the priority values were clearly defined and the ring topology allowed for rapid neighbor-to-neighbor messaging. The "Fog" factor (uncertainty) was mitigated by the explicit `YIELD_CONFIRMATION`, which prevented a state of indecision that could have led to both agents entering the segment simultaneously. The cost was a minor delay for Agent B, which is preferable to a total communication blackout for both agents.
-
----
+* **Outcome:** The contention was resolved without emergency braking or sensor occlusion failures. Both agents successfully traversed the B-C segment with a maintained safety margin.
+* **Analysis:** The Ring topology allowed for rapid local propagation of the contention alert. The transition from *Detection* to *Proposal* to *Commitment* prevented "oscillation" (where both agents might have tried to accelerate to beat the other). The success was dependent on the agents' ability to share high-fidelity temporal data ($T+X$) rather than just positional data, which is unreliable in heavy fog.
 
 ### 5. Provenance Note
-**Source:** Autonomous Coordination Log #882-Delta  
-**Validation:** Verified via Distributed Ledger (DLT) consensus at Node A.  
-**Integrity:** Hash `0x7f82...a1c4` confirmed.
+* **Protocol Version:** Fog-Coord-v2.1
+* **Timestamp:** 2024-05-22T14:02:11Z
+* **Trace ID:** `f6e8-9921-cc04`
+* **Data Integrity:** Validated via cryptographic handshake between Alpha and Beta.

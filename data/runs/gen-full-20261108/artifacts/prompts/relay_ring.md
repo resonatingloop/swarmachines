@@ -32,5 +32,5 @@ Respond with valid JSON:
 - During disruption, some agents may become unreachable
 
 ## Provenance
-<!-- MODEL_GENERATED: gemma-4-26b-a4b-it @ 2026-11-08T03:46:25.919311+00:00 -->
+<!-- MODEL_GENERATED: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00 -->
 <!-- RUN: gen-full-20261108 -->

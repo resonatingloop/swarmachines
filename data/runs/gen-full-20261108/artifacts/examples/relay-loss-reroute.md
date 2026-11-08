@@ -1,87 +1,96 @@
-# Coordination Example: Reroute After Relay Loss
+# Coordination Example: Freight-in-the-Fog
 
-### 1. Context
-*   **Turn:** 42 (Operational Phase: Mid-transit)
-*   **Topology:** Ring (Nodes: A $\rightarrow$ B $\rightarrow$ C $\rightarrow$ D $\rightarrow$ A)
-*   **Agents:** 
-    *   `Freight_Carrier_01` (Mobile Agent)
-    *   `Relay_Node_B` (Fixed Infrastructure)
-    *   `Relay_Node_C` (Fixed Infrastructure)
-    *   `Orchestrator` (Monitoring Agent)
-*   **Situation:** `Freight_Carrier_01` is moving from Node A toward Node C. The intended path is via Node B. Suddenly, Node B suffers a hardware failure (Relay Loss), breaking the primary ring segment. The carrier is currently in "the fog"—an area of high latency and intermittent connectivity—and must decide whether to attempt a connection to the failing node or reroute through the longer path (A $\rightarrow$ D $\rightarrow$ C).
+## 1. Context
+**Scenario:** Reroute After Relay Loss  
+**Topology:** Ring  
+**Agents:** 
+*   `Truck_A`: A heavy freight carrier moving clockwise.
+*   `Relay_Node_1`: A roadside communication relay station.
+*   `Relay_Node_2`: The next relay station in the ring.
+*   `Logistics_Edge`: A local fog controller managing segment routing.
+
+**Situation:** 
+`Truck_A` is navigating a dense fog corridor where connectivity is intermittent. While traveling through the ring topology, `Relay_Node_1` suffers a sudden hardware failure due to moisture ingress. `Truck_A` loses its primary link to the Logistics Edge. To prevent data loss and ensure safe navigation, `Truck_A` must coordinate with the neighboring node to find an alternative path or establish a multi-hop bridge.
 
 ---
 
-### 2. Message Exchange
+## 2. Message Exchange
 
-**Message 1: Failure Detection (Relay_Node_B $\rightarrow$ Orchestrator)**
-*Node B attempts a final heartbeat before complete shutdown.*
-
-```json
-{
-  "msg_id": "err_992",
-  "sender": "Relay_Node_B",
-  "receiver": "Orchestrator",
-  "timestamp": "2023-10-27T14:02:01Z",
-  "type": "STATUS_CRITICAL",
-  "payload": {
-    "status": "OFFLINE",
-    "reason": "HARDWARE_FAILURE",
-    "last_known_loc": "Ring_Segment_AB"
-  }
-}
-```
-
-**Message 2: Coordination Request (Orchestrator $\rightarrow$ Freight_Carrier_01)**
-*The Orchestrator broadcasts the topology change to the carrier to prevent it from entering the dead zone.*
+### Message 1: Distress Signal (Broadcast)
+`Truck_A` detects a signal drop-off from `Relay_Node_1` and broadcasts a localized "Help" heartbeat to the remaining reachable neighbors in the ring.
 
 ```json
 {
-  "msg_id": "coord_441",
-  "sender": "Orchestrator",
-  "receiver": "Freight_Carrier_01",
-  "timestamp": "2023-10-27T14:02:05Z",
-  "type": "TOPOLOGY_UPDATE",
+  "msg_id": "err_001",
+  "sender": "Truck_A",
+  "receiver": "ALL_LOCAL",
+  "type": "LINK_LOSS_ALARM",
   "payload": {
-    "event": "NODE_LOSS",
-    "affected_node": "Relay_Node_B",
-    "new_topology": "broken_ring",
-    "suggested_reroute": ["A", "D", "C"]
-  }
+    "lost_node": "Relay_Node_1",
+    "last_known_coords": {"lat": 45.523, "lon": -122.676},
+    "status": "CRITICAL_DISCONNECT"
+  },
+  "timestamp": "2023-10-27T14:02:01Z"
 }
 ```
 
-**Message 3: Acknowledgement & Intent (Freight_Carrier_01 $\rightarrow$ Orchestrator)**
-*The carrier acknowledges the instruction and confirms the new trajectory.*
+### Message 2: Negotiation (Unicast)
+`Relay_Node_2` receives the alarm. Recognizing the ring is broken, it proposes a peer-to-peer relay strategy to bridge `Truck_A` back to the `Logistics_Edge`.
+
+```json
+{
+  "msg_id": "prop_042",
+  "sender": "Relay_Node_2",
+  "receiver": "Truck_A",
+  "type": "ROUTING_PROPOSAL",
+  "payload": {
+    "alternative_path": ["Truck_A", "Relay_Node_2", "Logistics_Edge"],
+    "protocol": "MESH_RELAY",
+    "estimated_latency_increase": "45ms"
+  },
+  "timestamp": "2023-10-27T14:02:05Z"
+}
+```
+
+### Message 3: Confirmation (Unicast)
+`Truck_A` validates the latency increase is within safety parameters for its autonomous braking system and accepts the new route.
 
 ```json
 {
   "msg_id": "ack_002",
-  "sender": "Freight_Carrier_01",
-  "receiver": "Orchestrator",
-  "timestamp": "2023-10-27T14:02:12Z",
-  "type": "ACTION_INTENT",
+  "sender": "Truck_A",
+  "receiver": "Relay_Node_2",
+  "type": "ROUTE_ACCEPTANCE",
   "payload": {
-    "action": "REROUTE",
-    "new_path": ["A", "D", "C"],
-    "estimated_delay_increase": "+15min"
-  }
+    "active_route_id": "R_ALT_09",
+    "mode": "RELIABLE_MESH"
+  },
+  "timestamp": "2023-10-27T14:02:08Z"
 }
 ```
 
 ---
 
-### 3. Action Resolution
-Upon receiving the `TOPOLOGY_UPDATE`, `Freight_Carrier_01` executes a local pathfinding algorithm. It identifies that the link `B $\rightarrow$ C` is no longer reachable. To maintain connectivity, the agent aborts its approach to Node B and initiates a course correction toward Node D. The agent enters a "low-bandwidth mode" to minimize data transmission while navigating the longer segment of the ring.
-
-### 4. Outcome and Analysis
-*   **Outcome:** Successful reroute. The freight arrived at Node C via Node D. Total transit time increased by 18 minutes, but data integrity and carrier safety were maintained.
-*   **Analysis:** The coordination was successful because the `Orchestrator` pushed the topology update *before* the carrier entered the communication shadow of the failed Node B. Had the carrier reached the proximity of Node B before the update, it would have entered a "blind state," potentially wasting fuel/energy attempting to handshake with a dead node. The use of JSON-structured intent allowed the Orchestrator to predict the delay and update the logistics schedule automatically.
+## 3. Action Resolution
+1.  **Detection:** `Truck_A` identifies the loss of `Relay_Node_1` via missed keep-alive packets.
+2.  **Discovery:** `Truck_A` initiates a local sweep; `Relay_Node_2` responds.
+3.  **Reconfiguration:** The software-defined networking (SDN) layer within the fog nodes reconfigures the ring into a linear mesh topology.
+4.  **Execution:** `Truck_A` switches its radio frequency to the mesh-specific channel used by `Relay_Node_2` to maintain the data stream to the Logistics Edge.
 
 ---
 
-### 5. Provenance Note
-**Log Trace ID:** `PROV-RING-42-B-FAIL`  
-**Data Integrity:** Hash `sha256:e3b0c442...` verified.  
-**Source:** Distributed Ledger (Fog-Edge Log)  
-**Timestamp:** 2023-10-27T14:15:00Z
+## 4. Outcome and Analysis
+**Outcome:**  
+Successful restoration of telemetry flow. `Truck_A` maintained continuous situational awareness (obstacle detection and speed data) despite the failure of a primary infrastructure component.
+
+**Analysis:**  
+*   **Resilience:** The ring topology's inherent vulnerability was mitigated by the agents' ability to switch to a mesh-relay mode. 
+*   **Latency:** While latency increased by 45ms, it remained below the 100ms threshold required for safe autonomous freight operation in low-visibility conditions.
+*   **Efficiency:** Coordination was achieved locally within the fog layer without requiring a round-trip to the distant Cloud, preventing "communication blackout" during the critical fog window.
+
+---
+
+## 5. Provenance Note
+*   **Trace ID:** `LOG-FOG-2023-RING-009`
+*   **Data Origin:** Distributed Fog Nodes (Local Segment)
+*   **Verification:** Signed via Distributed Ledger (DLT) for auditability of autonomous rerouting decisions.

@@ -1,14 +1,14 @@
 {
   "schema_version": "v1",
   "call_name": "prompt_relay_ring",
-  "timestamp": "2026-11-08T03:46:34.231109+00:00",
+  "timestamp": "2026-11-08T03:49:35.485934+00:00",
   "model": "gemma-4-26b-a4b-it",
   "input_tokens": 350,
-  "output_tokens": 138,
-  "total_tokens": 488,
+  "output_tokens": 648,
+  "total_tokens": 998,
   "item_path": "data/prompts/relay_ring.md",
   "kind": "prompt",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:46:25.919311+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
   "capture_method": "live-api-call-with-full-logging",
   "run_id": "gen-full-20261108"
 }
