@@ -41,6 +41,7 @@ class FreightItem:
     destination: str
     current_location: str
     state: str = "pending"  # "pending", "in-transit", "delivered", "stuck"
+    release_turn: int = 0
 
 
 @dataclass
@@ -53,6 +54,7 @@ class DeliveryJob:
     destination: str
     state: str = "pending"  # "pending", "in-transit", "delivered", "stuck"
     via_path: list[str] = field(default_factory=list)
+    release_turn: int = 0
 
 
 class FreightWorld:
@@ -66,15 +68,31 @@ class FreightWorld:
     - Route validation and action application
     """
 
+    RELEASE_TURNS = (1, 7, 9, 11)
+    REGIMES = ("local-sufficient", "peer-required")
+
     def __init__(
         self,
         seed: int,
+        *,
         graph: dict[str, Any] | None = None,
         job_set: list[dict[str, str]] | None = None,
         agent_roster: list[str] | None = None,
+        release_turns: tuple[int, ...] | None = None,
+        regime: str = "local-sufficient",
     ):
+        if regime not in self.REGIMES:
+            raise ValueError("unknown freight regime")
+        if release_turns is not None and (
+            len(release_turns) != 4
+            or any(not isinstance(turn, int) or turn < 0 for turn in release_turns)
+        ):
+            raise ValueError("release_turns must contain four nonnegative integers")
         self.seed = seed
         self.rng = random.Random(seed)
+        self.current_turn = 0
+        self.regime = regime
+        self.release_turns = release_turns or (0, 0, 0, 0)
 
         # Initialize world graph
         self.depots = (
@@ -89,6 +107,8 @@ class FreightWorld:
             self._init_routes()
         else:
             self._init_configured_routes(graph)
+        if self.regime == "peer-required":
+            self._apply_peer_required_routes()
 
         # Initialize freight items
         self.freight_items: dict[str, FreightItem] = {}
@@ -177,6 +197,11 @@ class FreightWorld:
                 raise ValueError("duplicate configured route")
             self.routes[route.key()] = route
 
+    def _apply_peer_required_routes(self) -> None:
+        """Close direct answers while retaining report-dependent alternatives."""
+        for route_key in ("west->south", "east->west", "south->east"):
+            self.routes[route_key].status = "closed"
+
     def _init_freight(self) -> None:
         """Initialize freight items and delivery jobs."""
         # Create some initial freight items at different depots
@@ -187,7 +212,12 @@ class FreightWorld:
             ("f-004", "med-kit", "relay-a", "west"),
         ]
 
-        for item_id, freight_type, origin, destination in freight_configs:
+        for release_turn, (
+            item_id,
+            freight_type,
+            origin,
+            destination,
+        ) in zip(self.release_turns, freight_configs, strict=True):
             item = FreightItem(
                 item_id=item_id,
                 freight_type=freight_type,
@@ -195,6 +225,7 @@ class FreightWorld:
                 destination=destination,
                 current_location=origin,
                 state="pending",
+                release_turn=release_turn,
             )
             self.freight_items[item_id] = item
 
@@ -204,6 +235,7 @@ class FreightWorld:
                 origin=origin,
                 destination=destination,
                 state="pending",
+                release_turn=release_turn,
             )
             self.delivery_jobs[job.job_id] = job
 
@@ -253,6 +285,7 @@ class FreightWorld:
             for item in self.freight_items.values()
             if item.current_location == location
             and item.state not in ("delivered", "stuck")
+            and item.release_turn <= self.current_turn
         ]
 
     def get_adjacent_locations(self, location: str) -> list[str]:
@@ -272,6 +305,7 @@ class FreightWorld:
         - adjacent_locations: locations reachable from agent's current position
         - known_routes: status of routes the agent can see
         """
+        self.current_turn = max(self.current_turn, turn)
         assigned_depots = self.agent_depots.get(agent_id, ["west"])
         current_location = assigned_depots[0]
 
@@ -326,6 +360,8 @@ class FreightWorld:
                 return False, "freight not found"  # Don't echo the ID
 
             freight = self.freight_items[freight_id]
+            if freight.release_turn > self.current_turn:
+                return False, "freight not released"
             if freight.state in ("delivered", "stuck"):
                 return False, "freight already completed"  # Don't echo state
 
@@ -400,20 +436,11 @@ class FreightWorld:
             freight.current_location = to_loc
 
             # Update route loads
-            # Decrement load on the route freight is leaving (it's no longer on that route)
-            # Increment load on the route freight is entering
-            # Note: freight is "on a route" only while in transit; when it arrives at a location,
-            # it's no longer on the previous route
-
-            # Find and decrement the route the freight was on (the route that brought it to old_location)
-            # This is the route that ends at old_location (to_loc == old_location)
             for route in self.routes.values():
                 if route.to_loc == old_location and route.current_load > 0:
-                    # Decrement this route's load - freight is leaving it
                     route.current_load -= 1
-                    break  # Only decrement one route (the one freight arrived on)
+                    break
 
-            # Increment load on the new route
             if route_key in self.routes:
                 self.routes[route_key].current_load += 1
 
@@ -442,7 +469,6 @@ class FreightWorld:
 
             return True, "", world_change
         except (TypeError, AttributeError, KeyError, ValueError):
-            # Fail closed on any unexpected error
             return False, "apply error", None
 
     def get_delivery_stats(self) -> dict[str, int]:
