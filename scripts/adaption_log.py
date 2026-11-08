@@ -19,19 +19,17 @@ LOGGING CONTRACT (owner directive):
 """
 
 import json
-import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
 
 
 class AdaptionLogger:
     """Append-only logger for Adaption API calls within a run."""
-    
+
     def __init__(self, run_id: str, runs_dir: Path | None = None):
         """
         Initialize logger for a run.
-        
+
         Args:
             run_id: Unique run identifier (e.g., "gen-20261108-b01", "regen-batch1-20261108")
             runs_dir: Base directory for runs (default: data/runs)
@@ -39,37 +37,47 @@ class AdaptionLogger:
         self.run_id = run_id
         self.runs_dir = runs_dir or Path("data/runs")
         self.run_dir = self.runs_dir / run_id
-        
+
         # Create run directory structure
         self.artifacts_dir = self.run_dir / "artifacts"
         self.logs_dir = self.run_dir / "logs"
         self.receipts_dir = self.run_dir / "receipts"
-        
+
         for d in [self.artifacts_dir, self.logs_dir, self.receipts_dir]:
             d.mkdir(parents=True, exist_ok=True)
-        
+
         # JSONL log file (append-only)
         self.jsonl_path = self.logs_dir / "calls.jsonl"
-        
+
         # In-memory call list for log.json
         self.calls = []
-        
+
         # Call counter
         self.call_count = 0
-        
+
         # Run metadata
-        self.started_at = datetime.now(timezone.utc).isoformat()
-        self.model_id: Optional[str] = None
+        self.started_at = datetime.now(UTC).isoformat()
+        self.model_id: str | None = None
         self.total_tokens_in = 0
         self.total_tokens_out = 0
-    
-    def log_call(self, role: str, topology: str, artifact_rel_path: str, model: str,
-                 prompt: str, response: str, tokens_in: int, tokens_out: int,
-                 receipt_rel_path: str, provenance: str = "model-generated",
-                 kind: str = "artifact") -> Dict:
+
+    def log_call(
+        self,
+        role: str,
+        topology: str,
+        artifact_rel_path: str,
+        model: str,
+        prompt: str,
+        response: str,
+        tokens_in: int,
+        tokens_out: int,
+        receipt_rel_path: str,
+        provenance: str = "model-generated",
+        kind: str = "artifact",
+    ) -> dict:
         """
         Log a single API call.
-        
+
         Args:
             role: Freight role (carrier, dispatcher, observer, relay)
             topology: mesh or ring
@@ -82,14 +90,14 @@ class AdaptionLogger:
             receipt_rel_path: Relative path to receipt within receipts/
             provenance: Provenance note
             kind: Type of artifact (prompt, scenario, example, episode, route-report)
-        
+
         Returns:
             The log entry dict
         """
         self.call_count += 1
-        
+
         entry = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "run": self.run_id,
             "call": self.call_count,
             "kind": kind,
@@ -104,67 +112,69 @@ class AdaptionLogger:
             "receipt": receipt_rel_path,
             "provenance": provenance,
         }
-        
+
         # Append to JSONL (immediate flush)
         with open(self.jsonl_path, "a") as f:
             f.write(json.dumps(entry) + "\n")
             f.flush()
-        
+
         # Add to in-memory list
         self.calls.append(entry)
-        
+
         # Update totals
         if self.model_id is None:
             self.model_id = model
         self.total_tokens_in += tokens_in
         self.total_tokens_out += tokens_out
-        
+
         return entry
-    
+
     def write_artifact(self, rel_path: str, content: str, binary: bool = False):
         """Write an artifact file to the artifacts directory."""
         full_path = self.artifacts_dir / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         mode = "wb" if binary else "w"
         with open(full_path, mode) as f:
             f.write(content)
-        
+
         return str(full_path)
-    
-    def write_receipt(self, rel_path: str, receipt_data: Dict):
+
+    def write_receipt(self, rel_path: str, receipt_data: dict):
         """Write a receipt file to the receipts directory."""
         full_path = self.receipts_dir / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with open(full_path, "w") as f:
             json.dump(receipt_data, f, indent=2)
-        
+
         return str(full_path)
-    
+
     def close(self, notes: str = ""):
         """
         Close the run: write run.json manifest.
-        
+
         NOTE: logs/calls.jsonl is the complete log (JSONL with full prompt+response).
         No log.json is created — the JSONL stream is the authoritative record.
-        
+
         Args:
             notes: Optional notes about the run
         """
-        finished_at = datetime.now(timezone.utc).isoformat()
-        
+        finished_at = datetime.now(UTC).isoformat()
+
         # Build artifact index
         artifact_index = []
         for call in self.calls:
-            artifact_index.append({
-                "kind": call["kind"],
-                "path": call["artifact"],
-                "role": call["role"],
-                "topology": call["topology"],
-                "tokens": call["tokens_in"] + call["tokens_out"],
-            })
-        
+            artifact_index.append(
+                {
+                    "kind": call["kind"],
+                    "path": call["artifact"],
+                    "role": call["role"],
+                    "topology": call["topology"],
+                    "tokens": call["tokens_in"] + call["tokens_out"],
+                }
+            )
+
         # Write run.json manifest
         run_manifest = {
             "run_id": self.run_id,
@@ -181,36 +191,37 @@ class AdaptionLogger:
             "artifacts": artifact_index,
             "notes": notes,
         }
-        
+
         run_json_path = self.run_dir / "run.json"
         with open(run_json_path, "w") as f:
             json.dump(run_manifest, f, indent=2)
-        
+
         print(f"\nRun {self.run_id} closed:")
         print(f"  Calls: {self.call_count}")
-        print(f"  Tokens: {self.total_tokens_in} in + {self.total_tokens_out} out = {self.total_tokens_in + self.total_tokens_out}")
+        print(
+            f"  Tokens: {self.total_tokens_in} in + {self.total_tokens_out} out = {self.total_tokens_in + self.total_tokens_out}"
+        )
         print(f"  Directory: {self.run_dir}")
         print(f"  JSONL: {self.jsonl_path}")
-        print(f"  Aggregated: {log_json_path}")
         print(f"  Manifest: {run_json_path}")
-        
+
         return run_manifest
 
 
 def create_batch1_reconstructed_run(runs_dir: Path | None = None):
     """
     Create the batch-1 (gen-run-001) reconstructed run directory.
-    
+
     This represents the pre-workflow generation pass where only the tally
     was preserved, not per-call logs.
     """
     runs_dir = runs_dir or Path("data/runs")
     run_dir = runs_dir / "gen-run-001"
-    
+
     # Create structure
     logs_dir = run_dir / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Read the original tally
     tally_path = Path("data/logs/gen-run-001-tally.log")
     if tally_path.exists():
@@ -226,10 +237,10 @@ def create_batch1_reconstructed_run(runs_dir: Path | None = None):
                 "calls": 20,
                 "input_tokens": 3862,
                 "output_tokens": 7330,
-                "failures": 0
+                "failures": 0,
             }
         }
-    
+
     # Write reconstructed tally with marker
     tally_with_marker = {
         "run_id": "gen-run-001",
@@ -240,11 +251,11 @@ def create_batch1_reconstructed_run(runs_dir: Path | None = None):
         "results": tally_data.get("results", []),
         "provenance": "Pre-workflow generation pass (commit 0dca625) — aggregate tally only, no per-call logs",
     }
-    
+
     tally_json_path = logs_dir / "tally.json"
     with open(tally_json_path, "w") as f:
         json.dump(tally_with_marker, f, indent=2)
-    
+
     # Write minimal run.json
     run_manifest = {
         "run_id": "gen-run-001",
@@ -256,28 +267,29 @@ def create_batch1_reconstructed_run(runs_dir: Path | None = None):
             "calls": tally_data.get("tally", {}).get("calls", 20),
             "tokens_in": tally_data.get("tally", {}).get("input_tokens", 3862),
             "tokens_out": tally_data.get("tally", {}).get("output_tokens", 7330),
-            "total_tokens": tally_data.get("tally", {}).get("input_tokens", 3862) + tally_data.get("tally", {}).get("output_tokens", 7330),
+            "total_tokens": tally_data.get("tally", {}).get("input_tokens", 3862)
+            + tally_data.get("tally", {}).get("output_tokens", 7330),
         },
         "artifacts": [],
         "notes": "Pre-workflow generation pass. Per-call logs NOT captured. Tally reconstructed from gen-run.log. Artifacts exist in data/prompts/, data/scenarios/, data/examples/ but are not duplicated here — see MANIFEST.md for mapping.",
         "reconstructed": True,
     }
-    
+
     run_json_path = run_dir / "run.json"
     with open(run_json_path, "w") as f:
         json.dump(run_manifest, f, indent=2)
-    
+
     print(f"Created reconstructed run directory: {run_dir}")
     print(f"  Tally: {tally_json_path}")
     print(f"  Manifest: {run_json_path}")
-    
+
     return run_dir
 
 
 if __name__ == "__main__":
     # Demo/test
     logger = AdaptionLogger("demo-run-001")
-    
+
     logger.log_call(
         role="carrier",
         topology="mesh",
@@ -288,9 +300,9 @@ if __name__ == "__main__":
         tokens_in=100,
         tokens_out=200,
         receipt_rel_path="prompt_carrier_mesh_standard.json",
-        kind="prompt"
+        kind="prompt",
     )
-    
+
     logger.close("Demo run")
-    
-    print(f"\nDemo complete. Check data/runs/demo-run-001/")
+
+    print("\nDemo complete. Check data/runs/demo-run-001/")

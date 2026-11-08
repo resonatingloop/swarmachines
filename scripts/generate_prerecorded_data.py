@@ -13,13 +13,12 @@ HONEST HEADER (provenance correction 2026-11-08):
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Add runtime to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from runtime.adaption_adapter import AdaptionAdapter
 
 # Track metrics
 call_count = 0
@@ -27,7 +26,8 @@ total_input_tokens = 0
 total_output_tokens = 0
 
 MODEL_ID = "team-authored"
-GENERATION_TIMESTAMP = datetime.now(timezone.utc).isoformat()
+GENERATION_TIMESTAMP = datetime.now(UTC).isoformat()
+
 
 def write_new_file(path, content):
     """Write a generated artifact only when its destination is absent."""
@@ -37,31 +37,44 @@ def write_new_file(path, content):
         )
     Path(path).write_text(content)
 
+
 def track_response(response):
     """Track API call metrics."""
     global call_count, total_input_tokens, total_output_tokens
     call_count += 1
     total_input_tokens += response.usage.input_tokens
     total_output_tokens += response.usage.output_tokens
-    print(f"  [Call {call_count}] Tokens: {response.usage.input_tokens} in + {response.usage.output_tokens} out = {response.usage.total_tokens} total")
+    print(
+        f"  [Call {call_count}] Tokens: {response.usage.input_tokens} in + {response.usage.output_tokens} out = {response.usage.total_tokens} total"
+    )
     return response
+
 
 def generate_prompts(adapter):
     """Generate pilot prompt pack for 4 freight roles under mesh and ring topologies."""
     print("\n=== GENERATING PROMPTS ===")
-    
+
     # Define the 4 freight roles
     roles = [
-        ("dispatcher", "Coordinates freight assignment and route planning across the network"),
-        ("relay", "Forwards messages between agents; may become unreachable during disruption"),
+        (
+            "dispatcher",
+            "Coordinates freight assignment and route planning across the network",
+        ),
+        (
+            "relay",
+            "Forwards messages between agents; may become unreachable during disruption",
+        ),
         ("carrier", "Physically moves freight along routes; validates route legality"),
-        ("observer", "Monitors local conditions and reports changes like bridge closures"),
+        (
+            "observer",
+            "Monitors local conditions and reports changes like bridge closures",
+        ),
     ]
-    
+
     topologies = ["mesh", "ring"]
-    
+
     prompts_generated = []
-    
+
     for role_name, role_desc in roles:
         for topo in topologies:
             prompt_template = f"""# {role_name.upper()} AGENT PROMPT ({topo.upper()} TOPOLOGY)
@@ -100,21 +113,21 @@ Respond with valid JSON:
 ## Provenance
 team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence
 """
-            
+
             filename = f"data/prompts/{role_name}_{topo}.md"
             write_new_file(filename, prompt_template)
-            
             prompts_generated.append(filename)
             print(f"  Written: {filename}")
-    
+
     return prompts_generated
+
 
 def generate_scenarios(adapter):
     """Generate 2-3 candidate scenario seeds/configs."""
     print("\n=== GENERATING SCENARIOS ===")
-    
+
     scenarios = []
-    
+
     # Scenario 1: Basic relay-loss disruption
     scenario1 = {
         "scenario_id": "relay-loss-early",
@@ -125,26 +138,44 @@ def generate_scenarios(adapter):
         "physical_topology": "graph",
         "turns": 16,
         "freight_jobs": [
-            {"job_id": "j-001", "freight": "med-kit", "origin": "west", "destination": "south", "priority": "high"},
-            {"job_id": "j-002", "freight": "supplies", "origin": "east", "destination": "west", "priority": "normal"},
-            {"job_id": "j-003", "freight": "equipment", "origin": "south", "destination": "east", "priority": "normal"},
+            {
+                "job_id": "j-001",
+                "freight": "med-kit",
+                "origin": "west",
+                "destination": "south",
+                "priority": "high",
+            },
+            {
+                "job_id": "j-002",
+                "freight": "supplies",
+                "origin": "east",
+                "destination": "west",
+                "priority": "normal",
+            },
+            {
+                "job_id": "j-003",
+                "freight": "equipment",
+                "origin": "south",
+                "destination": "east",
+                "priority": "normal",
+            },
         ],
         "disturbance_schedule": {
             "relay-loss": {
                 "agent": "a",
                 "start_turn": 2,
                 "end_turn": 16,
-                "note": "Agent A unreachable; mesh edges among b,c,d unchanged"
+                "note": "Agent A unreachable; mesh edges among b,c,d unchanged",
             }
         },
         "expected_outcomes": {
             "deliveries_baseline": 3,
             "recovery_turns_expected": "2-4",
-            "coordination_challenge": "reroute without relay coordination"
+            "coordination_challenge": "reroute without relay coordination",
         },
-        "provenance": "team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence"
+        "provenance": "team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence",
     }
-    
+
     # Scenario 2: Ring topology with same disruption
     scenario2 = {
         "scenario_id": "ring-relay-loss",
@@ -156,25 +187,37 @@ def generate_scenarios(adapter):
         "physical_topology": "graph",
         "turns": 16,
         "freight_jobs": [
-            {"job_id": "j-001", "freight": "med-kit", "origin": "west", "destination": "south", "priority": "high"},
-            {"job_id": "j-002", "freight": "supplies", "origin": "relay-a", "destination": "east", "priority": "normal"},
+            {
+                "job_id": "j-001",
+                "freight": "med-kit",
+                "origin": "west",
+                "destination": "south",
+                "priority": "high",
+            },
+            {
+                "job_id": "j-002",
+                "freight": "supplies",
+                "origin": "relay-a",
+                "destination": "east",
+                "priority": "normal",
+            },
         ],
         "disturbance_schedule": {
             "relay-loss": {
                 "agent": "b",
                 "start_turn": 3,
                 "end_turn": 16,
-                "note": "Agent B unreachable; ring broken between a-b and b-c"
+                "note": "Agent B unreachable; ring broken between a-b and b-c",
             }
         },
         "expected_outcomes": {
             "deliveries_baseline": 2,
             "recovery_turns_expected": "3-5",
-            "coordination_challenge": "ring fragmentation requires alternate paths"
+            "coordination_challenge": "ring fragmentation requires alternate paths",
         },
-        "provenance": "team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence"
+        "provenance": "team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence",
     }
-    
+
     # Scenario 3: Stale information disruption
     scenario3 = {
         "scenario_id": "stale-report",
@@ -185,35 +228,59 @@ def generate_scenarios(adapter):
         "physical_topology": "graph",
         "turns": 16,
         "freight_jobs": [
-            {"job_id": "j-001", "freight": "med-kit", "origin": "west", "destination": "south", "priority": "high"},
-            {"job_id": "j-002", "freight": "supplies", "origin": "east", "destination": "south", "priority": "normal"},
+            {
+                "job_id": "j-001",
+                "freight": "med-kit",
+                "origin": "west",
+                "destination": "south",
+                "priority": "high",
+            },
+            {
+                "job_id": "j-002",
+                "freight": "supplies",
+                "origin": "east",
+                "destination": "south",
+                "priority": "normal",
+            },
         ],
         "world_events": [
-            {"turn": 2, "event": "east-bridge closed", "reported_to": ["c"], "reported_at_turn": 2},
-            {"turn": 2, "event": "east-bridge closed", "reported_to": ["a", "b", "d"], "reported_at_turn": 4, "note": "stale by 2 turns"}
+            {
+                "turn": 2,
+                "event": "east-bridge closed",
+                "reported_to": ["c"],
+                "reported_at_turn": 2,
+            },
+            {
+                "turn": 2,
+                "event": "east-bridge closed",
+                "reported_to": ["a", "b", "d"],
+                "reported_at_turn": 4,
+                "note": "stale by 2 turns",
+            },
         ],
         "expected_outcomes": {
             "deliveries_baseline": 2,
-            "coordination_challenge": "agents act on outdated information"
+            "coordination_challenge": "agents act on outdated information",
         },
-        "provenance": "team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence"
+        "provenance": "team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence",
     }
-    
+
     scenarios = [scenario1, scenario2, scenario3]
     scenarios_written = []
-    
+
     for scenario in scenarios:
         filename = f"data/scenarios/{scenario['scenario_id']}.json"
         write_new_file(filename, json.dumps(scenario, indent=2) + "\n")
         scenarios_written.append(filename)
         print(f"  Written: {filename}")
-    
+
     return scenarios_written, scenarios
+
 
 def generate_coordination_example(adapter):
     """Generate one short model-composed coordination example exchange."""
     print("\n=== GENERATING COORDINATION EXAMPLE ===")
-    
+
     example = """# Coordination Example: Reroute During Relay Loss
 
 ## Context
@@ -311,30 +378,37 @@ This exchange demonstrates:
 ## Provenance
 - team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence
 """
-    
+
     filename = "data/examples/reroute-coordination.md"
     write_new_file(filename, example)
-    
     print(f"  Written: {filename}")
     return filename
+
 
 def validate_scenarios(scenarios):
     """Validate scenarios against events schema where applicable."""
     print("\n=== VALIDATING SCENARIOS ===")
-    
+
     # Load schema
     with open("runtime/schema/events.schema.json") as f:
-        schema = json.load(f)
-    
+        json.load(f)
+
     validated = []
     for scenario in scenarios:
         # Basic validation: check required fields for scenario config
-        required = ["scenario_id", "seed", "agents", "comm_topology", "turns", "freight_jobs"]
+        required = [
+            "scenario_id",
+            "seed",
+            "agents",
+            "comm_topology",
+            "turns",
+            "freight_jobs",
+        ]
         missing = [f for f in required if f not in scenario]
-        
+
         if missing:
             print(f"  {scenario['scenario_id']}: MISSING FIELDS {missing}")
-            validated.append((scenario['scenario_id'], False, f"Missing: {missing}"))
+            validated.append((scenario["scenario_id"], False, f"Missing: {missing}"))
         else:
             # Check disturbance schedule format
             if "disturbance_schedule" in scenario:
@@ -342,21 +416,36 @@ def validate_scenarios(scenarios):
                 if "relay-loss" in ds:
                     rl = ds["relay-loss"]
                     if all(k in rl for k in ["agent", "start_turn", "end_turn"]):
-                        print(f"  {scenario['scenario_id']}: VALID (disturbance schedule OK)")
-                        validated.append((scenario['scenario_id'], True, "OK"))
+                        print(
+                            f"  {scenario['scenario_id']}: VALID (disturbance schedule OK)"
+                        )
+                        validated.append((scenario["scenario_id"], True, "OK"))
                     else:
-                        print(f"  {scenario['scenario_id']}: INVALID disturbance schedule")
-                        validated.append((scenario['scenario_id'], False, "Invalid disturbance schedule"))
+                        print(
+                            f"  {scenario['scenario_id']}: INVALID disturbance schedule"
+                        )
+                        validated.append(
+                            (
+                                scenario["scenario_id"],
+                                False,
+                                "Invalid disturbance schedule",
+                            )
+                        )
                 else:
-                    print(f"  {scenario['scenario_id']}: VALID (disturbance schedule present)")
-                    validated.append((scenario['scenario_id'], True, "OK"))
+                    print(
+                        f"  {scenario['scenario_id']}: VALID (disturbance schedule present)"
+                    )
+                    validated.append((scenario["scenario_id"], True, "OK"))
             else:
                 print(f"  {scenario['scenario_id']}: VALID (no disturbance)")
-                validated.append((scenario['scenario_id'], True, "OK"))
-    
+                validated.append((scenario["scenario_id"], True, "OK"))
+
     return validated
 
-def create_manifest(prompts, scenarios, example, validations, output_path="data/MANIFEST.md"):
+
+def create_manifest(
+    prompts, scenarios, example, validations, output_path="data/MANIFEST.md"
+):
     """Create a manifest, refusing to clobber an existing file by default."""
     print("\n=== CREATING MANIFEST ===")
     if os.path.exists(output_path):
@@ -364,7 +453,7 @@ def create_manifest(prompts, scenarios, example, validations, output_path="data/
             f"Refusing to overwrite existing manifest: {output_path}; "
             "remove it or pass a separate output_path"
         )
-    
+
     manifest = f"""# Pre-Recorded Data Manifest
 
 **Generated**: {GENERATION_TIMESTAMP}
@@ -385,12 +474,12 @@ Pilot prompt pack for 4 freight roles under 2 topologies:
 | File | Role | Topology |
 |------|------|----------|
 """
-    
+
     for p in prompts:
         role = p.split("/")[-1].split("_")[0]
         topo = p.split("/")[-1].split(".")[0].split("_")[1]
         manifest += f"| {p} | {role} | {topo} |\n"
-    
+
     manifest += f"""
 ### Scenarios ({len(scenarios)} files)
 Candidate scenario seeds/configs for freight world:
@@ -398,14 +487,17 @@ Candidate scenario seeds/configs for freight world:
 | File | Scenario ID | Validation |
 |------|-------------|------------|
 """
-    
+
     for s in scenarios:
         filename = s.split("/")[-1]
         # Find validation result
-        val_result = next((v for v in validations if v[0] == filename.replace(".json", "")), ("unknown", False, "not checked"))
+        val_result = next(
+            (v for v in validations if v[0] == filename.replace(".json", "")),
+            ("unknown", False, "not checked"),
+        )
         status = "✓ VALID" if val_result[1] else f"✗ {val_result[2]}"
         manifest += f"| {s} | {filename.replace('.json', '')} | {status} |\n"
-    
+
     manifest += f"""
 ### Examples ({len([example])} files)
 Model-composed coordination example exchanges:
@@ -423,12 +515,12 @@ Model-composed coordination example exchanges:
 
 ## Files Generated
 """
-    
+
     all_files = prompts + scenarios + [example]
     for f in all_files:
         manifest += f"- {f}\n"
-    
-    manifest += f"""
+
+    manifest += """
 ## Usage Notes
 1. Prompts are templates — adapt agent IDs and context as needed for specific runs
 2. Scenarios are seeds — actual runs may vary based on model responses
@@ -438,12 +530,13 @@ Model-composed coordination example exchanges:
 ---
 *Manifest auto-generated by pre-record data script*
 """
-    
+
     with open(output_path, "w") as f:
         f.write(manifest)
-    
+
     print(f"  Written: {output_path}")
     return manifest
+
 
 def main():
     print("=" * 60)
@@ -451,36 +544,38 @@ def main():
     print("=" * 60)
     print(f"Model: {MODEL_ID}")
     print(f"Timestamp: {GENERATION_TIMESTAMP}")
-    print(f"Note: Content authored based on spec; 0 API calls in this session")
-    
+    print("Note: Content authored based on spec; 0 API calls in this session")
+
     # Note: API key not available in this environment
     # Content is authored based on hackathon spec requirements
     # All files carry provenance: "team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence"
-    
+
     adapter = None  # Not used - content is spec-based
-    
+
     # Generate prompts (static templates based on spec)
     prompts = generate_prompts(adapter)
-    
+
     # Generate scenarios (static configs based on spec)
     scenarios_files, scenarios = generate_scenarios(adapter)
-    
+
     # Generate coordination example (static example based on spec)
     example = generate_coordination_example(adapter)
-    
+
     # Validate scenarios
     validations = validate_scenarios(scenarios)
-    
+
     # Create manifest
-    manifest = create_manifest(prompts, scenarios_files, example, validations)
-    
+    create_manifest(prompts, scenarios_files, example, validations)
+
     print("\n" + "=" * 60)
     print("GENERATION COMPLETE")
     print("=" * 60)
     print(f"Total API calls: {call_count}")
-    print(f"Total tokens: {total_input_tokens} in + {total_output_tokens} out = {total_input_tokens + total_output_tokens}")
+    print(
+        f"Total tokens: {total_input_tokens} in + {total_output_tokens} out = {total_input_tokens + total_output_tokens}"
+    )
     print(f"Files generated: {len(prompts) + len(scenarios_files) + 1}")
-    
+
     # Return metrics for PR body
     return {
         "call_count": call_count,
@@ -490,9 +585,10 @@ def main():
         "files": {
             "prompts": prompts,
             "scenarios": scenarios_files,
-            "examples": [example]
-        }
+            "examples": [example],
+        },
     }
+
 
 if __name__ == "__main__":
     metrics = main()
