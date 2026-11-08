@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 import stat
@@ -285,9 +286,91 @@ def _safe_generation_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
 def _safe_span_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     """project ordinary span metadata onto the same finite export contract."""
     safe = _safe_generation_metadata(metadata)
-    if metadata.get("type") == "agent_turn":
-        safe["type"] = "agent_turn"
+    span_type = metadata.get("type")
+    if span_type in {"agent_turn", "model_call", "tool_call"}:
+        safe["type"] = span_type
+    model_id = metadata.get("model_id")
+    if model_id in {"glm-53-flash", "unknown"}:
+        safe["model_id"] = model_id
+    for key in (
+        "model_id_sha256",
+        "tool_name_sha256",
+        "args_sha256",
+        "result_sha256",
+        "error_sha256",
+    ):
+        value = metadata.get(key)
+        if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value):
+            safe[key] = value
+    for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+        value = metadata.get(key)
+        if value == "unknown" or (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and 0 <= value <= 100_000_000
+        ):
+            safe[key] = value
+    latency_ms = metadata.get("latency_ms")
+    if (
+        isinstance(latency_ms, (int, float))
+        and not isinstance(latency_ms, bool)
+        and 0 <= latency_ms <= 3_600_000
+    ):
+        safe["latency_ms"] = round(float(latency_ms), 3)
+    error_category = metadata.get("error_category")
+    if error_category in {
+        "cancelled",
+        "timeout",
+        "transport",
+        "validation",
+        "other",
+    }:
+        safe["error_category"] = error_category
     return safe
+
+
+def _bounded_digest(value: Any, *, text_only: bool = False) -> str | None:
+    """hash bounded caller data without exporting or retaining its raw value."""
+    if value is None:
+        return None
+    try:
+        if text_only:
+            if not isinstance(value, str):
+                return None
+            encoded = value.encode("utf-8")
+        else:
+            encoded = json.dumps(
+                value,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                allow_nan=False,
+            ).encode("utf-8")
+    except (TypeError, ValueError, UnicodeError):
+        return None
+    if len(encoded) > 65_536:
+        return None
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _safe_metric(value: Any) -> int | str:
+    if (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and 0 <= value <= 100_000_000
+    ):
+        return value
+    return "unknown"
+
+
+def _safe_legacy_error_category(error: Any) -> str | None:
+    if error is None:
+        return None
+    return (
+        error
+        if error in {"cancelled", "timeout", "transport", "validation", "other"}
+        else "other"
+    )
 
 
 def _safe_reason_category(reason: Any) -> str | None:
@@ -724,26 +807,20 @@ class Tracer:
         latency_ms: float | None = None,
         error: str | None = None,
     ) -> None:
-        usage = {
-            "prompt_tokens": prompt_tokens if prompt_tokens is not None else "unknown",
-            "completion_tokens": (
-                completion_tokens if completion_tokens is not None else "unknown"
-            ),
-            "total_tokens": total_tokens if total_tokens is not None else "unknown",
+        safe_model_id = model_id if model_id == "glm-53-flash" else "unknown"
+        metadata = {
+            "type": "model_call",
+            "model_id": safe_model_id,
+            "model_id_sha256": _bounded_digest(model_id, text_only=True),
+            "prompt_tokens": _safe_metric(prompt_tokens),
+            "completion_tokens": _safe_metric(completion_tokens),
+            "total_tokens": _safe_metric(total_tokens),
+            "latency_ms": latency_ms,
+            "error_category": _safe_legacy_error_category(error),
+            "error_sha256": _bounded_digest(error, text_only=True),
         }
-        if self.exporter is not None and self._try_init():
-            self.exporter.span(
-                {
-                    "name": f"model:{model_id}",
-                    "metadata": {
-                        "model_id": model_id,
-                        "type": "model_call",
-                        "latency_ms": latency_ms,
-                    },
-                    "usage": usage,
-                    "error": error,
-                }
-            )
+        with self.span("model-call", metadata=metadata):
+            pass
 
     def record_tool_call(
         self,
@@ -753,19 +830,17 @@ class Tracer:
         latency_ms: float | None = None,
         error: str | None = None,
     ) -> None:
-        if self.exporter is not None and self._try_init():
-            self.exporter.span(
-                {
-                    "name": f"tool:{tool_name}",
-                    "metadata": {
-                        "tool_name": tool_name,
-                        "type": "tool_call",
-                        "latency_ms": latency_ms,
-                        "args": args,
-                    },
-                    "error": error,
-                }
-            )
+        metadata = {
+            "type": "tool_call",
+            "tool_name_sha256": _bounded_digest(tool_name, text_only=True),
+            "args_sha256": _bounded_digest(args),
+            "result_sha256": _bounded_digest(result),
+            "latency_ms": latency_ms,
+            "error_category": _safe_legacy_error_category(error),
+            "error_sha256": _bounded_digest(error, text_only=True),
+        }
+        with self.span("tool-call", metadata=metadata):
+            pass
 
     def get_telemetry_errors(self) -> list[dict[str, Any]]:
         return [dict(error) for error in self._telemetry_errors]

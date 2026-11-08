@@ -195,7 +195,9 @@ live task10 execution additionally requires
 than sourced and must be an owner-owned, non-symlink regular file with mode
 `0600`; it contains exactly `LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY`,
 and `LANGFUSE_SECRET_KEY`. do not print it or add its values to process-wide
-environment variables.
+environment variables. there is intentionally no repo-relative credential
+default: the owner accepted an explicit external private-file argument, and
+the cli must not guess a host path or seek secrets inside the repository.
 
 tracing exports hashes and bounded metadata only. every provider attempt owns
 one generation, flushes before the next paid call, and stops the batch if trace

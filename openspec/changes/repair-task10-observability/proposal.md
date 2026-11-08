@@ -89,6 +89,12 @@ group/world-readable mode, missing public/secret key pair, and invalid base
 url. values are never printed, persisted, included in commands, or added to
 process-wide environment variables.
 
+the owner directly supplied and accepted the explicit external private-file
+contract. that ruling supersedes the intermediate proxy checklist's request
+for a repo-relative default: the cli intentionally requires
+`--langfuse-credentials`, does not guess a host path, and does not place or
+seek secrets inside the repository.
+
 after offline verification and independent exact-head review, external proof
 is staged:
 

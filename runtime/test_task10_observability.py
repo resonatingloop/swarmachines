@@ -269,6 +269,50 @@ def test_trace_boundary_drops_arbitrary_metadata_and_terminal_prose():
     assert "raw exception text" not in repr(exporter.traces)
 
 
+def test_legacy_trace_methods_export_only_hashes_and_finite_categories():
+    exporter = FakeExporter()
+    tracer = Tracer(TraceConfig(enabled=True), exporter=exporter)
+    private_model = "private-experimental-model"
+    private_tool = "private-shell-tool"
+    private_args = {"code": "print('private corpus fragment')"}
+    private_result = {"stdout": "private model result"}
+    private_error = "private provider exception text"
+
+    tracer.record_model_call(
+        private_model,
+        prompt_tokens=-1,
+        completion_tokens=5,
+        total_tokens=10,
+        latency_ms=2,
+        error=private_error,
+    )
+    tracer.record_tool_call(
+        private_tool,
+        args=private_args,
+        result=private_result,
+        latency_ms=3,
+        error=private_error,
+    )
+
+    encoded = repr(exporter.spans)
+    for raw_value in (
+        private_model,
+        private_tool,
+        private_args["code"],
+        private_result["stdout"],
+        private_error,
+    ):
+        assert raw_value not in encoded
+    assert exporter.spans[0]["name"] == "model-call"
+    assert exporter.spans[0]["metadata"]["model_id"] == "unknown"
+    assert exporter.spans[0]["metadata"]["prompt_tokens"] == "unknown"
+    assert exporter.spans[0]["metadata"]["error_category"] == "other"
+    assert exporter.spans[1]["name"] == "tool-call"
+    assert exporter.spans[1]["metadata"]["error_category"] == "other"
+    for key in ("tool_name_sha256", "args_sha256", "result_sha256", "error_sha256"):
+        assert len(exporter.spans[1]["metadata"][key]) == 64
+
+
 def test_v5_export_mask_returns_attribute_patches():
     from langfuse.types import (
         MaskOtelSpansParams,
@@ -334,12 +378,31 @@ def test_installed_langfuse_v5_surface_is_zero_network_and_metadata_only():
             latency_ms=1,
             terminal_state="completed",
         )
+    tracer.record_model_call(
+        "private-model-id",
+        prompt_tokens=10,
+        completion_tokens=5,
+        total_tokens=15,
+        error="private model error",
+    )
+    tracer.record_tool_call(
+        "private-tool-name",
+        args={"prompt": "private tool argument"},
+        result={"answer": "private tool result"},
+        error="private tool error",
+    )
     tracer.end_trace(RunStatus.COMPLETED)
     exported = repr([span.attributes for span in sink.get_finished_spans()])
     assert "private prompt" not in exported
     assert "private answer" not in exported
     assert "private-call" not in exported
     assert "private-run" not in exported
+    assert "private-model-id" not in exported
+    assert "private model error" not in exported
+    assert "private-tool-name" not in exported
+    assert "private tool argument" not in exported
+    assert "private tool result" not in exported
+    assert "private tool error" not in exported
 
 
 def test_disabled_tracing_is_byte_identical_to_absent_tracing():
