@@ -1,6 +1,7 @@
 """Fictional contract fixtures and real runtime instrumentation checks."""
 
 import copy
+import hashlib
 import json
 import tempfile
 import unittest
@@ -240,6 +241,80 @@ class MeasureTests(unittest.TestCase):
             r["completion"]["numerator"],
             runner.freight_world.get_delivery_stats()["delivered"],
         )
+
+
+def _seal_records(events):
+    """Independent seal-contract oracle: chain fixture events and append run.seal."""
+    genesis = hashlib.sha256(
+        ("swarmachines/eventlog-seal-v1|" + events[0]["run_id"]).encode()
+    ).hexdigest()
+    prev = genesis
+    chained = []
+    for event in events:
+        record = dict(event)
+        stripped = {k: v for k, v in record.items() if k != "chain"}
+        canonical = json.dumps(stripped, sort_keys=True, separators=(",", ":"))
+        record["chain"] = hashlib.sha256((prev + "|" + canonical).encode()).hexdigest()
+        prev = record["chain"]
+        chained.append(record)
+    seal = {
+        "run_id": events[0]["run_id"],
+        "seq": len(events),
+        "turn": events[-1]["turn"],
+        "agent_id": None,
+        "type": "run.seal",
+        "ts": "2026-11-07T14:30:01Z",
+        "payload": {
+            "chain": prev,
+            "events": len(events),
+            "alg": "eventlog-seal-v1",
+        },
+    }
+    return chained + [seal]
+
+
+class SealTests(unittest.TestCase):
+    def test_honest_seal_is_valid_and_measures_identically(self):
+        sealed = analyze_bytes(raw(_seal_records(fixture(8))))
+        self.assertEqual(sealed["status"], "valid")
+        legacy = analyze_bytes(raw(fixture(8)))
+        self.assertEqual(legacy["status"], "valid")
+        without_provenance = lambda r: {k: v for k, v in r.items() if k != "sha256"}
+        self.assertEqual(without_provenance(sealed), without_provenance(legacy))
+
+    def test_tampered_event_is_invalid(self):
+        records = _seal_records(fixture(8))
+        records[5]["payload"]["detail"] = "fabricated"
+        self.assertEqual(analyze_bytes(raw(records))["status"], "invalid")
+
+    def test_inserted_event_is_invalid(self):
+        records = _seal_records(fixture(8))
+        forged = dict(records[5])
+        forged["payload"] = {"fabricated": True}
+        records.insert(6, forged)
+        self.assertEqual(analyze_bytes(raw(records))["status"], "invalid")
+
+    def test_truncated_event_is_invalid(self):
+        records = _seal_records(fixture(8))
+        del records[7]
+        self.assertEqual(analyze_bytes(raw(records))["status"], "invalid")
+
+    def test_partial_chain_is_invalid(self):
+        records = _seal_records(fixture(8))
+        del records[3]["chain"]
+        self.assertEqual(analyze_bytes(raw(records))["status"], "invalid")
+
+    def test_chain_without_seal_is_invalid(self):
+        records = _seal_records(fixture(8))[:-1]
+        self.assertEqual(analyze_bytes(raw(records))["status"], "invalid")
+
+    def test_seal_not_last_is_invalid(self):
+        records = _seal_records(fixture(8))
+        trailing = dict(records[-1])
+        trailing["seq"] = records[-1]["seq"] + 1
+        trailing["type"] = "observation.recorded"
+        trailing["payload"] = {}
+        self.assertEqual(analyze_bytes(raw(records + [trailing]))["status"], "invalid")
 
 
 if __name__ == "__main__":

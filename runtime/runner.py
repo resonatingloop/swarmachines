@@ -39,8 +39,73 @@ except ImportError:  # script mode: python3 runtime/runner.py
         RunStatus = TraceConfig = Tracer = create_tracer = None  # type: ignore
 
 
+SEAL_ALG = "eventlog-seal-v1"
+_SEAL_GENESIS_PREFIX = "swarmachines/eventlog-seal-v1|"
+
+
+def _canonical_event(event: dict) -> str:
+    """Canonical JSON of an event minus its chain field, per the seal contract."""
+    stripped = {key: value for key, value in event.items() if key != "chain"}
+    return json.dumps(stripped, sort_keys=True, separators=(",", ":"))
+
+
+def _genesis_hash(run_id: str) -> str:
+    """Chain genesis: binds the chain to this run's identity."""
+    return hashlib.sha256((_SEAL_GENESIS_PREFIX + run_id).encode("utf-8")).hexdigest()
+
+
+def _event_hash(prev_hex: str, event: dict) -> str:
+    """Chain step: sha256 over the previous hash and this event's canonical form."""
+    return hashlib.sha256(
+        (prev_hex + "|" + _canonical_event(event)).encode("utf-8")
+    ).hexdigest()
+
+
+def verify_seal(records: list[dict]) -> None:
+    """Verify an optional event-log seal and raise ValueError on fabrication.
+
+    A log with no chain fields and no run.seal record is legacy and passes.
+    A log with any chain field must be sealed: every record before the seal
+    carries a valid chain, the recomputed terminal hash and event count match
+    the seal payload, and the seal is the final record.
+
+    Args:
+        records: Parsed event records in log order, seal included if present.
+
+    Raises:
+        ValueError: With a categorical message on any fabrication pattern.
+    """
+    seal = records[-1] if records and records[-1].get("type") == "run.seal" else None
+    if seal is not None and "chain" in seal:
+        raise ValueError("seal_shape")
+    if seal is None:
+        if any("chain" in record for record in records):
+            raise ValueError("missing_seal")
+        return
+    body = records[:-1]
+    if not body or any("chain" not in record for record in body):
+        raise ValueError("partial_chain")
+    prev = _genesis_hash(records[0]["run_id"])
+    for record in body:
+        claimed = record["chain"]
+        if not isinstance(claimed, str) or len(claimed) != 64:
+            raise ValueError("chain_format")
+        expected = _event_hash(prev, record)
+        if claimed != expected:
+            raise ValueError("chain_mismatch")
+        prev = claimed
+    payload = seal["payload"]
+    if payload.get("chain") != prev or payload.get("events") != len(body):
+        raise ValueError("seal_mismatch")
+
+
 class EventLog:
-    """Append-only event log with (run_id, seq) uniqueness."""
+    """Append-only event log with (run_id, seq) uniqueness.
+
+    Sealing: every appended record carries a `chain` hash binding it to its
+    predecessor; `seal()` closes the log with a terminal `run.seal` record
+    so post-hoc insertion, edit, or removal is detectable from the log alone.
+    """
 
     def __init__(self, run_id: str, base_ts: str):
         self.run_id = run_id
@@ -50,12 +115,21 @@ class EventLog:
         # Separate counters for comm vs non-comm to ensure topology-independence
         self.comm_seq = 0
         self.non_comm_seq = 0
+        self._chain_hex = _genesis_hash(run_id)
+        self.sealed = False
+
+    def _stamp(self, seq: int) -> str:
+        """Deterministic logical timestamp: base_ts plus seq seconds."""
+        base = datetime.fromisoformat(self.base_ts)
+        return (base + timedelta(seconds=seq)).isoformat().replace("+00:00", "Z")
 
     def append(
         self, turn: int, agent_id: str | None, event_type: str, payload: dict
     ) -> None:
         # Use logical timestamp for determinism: base_ts + seq seconds
         # Non-communication events use non_comm_seq for topology-independence
+        if self.sealed:
+            raise ValueError("log_sealed")
         comm_types = {
             "message.sent",
             "message.delivered",
@@ -71,8 +145,7 @@ class EventLog:
             seq = self.non_comm_seq
             self.non_comm_seq += 1
 
-        base = datetime.fromisoformat(self.base_ts)
-        ts = (base + timedelta(seconds=seq)).isoformat().replace("+00:00", "Z")
+        ts = self._stamp(seq)
 
         event = {
             "run_id": self.run_id,
@@ -83,8 +156,38 @@ class EventLog:
             "ts": ts,
             "payload": payload,
         }
+        event["chain"] = _event_hash(self._chain_hex, event)
+        self._chain_hex = event["chain"]
         self.events.append(event)
         self.seq += 1
+
+    def seal(self) -> None:
+        """Close the log with the terminal run.seal certification record.
+
+        The seal is not itself chained; it commits the terminal chain hash
+        and the sealed record count. Further appends are refused.
+
+        Raises:
+            ValueError: If the log is already sealed.
+        """
+        if self.sealed:
+            raise ValueError("log_sealed")
+        record = {
+            "run_id": self.run_id,
+            "seq": self.seq,
+            "turn": self.events[-1]["turn"] if self.events else 0,
+            "agent_id": None,
+            "type": "run.seal",
+            "ts": self._stamp(self.seq),
+            "payload": {
+                "chain": self._chain_hex,
+                "events": len(self.events),
+                "alg": SEAL_ALG,
+            },
+        }
+        self.events.append(record)
+        self.seq += 1
+        self.sealed = True
 
     def to_jsonl(self) -> str:
         return "\n".join(json.dumps(e, separators=(",", ":")) for e in self.events)
@@ -1001,6 +1104,7 @@ class TurnSeamRunner:
                 ),
             },
         )
+        self.log.seal()
 
         # End tracing if configured
         return self.log.to_jsonl()
