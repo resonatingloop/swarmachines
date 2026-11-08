@@ -111,7 +111,9 @@ def create_fixture_run(run_dir: Path) -> dict:
 
     events_path = logs_dir / "events.jsonl"
     with open(events_path, "w", encoding="utf-8") as f:
-        f.writelines(json.dumps(event, separators=(",", ":")) + "\n" for event in events)
+        f.writelines(
+            json.dumps(event, separators=(",", ":")) + "\n" for event in events
+        )
 
     # Create mock receipts
     for call in calls:
