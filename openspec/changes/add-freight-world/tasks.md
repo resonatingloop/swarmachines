@@ -1,7 +1,7 @@
 # tasks — add-freight-world
 
-- [ ] 1. write freight world spec delta (specs/freight-world/spec.md) with ADDED Requirements section, SHALL statements, and WHEN/THEN scenarios
-  - Note: freight world requirements are in specs/001-hackathon-plan.md (freight-in-the-fog world), not a separate spec file
+- [x] 1. write freight world spec delta (specs/freight-world/spec.md) with ADDED Requirements section, SHALL statements, and WHEN/THEN scenarios
+  - Note: specs/freight-world/spec.md ships in this branch's diff (106 lines, ADDED Requirements/SHALL/WHEN-THEN)
 - [x] 2. implement runtime/freight_world.py: graph state, depots, routes, closures, freight items, delivery jobs, legal moves, partial observations
 - [x] 3. integrate freight world with runner: world.observe() for agent-specific views, world.apply_action() for route_freight validation
 - [x] 4. configure scripted episode: 4 agents (a,b,c,d), 16 turns, seed 42, relay-loss@turn 8 on agent c
