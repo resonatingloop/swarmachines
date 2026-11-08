@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from freight_world import FreightWorld
+from job_evidence import roster
 from route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select
 
 
@@ -629,6 +630,7 @@ class Agent:
         if legal:
             # Commit action and update freight world
             if freight_world is not None:
+                prior_jobs = roster(freight_world) if self.policy == POLICY else []
                 success, commit_reason, event_payload = freight_world.apply_action(
                     action, self.agent_id
                 )
@@ -639,6 +641,24 @@ class Agent:
                         event_type="action.committed",
                         payload={"action_id": action_id, **event_payload},
                     )
+                    if self.policy == POLICY:
+                        previous = {row["job_id"]: row["state"] for row in prior_jobs}
+                        for row in roster(freight_world):
+                            if (
+                                row["freight_id"] == action["freight_id"]
+                                and row["state"] == "delivered"
+                                and previous[row["job_id"]] != "delivered"
+                            ):
+                                log.append(
+                                    turn,
+                                    self.agent_id,
+                                    "job.completed",
+                                    {
+                                        "job_id": row["job_id"],
+                                        "freight_id": row["freight_id"],
+                                        "action_id": action_id,
+                                    },
+                                )
                     # Emit world.changed event
                     log.append(
                         turn=turn,
@@ -764,12 +784,25 @@ class TurnSeamRunner:
                 "disturbance_schedule": self.disturbance_scheduler.schedule,
                 "agents": self.agent_ids,
                 **(
-                    {"policy": POLICY, "world": "freight"}
+                    {
+                        "policy": POLICY,
+                        "world": "freight",
+                        "job_evidence_version": 1,
+                        "horizon_turns": num_turns,
+                    }
                     if self.policy == POLICY
                     else {}
                 ),
             },
         )
+
+        if self.policy == POLICY:
+            self.log.append(
+                0,
+                None,
+                "jobs.initialized",
+                {"jobs": roster(self.freight_world, initial=True)},
+            )
 
         # world.init event - reflect the real route set from freight_world
         if self.freight_world is not None:
@@ -866,6 +899,15 @@ class TurnSeamRunner:
             event_type="run.end",
             payload={
                 "recovery_interval_turns": num_turns,
+                **(
+                    {
+                        "jobs": roster(self.freight_world),
+                        "termination": "completed",
+                        "horizon_turns": num_turns,
+                    }
+                    if self.policy == POLICY
+                    else {}
+                ),
             },
         )
 
