@@ -166,3 +166,33 @@ counts attempted adapter invocations, including failures, not underlying SDK
 requests or retries. call 1 still aborts on failure; later failures retain all
 result rows and expose the first error at top level for the CLI. provider
 configuration and retry policy are unchanged by this accounting fix.
+
+## e2e pipeline test
+
+`python3 runtime/test_e2e_pipeline.py` exercises the full pipeline from a fresh
+clone:
+
+1. **Runner execution** with `--world freight` producing episode JSONL
+2. **Schema validation** via `verify_events.py`
+3. **Determinism check** (two runs, byte-identical log)
+4. **Viewer replay readiness** (replay.js loader contract offline check)
+5. **Trace-layer smoke** (Langfuse-compatible layer; SKIP if absent)
+
+Hard rules (owner directive):
+- Zero provider/API calls (runner is scripted/zero-model by design)
+- Test authors only; execution against master gated by coordinator
+
+Usage:
+```sh
+# Run from repo root
+python3 runtime/test_e2e_pipeline.py
+
+# Run against a specific repo path
+python3 runtime/test_e2e_pipeline.py --repo /path/to/swarmachines
+
+# Output as JSON
+python3 runtime/test_e2e_pipeline.py --json
+```
+
+Exit codes: 0 = all tests PASS, 1 = any test FAIL. Trace-layer returns SKIP
+(not FAIL) if the tracer module is absent.
