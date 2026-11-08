@@ -40,6 +40,7 @@ The coordinator owns routing; the ledger is the single source of truth.
 
 ## Done (recent — prune weekly)
 
+- [done] swarmachines-gj9: PR #34 fix-forward punch list — (1) events.schema.json run.end/run.config additionalProperties:false (8c5aa52), (2) STATUS.md 386-record claim dropped (was in 0f84075 checkpoint, not in current master), (3) noninterference test exists (test_mute_ring_and_opportunity_noninterference in test_gossip_integration.py:95) — owner: forge — updated: 2026-11-08T06:00Z
 - [done] swarmachines-i3y: Bug: F821 in scripts/adaption_log.py — AdaptionRun.close() referenced undefined log_json_path (NameError on every close()); removed print line + ruff clean (14 findings fixed) — owner: forge — updated: 2026-11-08T05:45Z
 - [done] swarmachines-avf: freight world + runner integration — MERGED via PR #29 (7103ac0, 02:37:25Z, head t-003-freight-world-wiring); gate anchor 2eadaca verified ancestor of origin/master — owner: forge — updated: 2026-11-08T05:05Z
 - [done] swarmachines-fvh: prune: ruff-clean runtime/ mechanical lint findings — PR #15 merged 2026-11-07T21:30:20Z (core sweep) + residual EXE001 via PR #36 merged 03:54:33Z (post-PR ruff state: 1 documented-intentional BLE001); forge close-commit b4c74b1 concurs — owner: pruner — updated: 2026-11-08T05:05Z
