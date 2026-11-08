@@ -1,0 +1,61 @@
+{
+  "name": "Freight-World Scenario Alpha",
+  "topology": "bidirectional-ring",
+  "turns": 12,
+  "disturbance": "relay-loss:8:d",
+  "jobs": [
+    {
+      "id": "j1",
+      "item": "grain",
+      "origin": "depot-1",
+      "destination": "depot-3"
+    },
+    {
+      "id": "j2",
+      "item": "steel",
+      "origin": "depot-2",
+      "destination": "depot-4"
+    },
+    {
+      "id": "j3",
+      "item": "coal",
+      "origin": "depot-3",
+      "destination": "depot-5"
+    },
+    {
+      "id": "j4",
+      "item": "oil",
+      "origin": "depot-4",
+      "destination": "depot-6"
+    },
+    {
+      "id": "j5",
+      "item": "timber",
+      "origin": "depot-5",
+      "destination": "depot-1"
+    },
+    {
+      "id": "j6",
+      "item": "machinery",
+      "origin": "depot-6",
+      "destination": "depot-2"
+    }
+  ],
+  "agents": [
+    {
+      "name": "a"
+    },
+    {
+      "name": "b"
+    },
+    {
+      "name": "c"
+    },
+    {
+      "name": "d"
+    }
+  ]
+}
+
+---
+*Provenance: model-generated via adaption (gemma-4-26b-a4b-it, 2026-11-08); kind: scenario config; seed draft: n/a (fresh). NOT observed experimental evidence.*

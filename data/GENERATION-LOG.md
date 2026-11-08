@@ -1,0 +1,22 @@
+# ./data — pre-recorded seed pack (volume run 2026-11-08)
+
+- prompt: carrier_mesh.md regenerated
+- prompt: carrier_ring.md regenerated
+- prompt: dispatcher_mesh.md regenerated
+- prompt: dispatcher_ring.md regenerated
+- prompt: observer_mesh.md regenerated
+- prompt: observer_ring.md regenerated
+- prompt: relay_mesh.md regenerated
+- prompt: relay_ring.md regenerated
+- scenario: scenario-00-mesh.json generated+valid
+- scenario: scenario-01-bidirectional-ring.json generated+valid
+- scenario: scenario-02-mesh.json generated+valid
+- scenario: scenario-03-bidirectional-ring.json generated+valid
+- scenario: scenario-04-mesh.json generated+valid
+- scenario: scenario-05-bidirectional-ring.json generated+valid
+- scenario: scenario-06-mesh.json generated+valid
+- scenario: scenario-07-bidirectional-ring.json generated+valid
+- example: relay-loss-reroute generated
+- example: capacity-conflict generated
+- example: stale-info-recovery generated
+- example: ring-neighbor-routing generated

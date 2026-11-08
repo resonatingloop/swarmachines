@@ -1,0 +1,41 @@
+{
+  "name": "freight-world-scenario-01",
+  "topology": "bidirectional-ring",
+  "turns": 12,
+  "disturbance": "peer-mute:6:c",
+  "jobs": [
+    {
+      "id": 1,
+      "item": "iron-ore",
+      "origin": "a",
+      "destination": "b"
+    },
+    {
+      "id": 2,
+      "item": "coal",
+      "origin": "b",
+      "destination": "c"
+    },
+    {
+      "id": 3,
+      "item": "grain",
+      "origin": "c",
+      "destination": "d"
+    },
+    {
+      "id": 4,
+      "item": "machinery",
+      "origin": "d",
+      "destination": "a"
+    }
+  ],
+  "agents": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ]
+}
+
+---
+*Provenance: model-generated via adaption (gemma-4-26b-a4b-it, 2026-11-08); kind: scenario config; seed draft: n/a (fresh). NOT observed experimental evidence.*

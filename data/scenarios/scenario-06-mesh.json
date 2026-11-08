@@ -1,0 +1,47 @@
+{
+  "name": "freight-world-scenario-01",
+  "topology": "mesh",
+  "turns": 12,
+  "disturbance": "stale-report:5:a",
+  "jobs": [
+    {
+      "id": 1,
+      "item": "electronics",
+      "origin_depot": "depot_a",
+      "destination_depot": "depot_b"
+    },
+    {
+      "id": 2,
+      "item": "textiles",
+      "origin_depot": "depot_b",
+      "destination_depot": "depot_c"
+    },
+    {
+      "id": 3,
+      "item": "machinery",
+      "origin_depot": "depot_c",
+      "destination_depot": "depot_d"
+    },
+    {
+      "id": 4,
+      "item": "perishables",
+      "origin_depot": "depot_d",
+      "destination_depot": "depot_a"
+    },
+    {
+      "id": 5,
+      "item": "chemicals",
+      "origin_depot": "depot_a",
+      "destination_depot": "depot_c"
+    }
+  ],
+  "agents": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ]
+}
+
+---
+*Provenance: model-generated via adaption (gemma-4-26b-a4b-it, 2026-11-08); kind: scenario config; seed draft: n/a (fresh). NOT observed experimental evidence.*

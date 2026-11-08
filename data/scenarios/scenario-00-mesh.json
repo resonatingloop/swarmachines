@@ -1,0 +1,35 @@
+{
+  "name": "freight-world-scenario-01",
+  "topology": "mesh",
+  "turns": 12,
+  "disturbance": "relay-loss:4:b",
+  "jobs": [
+    {
+      "id": "job-1",
+      "item": "electronics",
+      "origin": "depot-a",
+      "destination": "depot-c"
+    },
+    {
+      "id": "job-2",
+      "item": "textiles",
+      "origin": "depot-b",
+      "destination": "depot-d"
+    },
+    {
+      "id": "job-3",
+      "item": "machinery",
+      "origin": "depot-d",
+      "destination": "depot-a"
+    }
+  ],
+  "agents": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ]
+}
+
+---
+*Provenance: model-generated via adaption (gemma-4-26b-a4b-it, 2026-11-08); kind: scenario config; seed draft: n/a (fresh). NOT observed experimental evidence.*
