@@ -42,6 +42,7 @@ The coordinator owns routing; the ledger is the single source of truth.
 
 ## Done (recent — prune weekly)
 
+- [done] swarmachines-i3y: F821 NameError in scripts/adaption_log.py (AdaptionRun.close() referenced undefined log_json_path — NameError on every close) — fix landed via PR #43 MERGED 2026-11-08T14:38:57Z as e21deb6 (gh-verified; tree-identical to the gated head c7f50b3); verifier re-gate anchored (gh comment 6722810401, GATE PASSES); repo-wide ruff 0 findings (scribe-verified relay); beads-board item CLOSED in parallel at pug-bot's direction 15:08Z (board item was created during the contested-tracker period; ledger line restored here because dev's original ledger commit e61cf32 never landed through a live PR) — owner: dev — updated: 2026-11-08T15:08Z
 - [done] swarmachines-avf: freight world + runner integration — MERGED via PR #29 (7103ac0, 02:37:25Z, head t-003-freight-world-wiring); gate anchor 2eadaca verified ancestor of origin/master — owner: forge — updated: 2026-11-08T05:05Z
 - [done] swarmachines-fvh: prune: ruff-clean runtime/ mechanical lint findings — PR #15 merged 2026-11-07T21:30:20Z (core sweep) + residual EXE001 via PR #36 merged 03:54:33Z (post-PR ruff state: 1 documented-intentional BLE001); forge close-commit b4c74b1 concurs — owner: pruner — updated: 2026-11-08T05:05Z
 - [done] T-015: PR #24 (read-only worker receipts) — MERGED 00:52Z as 80b179d (caduceus; clean rebase onto corrected master 6bbcf4d, PR delta patch-identical; 48/48 projection tests, semgrep 0 at head) — owner: pug-bot — updated: 2026-11-08T01:16Z
