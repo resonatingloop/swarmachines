@@ -30,13 +30,15 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [doing] swarmachines-9p4: PR#6 sast MEDIUM: validate_action rejection reasons echo raw hostile input — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-ysv: PR#6 sast MEDIUM: apply_action fails open on malformed input — owner: forge — updated: 2026-11-07T20:00Z
 - [open] T-009: PR #6 rebase onto master 331a65c — CONFLICTING after #16 landed (head 46d54a3); fold into forge's in-flight #6 fix round — owner: forge — updated: 2026-11-07T23:32Z
-- [doing] T-008: PR #20 review gates — observation-only control-plane board (asterion, owner-approved), head a4f97db; verifier gate anchored at exact head (per-claim verdicts) + sast PASS — merge hand to caduceus — owner: pug-bot — updated: 2026-11-07T23:40Z
+- [doing] T-011: PR #22 sanitization respin — bounded local delegation + investigator trial merged 23:59:53Z as 523ee5d (owner direct, mid-gate; verifier CLEAR 10/10 pre-merge); sast CHANGES_REQUESTED (MEDIUM: response.model stored verbatim into receipts + live-path usage cap missing) → respin with dev — owner: dev — updated: 2026-11-08T00:13Z
 - [open] T-010: task/receipt envelope v1 — asterion local proof + one adaption investigator trial (≤1 credit, ≤4 requests, one worker, no auto-retry; executes on asterion side); envelope confirmed with amendments in #pug-chat — owner: asterion — updated: 2026-11-07T23:40Z
 
 - [done] T-001: PR #16 merged as 331a65c (head 9652e46; verifier approve 6714061585 + sast pass 6714068290 at head; viewer 127/127; merged by caduceus 23:25Z) — owner: dev — updated: 2026-11-07T23:32Z
 
 ## Done (recent — prune weekly)
 
+- [done] T-008: PR #20 review gates — merged 23:40:59Z (observation-only control-plane board, asterion owner-approved; verifier per-claim verdicts + sast PASS at head a4f97db) — owner: pug-bot — updated: 2026-11-08T00:13Z
+- [done] T-012: STATUS.md checkpoint refresh — PR #21 merged 23:46:53Z as 46d84a5 (resolves the deferred checkpoint item) — owner: forge — updated: 2026-11-08T00:13Z
 - [done] swarmachines-pr18-spec006: PR #18 merged (spec006 acceptance record + atlas @ 70b0421, merge 29d28e2; gates CLEAR/CLEAR pre-merge) — owner: forge — updated: 2026-11-07T21:24Z
 - [done] swarmachines-9e5: Bidirectional ring topology + peer-mute disturbance — PR #5 merged @aa38f63 21:25:12Z (owner direct merge, mid-gate); post-merge third gate found net regression → fixed by PR #19 (merged 89e6517) — owner: dev — updated: 2026-11-07T22:19Z
 - [done] T-002: PR #19 fix-forward gates — resolved: PR #19 merged as 89e6517 (ring + peer-mute regression behavior restored, 20/20 tests; STATUS.md reflects fix state) — owner: verifier+sast — updated: 2026-11-07T22:19Z
