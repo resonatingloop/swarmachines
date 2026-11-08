@@ -16,6 +16,11 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
+if __package__:
+    from .limits import DEFAULT, validate_limits
+else:
+    from limits import DEFAULT, validate_limits
+
 MODEL = "glm-53-flash"
 REQUEST_LIMIT = 4
 CREDIT_LIMIT_MICRO = 1_000_000
@@ -166,8 +171,11 @@ def private_directory(path):
 class Queue:
     """Persist one active worker and nonrefundable request reservations per DB."""
 
-    def __init__(self, directory):
+    def __init__(self, directory, limits=None, binding=None):
         """Open a local private queue; do not reset counters on restart."""
+        requested = validate_limits(limits) if limits is not None else None
+        if binding is not None and not re.fullmatch(r"[a-f0-9]{64}", binding):
+            raise ValueError("invalid session binding")
         self.directory = private_directory(directory)
         path = self.directory / "queue.sqlite3"
         fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
@@ -181,17 +189,66 @@ class Queue:
             raise ValueError("queue database must be an owned private file")
         self.db = sqlite3.connect(path, timeout=5, isolation_level=None)
         self.db.row_factory = sqlite3.Row
-        self.db.executescript("""
-            CREATE TABLE IF NOT EXISTS budget (
-                id INTEGER PRIMARY KEY CHECK(id=1), requests INTEGER NOT NULL,
-                reserved_micro INTEGER NOT NULL);
-            INSERT OR IGNORE INTO budget VALUES (1,0,0);
-            CREATE TABLE IF NOT EXISTS jobs (
+        try:
+            self.db.execute("BEGIN IMMEDIATE")
+            exists = self.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='budget'"
+            ).fetchone()
+            if not exists:
+                if requested is None:
+                    self.db.execute(
+                        "CREATE TABLE budget (id INTEGER PRIMARY KEY CHECK(id=1), requests INTEGER NOT NULL, reserved_micro INTEGER NOT NULL)"
+                    )
+                    self.db.execute("INSERT INTO budget VALUES (1,0,0)")
+                else:
+                    self.db.execute(
+                        "CREATE TABLE budget (id INTEGER PRIMARY KEY CHECK(id=1), requests INTEGER NOT NULL, reserved_micro INTEGER NOT NULL, policy TEXT NOT NULL, binding TEXT NOT NULL)"
+                    )
+                    self.db.execute(
+                        "INSERT INTO budget VALUES (1,0,0,?,?)",
+                        (encoded(requested), binding or ""),
+                    )
+            columns = [r["name"] for r in self.db.execute("PRAGMA table_info(budget)")]
+            self.has_policy = columns == [
+                "id",
+                "requests",
+                "reserved_micro",
+                "policy",
+                "binding",
+            ]
+            if not self.has_policy and columns != ["id", "requests", "reserved_micro"]:
+                raise ValueError("unsupported budget schema")
+            if self.has_policy:
+                raw = self.db.execute(
+                    "SELECT policy,binding FROM budget WHERE id=1"
+                ).fetchone()
+                if raw is None or not isinstance(raw[0], str) or len(raw[0]) > 1024:
+                    raise ValueError("missing budget policy")
+                self.limits = validate_limits(json.loads(raw[0]))
+                self.binding = raw[1]
+                if self.binding != "" and (
+                    not isinstance(self.binding, str)
+                    or not re.fullmatch(r"[a-f0-9]{64}", self.binding)
+                ):
+                    raise ValueError("invalid stored session binding")
+            else:
+                self.limits = dict(DEFAULT)
+                self.binding = ""
+            if binding is not None and binding != self.binding:
+                raise ValueError("session queue binding mismatch")
+            if requested is not None and requested != self.limits:
+                raise ValueError("existing budget policy differs; no migration")
+            self.db.execute("""CREATE TABLE IF NOT EXISTS jobs (
                 task_id TEXT PRIMARY KEY, attempt_id TEXT UNIQUE NOT NULL,
                 packet_hash TEXT NOT NULL, packet TEXT NOT NULL,
                 worker TEXT NOT NULL, mode TEXT NOT NULL, state TEXT NOT NULL,
-                claim_token TEXT NOT NULL, ack TEXT NOT NULL, receipt TEXT);
-        """)
+                claim_token TEXT NOT NULL, ack TEXT NOT NULL, receipt TEXT)""")
+            self.db.execute("COMMIT")
+        except BaseException:
+            if self.db.in_transaction:
+                self.db.execute("ROLLBACK")
+            self.db.close()
+            raise
 
     def close(self):
         """Release this connection without altering job state."""
@@ -237,15 +294,21 @@ class Queue:
                     "single worker slot busy; reconcile abandoned attempts"
                 )
             budget = self.db.execute("SELECT * FROM budget WHERE id=1").fetchone()
+            if self.has_policy and (
+                validate_limits(json.loads(budget["policy"])) != self.limits
+                or budget["binding"] != self.binding
+            ):
+                raise ValueError("budget policy changed during execution")
             if live and (
-                budget["requests"] >= REQUEST_LIMIT
-                or budget["reserved_micro"] + RESERVATION_MICRO > CREDIT_LIMIT_MICRO
+                budget["requests"] >= self.limits["request_limit"]
+                or budget["reserved_micro"] + self.limits["reservation_micro"]
+                > self.limits["credit_limit_micro"]
             ):
                 raise ValueError("trial request/credit reservation limit reached")
             if live:
                 self.db.execute(
                     "UPDATE budget SET requests=requests+1, reserved_micro=reserved_micro+? WHERE id=1",
-                    (RESERVATION_MICRO,),
+                    (self.limits["reservation_micro"],),
                 )
             token = uuid.uuid4().hex
             ack = {
@@ -259,8 +322,13 @@ class Queue:
                 "acknowledged_at": timestamp(),
                 "harness_sha256": digest(Path(__file__).read_text()),
                 "state": "running",
-                "reserved_microcredits": RESERVATION_MICRO if live else 0,
+                "reserved_microcredits": self.limits["reservation_micro"]
+                if live
+                else 0,
             }
+            if self.has_policy:
+                ack["budget_policy"] = dict(self.limits)
+                ack["session_sha256"] = self.binding
             self.db.execute(
                 "INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,NULL)",
                 (

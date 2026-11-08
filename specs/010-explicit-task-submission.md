@@ -1,6 +1,6 @@
 # control plane / prepare, inspect, submit
 
-status: draft
+status: accepted
 
 owner: colette · proposed implementation: asterion
 
@@ -9,7 +9,7 @@ owner: colette · proposed implementation: asterion
 - change: replace hand-authored task JSON and ad hoc launch commands with a small explicit submission workflow around the existing delegation runner.
 - before: packet preparation, exact-source selection, execution and board capture are separate manual operations.
 - after: prepare a pinned-source packet and private review artifact, submit exactly that packet under an identified authorized session, and capture the resulting receipt on the frozen board.
-- authority: owner requested this spec after the receipt-board slice. implementation is not yet accepted. no new provider requests or budget are authorized by drafting or accepting the implementation spec alone.
+- authority: owner accepted implementation on 2026-11-08, explicitly raised the next session ceiling to 2 credits, and cleared proceeding after discussing useful worker throughput. this amendment records a 20-request maximum derived from the existing 0.1-credit reservation per request. the original exhausted trial stays intact. no autonomous dispatch is authorized.
 
 ## current ground and scope
 
@@ -36,10 +36,12 @@ controls or automatic aggregate views across trial sessions.
 2. preserve the exhausted first queue. a new session may be created only after
    explicit owner authorization naming its scope and bounds. alternative: reset
    counters or edit the old database; rejected because that destroys accounting.
-3. propose a second session of at most four requests and one reserved-credit
-   ceiling, retaining 0.1 credits reserved per claim, one worker and no automatic
-   retries. this matches the existing runner. accepting this spec approves
-   implementation only; the owner separately authorizes that named paid session.
+3. the owner-authorized second session has a 2-credit reservation ceiling and
+   at most 20 requests, retaining 0.1 credits reserved per claim, one worker and
+   no automatic retries. these finite limits are persisted and cannot be raised
+   by restart. the earlier four-request proposal is superseded; old queues retain
+   that original policy. no further owner confirmation is needed for each explicit
+   task within this authorized read-only investigation scope.
 4. require the reviewed packet fingerprint for every explicit live submission.
    this is a content-integrity check, not an authentication system or a demand for
    another owner confirmation when the task already falls within approved scope.
@@ -82,21 +84,25 @@ a durable record of already-supplied authority, not proof that an arbitrary JSON
 file grants authority. the coding agent must check the owner's actual instruction.
 
 an explicit session initialization command creates a new private session directory
-with an immutable manifest and its one queue. missing authorization, conflicting
+with an write-once manifest and its one bound queue. missing authorization, conflicting
 identity or existing destination is a refusal. partial initialization is reported
 and retained for operator inspection; do not retry by inventing another directory.
 never reset, copy or migrate the original trial queue. all tasks in the session
 share this one database and the existing transactionally enforced counters.
 
-place the manifest beside a `queue/` subdirectory, not in the SQLite schema, so
-the strict spec009 reader remains compatible. each new capture is labeled with
+place the manifest beside a `queue/` subdirectory. new session databases add
+`policy` and `binding` columns to the budget table: validated limits and the
+manifest hash. acknowledgments and receipts echo those fields. legacy databases
+are not migrated; the reader accepts both shapes and checks their consistency.
+the wrapper refuses missing, partial or swapped databases before constructing a
+writer. each new capture is labeled with
 the validated session id and manifest hash. session limits are local and are not
 an account balance. a second session is not silently created when limits are hit.
 
 ### submit one exact packet
 
 proposed command: `python3 -m control_plane.submit run` with explicit session,
-packet and expected packet SHA-256. offline execution is the default; `--live`
+packet, expected packet SHA-256 and expected manifest SHA-256. offline execution is the default; `--live`
 is required for provider access. read and hash the bounded packet once, validate
 it, then pass that same in-memory object to the runner: do not hash one version
 and reread another. reject fingerprint/mode/worker/configuration mismatch before
@@ -138,8 +144,8 @@ status is always reported separately. cover this precedence with tests.
 4. post-run capture and session labels; inject capture failures and show the
    terminal receipt and budget remain unchanged.
 5. update operations, exercise the CLI end to end with fictional offline tasks,
-   and obtain independent review. paid proof requires a separately authorized
-   named session and concrete task within its approved scope.
+   and obtain independent review. paid proof uses the owner-authorized named session and a concrete task within
+   its read-only investigation scope.
 
 ## acceptance and proof
 
@@ -157,19 +163,19 @@ status is always reported separately. cover this precedence with tests.
   private review files are explicit and mode 0600 inside a mode-0700 directory.
 - all existing observer, projection, delegation and browser checks remain green.
 
-planned checks: `python3 -m unittest control_plane.test_submission control_plane.test_delegation control_plane.test_observer control_plane.test_worker_projection -v`, scoped ruff, CLI subprocess checks with fake SDK/network traps, and the existing board browser harness. new submission module/tests are proposed, not implemented.
+planned checks: `python3 -m unittest control_plane.test_submission control_plane.test_delegation control_plane.test_observer control_plane.test_worker_projection -v`, scoped ruff, CLI subprocess checks with fake SDK/network traps, and the existing board browser harness. the submission module/tests implement this accepted slice.
 
 ## change shape
 
 | dimension | changed? | source of truth | proof |
 |---|---|---|---|
 | user-visible behavior | yes | explicit prepare/run CLI and session label | offline CLI and browser checks |
-| persisted state or schema | yes | private manifest/review files; unchanged queue schema | interruption/no-overwrite tests |
+| persisted state or schema | yes | private manifest/review files; new-session policy columns | interruption/no-overwrite tests |
 | external or provider-visible behavior | yes | explicit live wrapper around existing worker | invocation traps; separately authorized paid proof |
 | identifiers, secrets or privacy | yes | hash-bound packet and private source extraction | tampering/path/canary tests |
 | lifecycle or terminal states | no | existing queue states | replay/conflict/capture-failure tests |
 | setup, operation or recovery | yes | session initialization and separate recapture | error-path CLI checks |
-| normative contract or decision | yes | draft submission and authorization boundary | owner acceptance before implementation |
+| normative contract or decision | yes | accepted submission and authorization boundary | owner acceptance before implementation |
 | cross-repository dependency | no | local repo and existing git/gh observer | no teammate transport changes |
 
 ## risks and review
@@ -186,3 +192,13 @@ new source fingerprint in the board's configuration registry only after inspecti
 [change atlas](task-submission-review/index.html) is the full owner review surface.
 no separate companion is needed for this short explicit sequence; the static atlas
 keeps its gates visible without inventing an append-record demonstration.
+
+## observed proof
+
+65 offline tests and scoped ruff pass. actual CLI prepare/init/run/capture was
+exercised with one offline task and one explicit paid investigation of a pinned
+public-source excerpt. the paid response completed; its explanation was checked
+against the source guard/control flow. that is a narrow advisory result, not an
+independent security verdict. the session records 1/20 requests used, 0.1 credits
+reserved, and 0.0003147 estimated credits for the known usage. actual billing is
+unobserved. no automatic retry or reset was made. the earlier trial is separate.
