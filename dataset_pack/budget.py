@@ -26,7 +26,11 @@ class CreditBudget:
     OUTPUT_CREDITS_PER_MILLION = Decimal("0.50")
     MAX_PROMPT_BYTES = 8192
     WRAPPER_TOKEN_ALLOWANCE = 4096
-    MAX_OUTPUT_TOKENS = 256
+    # or6 evidence (2026-11-08 probe): glm-53-flash spent the entire 256-token
+    # budget on reasoning before any visible text (reasoning_tokens == 256,
+    # status "incomplete"). 1024 leaves room for reasoning + a bounded answer;
+    # full-matrix cost stays trivial: 512 calls x 1024 x 0.50/M ~= 0.26 credits.
+    MAX_OUTPUT_TOKENS = 1024
 
     def __init__(self, ceiling_credits: str, max_calls: int):
         ceiling = Decimal(ceiling_credits)

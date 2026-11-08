@@ -446,6 +446,11 @@ class GovernedRunner:
                 messages=[{"role": "user", "content": prompt}],
                 max_output_tokens=self.budget.MAX_OUTPUT_TOKENS,
             )
+            # or6 repair: fail closed on incomplete/empty responses — the
+            # diagnostics (status, incomplete_reason, reasoning_tokens)
+            # ride in the error message, so a silent-empty call can never
+            # again be recorded as a completed one.
+            model_response.validate_complete()
         except Exception:
             self.budget.fail(reservation)
             raise

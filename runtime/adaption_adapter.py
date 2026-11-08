@@ -23,6 +23,18 @@ from dataclasses import dataclass
 from typing import Any
 
 
+class IncompleteResponseError(RuntimeError):
+    """Raised when a response is not complete or has no visible output.
+
+    The or6 incident (runs 001-004, 2026-11-08): glm-53-flash burned the
+    entire max_output_tokens budget on reasoning before emitting visible
+    text — status "incomplete", reasoning_tokens == output_tokens,
+    output_text "". The adapter previously discarded the diagnostic fields
+    (status, incomplete_details, usage breakdown), so the failure was
+    silent by construction. This error makes it loud by design.
+    """
+
+
 @dataclass
 class AdapterUsage:
     """Token usage from a model response."""
@@ -30,6 +42,7 @@ class AdapterUsage:
     input_tokens: int
     output_tokens: int
     total_tokens: int
+    reasoning_tokens: int = 0
 
 
 @dataclass
@@ -41,6 +54,31 @@ class AdapterResponse:
     usage: AdapterUsage
     latency_ms: float
     raw_response: Any
+    status: str = ""
+    incomplete_reason: str | None = None
+
+    def validate_complete(self) -> "AdapterResponse":
+        """Fail closed unless the response is complete with visible output.
+
+        Returns:
+            self, for call-chaining.
+
+        Raises:
+            IncompleteResponseError: if the response status is not
+                "completed" or the visible output text is empty — with the
+                captured diagnostics in the message so the failure names
+                its cause.
+        """
+        text = (self.output_text or "").strip()
+        if self.status != "completed" or not text:
+            raise IncompleteResponseError(
+                f"incomplete model response: status={self.status!r} "
+                f"incomplete_reason={self.incomplete_reason!r} "
+                f"output_text_len={len(self.output_text or '')} "
+                f"reasoning_tokens={self.usage.reasoning_tokens} "
+                f"output_tokens={self.usage.output_tokens}"
+            )
+        return self
 
 
 class AdaptionAdapter:
@@ -48,7 +86,7 @@ class AdaptionAdapter:
     Adaption provider adapter for swarmachines.
 
     Wraps the Adaption SDK to provide a consistent interface for model calls.
-    Records latency, tokens, and model ID for each call.
+    Records latency, tokens, status, and model ID for each call.
 
     Credential contract: the API key is read from the ADAPTION_API_KEY
     environment variable by the SDK itself. Do not pass credentials
@@ -83,10 +121,14 @@ class AdaptionAdapter:
             **kwargs: Additional parameters passed to the Adaption API.
 
         Returns:
-            AdapterResponse with normalized output, usage, and latency.
+            AdapterResponse with normalized output, usage, latency, and the
+            completion diagnostics (status, incomplete_reason,
+            reasoning_tokens) captured from the SDK — the fields the or6
+            receipts discarded.
 
         Raises:
-            adaption.AdaptionError: If the API call fails.
+            adaption.AdaptionError: If the API call fails. Completion
+            validation is the caller's: call validate_complete().
         """
         start = time.perf_counter()
 
@@ -99,18 +141,31 @@ class AdaptionAdapter:
 
         elapsed_ms = (time.perf_counter() - start) * 1000
 
+        usage_obj = getattr(response, "usage", None)
+        out_details = (
+            getattr(usage_obj, "output_tokens_details", None) if usage_obj else None
+        )
+        reasoning_tokens = getattr(out_details, "reasoning_tokens", 0) or 0
+        incomplete = getattr(response, "incomplete_details", None)
+        incomplete_reason = getattr(incomplete, "reason", None) if incomplete else None
+        input_tokens = getattr(usage_obj, "input_tokens", 0) or 0
+        output_tokens = getattr(usage_obj, "output_tokens", 0) or 0
+
         usage = AdapterUsage(
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
-            total_tokens=response.usage.input_tokens + response.usage.output_tokens,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=input_tokens + output_tokens,
+            reasoning_tokens=reasoning_tokens,
         )
 
         return AdapterResponse(
-            model=response.model,
-            output_text=response.output_text,
+            model=getattr(response, "model", model),
+            output_text=getattr(response, "output_text", "") or "",
             usage=usage,
             latency_ms=elapsed_ms,
             raw_response=response,
+            status=getattr(response, "status", "") or "",
+            incomplete_reason=incomplete_reason,
         )
 
     def simple_prompt(
@@ -130,51 +185,10 @@ class AdaptionAdapter:
             **kwargs: Additional parameters passed to the Adaption API.
 
         Returns:
-            AdapterResponse with normalized output, usage, and latency.
+            AdapterResponse, see chat().
         """
         return self.chat(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             **kwargs,
         )
-
-
-def smoke_test() -> dict:
-    """
-    Run a smoke test against the Adaption API.
-
-    Makes a minimal call to validate connectivity and record metrics.
-    Uses the small model (gemma-4-26b-a4b-it) to minimize cost.
-
-    Returns:
-        Dict with model_id, latency_ms, input_tokens, output_tokens.
-
-    Raises:
-        adaption.AdaptionError: If the API call fails.
-    """
-    adapter = AdaptionAdapter()
-    response = adapter.simple_prompt(
-        model="gemma-4-26b-a4b-it",
-        prompt="Reply with exactly one word: hello",
-    )
-    return {
-        "model_id": response.model,
-        "latency_ms": response.latency_ms,
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-        "output_text": response.output_text,
-    }
-
-
-if __name__ == "__main__":
-    import json
-    import sys
-
-    try:
-        result = smoke_test()
-        print(json.dumps(result, indent=2))
-        sys.exit(0)
-    except Exception as e:  # noqa: BLE001 - Broad catch for __main__ entry point: surface any failure mode
-        # Broad catch for __main__ entry point: surface any failure mode
-        print(f"Smoke test failed: {e}", file=sys.stderr)
-        sys.exit(1)

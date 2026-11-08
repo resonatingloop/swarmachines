@@ -1,0 +1,139 @@
+"""Unit tests for the or6 capture repair: fail-closed responses.
+
+Mocked SDK responses cover the or6 failure shape (status incomplete,
+reasoning burned the budget, empty output) and the healthy shape.
+"""
+
+import sys
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+sys.path.insert(0, str(Path(__file__).parent))
+
+from adaption_adapter import (
+    AdapterResponse,
+    AdapterUsage,
+    IncompleteResponseError,
+)
+
+
+def _resp(status, output_text, reasoning_tokens=0, output_tokens=None, reason=None):
+    usage = AdapterUsage(
+        input_tokens=72,
+        output_tokens=output_tokens if output_tokens is not None else reasoning_tokens,
+        total_tokens=72
+        + (output_tokens if output_tokens is not None else reasoning_tokens),
+        reasoning_tokens=reasoning_tokens,
+    )
+    return AdapterResponse(
+        model="glm-53-flash",
+        output_text=output_text,
+        usage=usage,
+        latency_ms=10.0,
+        raw_response=MagicMock(),
+        status=status,
+        incomplete_reason=reason,
+    )
+
+
+class TestValidateComplete(unittest.TestCase):
+    """Fail-closed contract for AdapterResponse.validate_complete()."""
+
+    def test_or6_shape_raises(self):
+        """The exact or6 failure: incomplete, all-reasoning, empty text."""
+        r = _resp("incomplete", "", reasoning_tokens=256, reason="max_output_tokens")
+        with self.assertRaises(IncompleteResponseError) as cm:
+            r.validate_complete()
+        self.assertIn("max_output_tokens", str(cm.exception))
+        self.assertIn("reasoning_tokens=256", str(cm.exception))
+
+    def test_completed_but_empty_raises(self):
+        """Status says completed but no visible text: still fails closed."""
+        r = _resp("completed", "", reasoning_tokens=200)
+        with self.assertRaises(IncompleteResponseError):
+            r.validate_complete()
+
+    def test_missing_status_fails_closed(self):
+        """No status field: unverifiable completion, so it fails closed."""
+        r = _resp("", "move med-kit south")
+        with self.assertRaises(IncompleteResponseError):
+            r.validate_complete()
+
+    def test_healthy_response_passes(self):
+        """Complete status with visible text passes and chains."""
+        r = _resp(
+            "completed",
+            "action: carry med-kit | msg: beta, taking the ring",
+            reasoning_tokens=180,
+            output_tokens=256,
+        )
+        self.assertIs(r.validate_complete(), r)
+
+    def test_error_names_every_diagnostic(self):
+        """The error message carries the full captured diagnostic set."""
+        r = _resp("incomplete", "", reasoning_tokens=256, reason="max_output_tokens")
+        with self.assertRaises(IncompleteResponseError) as cm:
+            r.validate_complete()
+        msg = str(cm.exception)
+        for fragment in (
+            "status='incomplete'",
+            "incomplete_reason='max_output_tokens'",
+            "output_text_len=0",
+            "reasoning_tokens=256",
+        ):
+            self.assertIn(fragment, msg)
+
+
+class TestAdapterCapture(unittest.TestCase):
+    """chat() captures status, incomplete_reason, reasoning_tokens."""
+
+    def _mock_sdk_response(self, status="completed", text="ok", reasoning=0):
+        m = MagicMock()
+        m.status = status
+        m.model = "glm-53-flash"
+        m.output_text = text
+        m.usage.input_tokens = 72
+        m.usage.output_tokens = 256
+        m.usage.output_tokens_details.reasoning_tokens = reasoning
+        if status == "incomplete":
+            m.incomplete_details.reason = "max_output_tokens"
+        else:
+            m.incomplete_details = None
+        return m
+
+    @patch("adaption_adapter.AdaptionAdapter.__init__", lambda self: None)
+    def test_chat_captures_incomplete_diagnostics(self):
+        """The or6 shape: fields land on AdapterResponse for the record."""
+        from adaption_adapter import AdaptionAdapter
+
+        a = AdaptionAdapter()
+        a._client = MagicMock()
+        a._client.responses.create.return_value = self._mock_sdk_response(
+            status="incomplete", text="", reasoning=256
+        )
+        r = a.chat(model="glm-53-flash", messages=[{"role": "user", "content": "x"}])
+        self.assertEqual(r.status, "incomplete")
+        self.assertEqual(r.incomplete_reason, "max_output_tokens")
+        self.assertEqual(r.usage.reasoning_tokens, 256)
+        with self.assertRaises(IncompleteResponseError):
+            r.validate_complete()
+
+    @patch("adaption_adapter.AdaptionAdapter.__init__", lambda self: None)
+    def test_chat_captures_healthy(self):
+        """Healthy response: status completed, diagnostics captured."""
+        from adaption_adapter import AdaptionAdapter
+
+        a = AdaptionAdapter()
+        a._client = MagicMock()
+        a._client.responses.create.return_value = self._mock_sdk_response(
+            status="completed", text="visible answer", reasoning=180
+        )
+        r = a.chat(model="glm-53-flash", messages=[{"role": "user", "content": "x"}])
+        self.assertEqual(r.status, "completed")
+        self.assertEqual(r.usage.reasoning_tokens, 180)
+        r.validate_complete()
+
+
+if __name__ == "__main__":
+    unittest.main()
