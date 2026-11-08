@@ -19,11 +19,24 @@ import sys
 from copy import deepcopy
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from freight_world import FreightWorld
 from job_evidence import roster
 from route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select
+
+try:  # package mode: runtime/ is importable as a package
+    from .tracer import RunStatus, TraceConfig, Tracer, create_tracer  # type: ignore
+except ImportError:  # script mode: python3 runtime/runner.py
+    try:
+        from tracer import (  # type: ignore
+            RunStatus,
+            TraceConfig,
+            Tracer,
+            create_tracer,
+        )
+    except ImportError:  # tracer module missing: tracing unavailable
+        RunStatus = TraceConfig = Tracer = create_tracer = None  # type: ignore
 
 
 class EventLog:
@@ -715,6 +728,7 @@ class TurnSeamRunner:
         delivery_map: dict | None = None,
         use_freight_world: bool = False,
         policy: str = "legacy",
+        tracer: object | None = None,
     ):
         if policy not in ("legacy", POLICY) or (
             policy == POLICY and not use_freight_world
@@ -758,8 +772,69 @@ class TurnSeamRunner:
         # Initialize freight world if requested
         self.use_freight_world = use_freight_world
         self.freight_world: FreightWorld | None = None
+        # Optional execution tracer (spec: langfuse-compatible, offline no-op)
+        self.tracer: Any = tracer
         if use_freight_world:
             self.freight_world = FreightWorld(seed=seed)
+
+    def _run_phase(
+        self,
+        turn: int,
+        phase: str,
+        trace_id: str | None,
+        world_state: dict | None = None,
+    ) -> None:
+        """Run a single phase (observe/exchange/act) for all agents with optional tracing.
+
+        Args:
+            turn: Current turn number
+            phase: Phase name (\"observe\", \"exchange\", or \"act\")
+            trace_id: Parent trace id for span nesting (None if tracing disabled)
+            world_state: Optional world state dict (used only for observe phase)
+        """
+        for agent in self.agents:
+            if self.tracer is not None:
+                with self.tracer.turn_span(
+                    turn, phase, agent.agent_id, parent_id=trace_id
+                ):
+                    self._invoke_phase(agent, phase, turn, world_state)
+            else:
+                self._invoke_phase(agent, phase, turn, world_state)
+
+    def _invoke_phase(
+        self,
+        agent: Agent,
+        phase: str,
+        turn: int,
+        world_state: dict | None = None,
+    ) -> None:
+        """Invoke a phase method on an agent with the correct arguments.
+
+        Args:
+            agent: Agent instance
+            phase: Phase name ("observe", "exchange", or "act")
+            turn: Current turn number
+            world_state: Optional world state dict (used only for observe phase)
+        """
+        if phase == "observe":
+            agent.observe(
+                world_state if world_state is not None else {},
+                turn,
+                self.log,
+                self.freight_world,
+            )
+        elif phase == "exchange":
+            agent.exchange(
+                topology=self.topology,
+                other_agents=self.agents,
+                message_store=self.message_store,
+                lifecycle=self.lifecycle,
+                turn=turn,
+                log=self.log,
+                disturbances=self.disturbance_scheduler.active,
+            )
+        elif phase == "act":
+            agent.act(turn, self.log, self.lifecycle, self.freight_world)
 
     def run(self, num_turns: int) -> str:
         """Run the simulation for num_turns turns."""
@@ -852,45 +927,56 @@ class TurnSeamRunner:
 
         world_state = {"routes_open": True, "closures": []}
 
-        for turn in range(1, num_turns + 1):
-            # turn.begin
-            self.log.append(
-                turn=turn,
-                agent_id=None,
-                event_type="turn.begin",
-                payload={"phase_order": self.PHASE_ORDER} if turn == 1 else {},
+        # Start execution trace (no-op when tracing unconfigured)
+        trace_id: str | None = None
+        if self.tracer is not None:
+            self.tracer.start_trace(
+                run_id=self.run_id,
+                condition=self.delivery_map.get("condition"),
+                seed=self.seed,
             )
+            trace_id = self.tracer.current_trace_id
 
-            # Apply disturbances at start of turn
-            self.disturbance_scheduler.apply_at_turn(
-                turn,
-                self.log,
-                self.topology.topology,
-                self.topology.hub,
-                self.lifecycle,
-            )
-
-            # Phase 1: observe - ALL agents observe before any exchange
-            for agent in self.agents:
-                agent.observe(world_state, turn, self.log, self.freight_world)
-
-            # Phase 2: exchange - ALL agents exchange before any act
-            for agent in self.agents:
-                agent.exchange(
-                    topology=self.topology,
-                    other_agents=self.agents,
-                    message_store=self.message_store,
-                    lifecycle=self.lifecycle,
+        run_error: BaseException | None = None
+        try:
+            for turn in range(1, num_turns + 1):
+                # turn.begin
+                self.log.append(
                     turn=turn,
-                    log=self.log,
-                    disturbances=self.disturbance_scheduler.active,
+                    agent_id=None,
+                    event_type="turn.begin",
+                    payload={"phase_order": self.PHASE_ORDER} if turn == 1 else {},
                 )
 
-            # Phase 3: act - ALL agents act before moving to next turn
-            for agent in self.agents:
-                agent.act(turn, self.log, self.lifecycle, self.freight_world)
+                # Apply disturbances at start of turn
+                self.disturbance_scheduler.apply_at_turn(
+                    turn,
+                    self.log,
+                    self.topology.topology,
+                    self.topology.hub,
+                    self.lifecycle,
+                )
 
-            # Phase 4: record (implicit in event logging)
+                # Phase 1: observe - ALL agents observe before any exchange
+                self._run_phase(turn, "observe", trace_id, world_state)
+
+                # Phase 2: exchange - ALL agents exchange before any act
+                self._run_phase(turn, "exchange", trace_id)
+
+                # Phase 3: act - ALL agents act before moving to next turn
+                self._run_phase(turn, "act", trace_id)
+
+                # Phase 4: record (implicit in event logging)
+        except BaseException as exc:
+            run_error = exc
+            raise
+        finally:
+            if self.tracer is not None:
+                status = RunStatus.FAILED if run_error else RunStatus.COMPLETED
+                self.tracer.end_trace(
+                    status=status,
+                    reason=repr(run_error) if run_error else None,
+                )
 
         # run.end - omit fabricated delivery stats entirely (absent is better than lying)
         self.log.append(
@@ -1028,7 +1114,7 @@ def main():
         "--trace",
         action="store_true",
         default=False,
-        help="Enable execution tracing (requires LANGFUSE_* env vars or uses fake exporter for tests)",
+        help="enable execution tracing (spans exported when LANGFUSE_* env configured; no-op otherwise)",
     )
 
     parser.add_argument(
@@ -1088,6 +1174,17 @@ def main():
                 "agent": parts[2],
             }
 
+    tracer = None
+    if create_tracer is not None and getattr(args, "trace", False):
+        import os
+
+        os.environ["TRACE_ENABLED"] = "true"
+        tracer, _trace_exporter = create_tracer(
+            run_id=f"run-seed{args.seed:04d}",
+            condition=(delivery_map or {}).get("condition"),
+            seed=args.seed,
+        )
+
     runner = TurnSeamRunner(
         seed=args.seed,
         comm_topology=args.topology,
@@ -1096,6 +1193,7 @@ def main():
         delivery_map=delivery_map if delivery_map else None,
         use_freight_world=args.world == "freight",
         policy=args.policy,
+        tracer=tracer,
     )
 
     output = runner.run(args.turns)
@@ -1107,6 +1205,10 @@ def main():
 
     output_path.write_text(output + "\n")
     print(f"Wrote {len(runner.log.events)} events to {output_path}")
+
+    # Flush trace data if tracing was enabled
+    if tracer is not None:
+        tracer.flush()
 
     # Demonstrate the per-agent context query
     if runner.log.events:
