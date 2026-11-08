@@ -11,7 +11,7 @@
   - All tests have real assertions (not vacuous) and pass on fixed code
 - [x] 8. verify existing runner tests remain green (24/24 passing)
 - [x] 9. determinism check: two same-seed runs produce byte-identical freight episode logs
-- [x] 10. update STATUS.md checkpoint with branch/PR/test state
+- [ ] 10. update STATUS.md checkpoint with branch/PR/test state
 - [x] 11. fix act-phase mislabel: legal no-op → action.committed (not action.rejected)
 - [x] 12. reconcile verify_events.py required types with actual event design (action.rejected and disturbance.applied are conditional)
 
