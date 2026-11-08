@@ -1,0 +1,1176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+  <meta name="generator" content="repository-continuity-change-atlas/1">
+  <meta name="atlas-source" content="specs/009-worker-receipt-board.md">
+  <meta name="atlas-source-id" content="66437b73683f551feebb041ee50251f76204af8ee4a1335c949824a036d1590b">
+  <meta name="atlas-source-sha256" content="e7cdd1d45592f8519fb47a1f62d00b1d3251ab94b44431d717f58c3627907741">
+  <title>switchboard / worker receipts in view · change atlas</title>
+  <style>
+    :root {
+      --void: #070a0b;
+      --ink: #0c1112;
+      --iron: #11191a;
+      --plate: #172021;
+      --plate-high: #1d2929;
+      --bone: #e7dfcf;
+      --paper: #cfc6b4;
+      --ash: #98a49f;
+      --dim: #687572;
+      --line: #2c3d3b;
+      --line-hot: #52756e;
+      --verdigris: #7bd5bd;
+      --verdigris-deep: #2e7f70;
+      --copper: #d88a5f;
+      --amber: #e1ba62;
+      --red: #da796b;
+      --shadow: rgba(0, 0, 0, 0.46);
+      --serif: "Iowan Old Style", "Baskerville", "Times New Roman", serif;
+      --sans: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      --measure: 76rem;
+      --radius: 2px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--void);
+      color: var(--bone);
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-width: 19rem;
+      min-height: 100vh;
+      font-family: var(--sans);
+      line-height: 1.55;
+      background:
+        radial-gradient(circle at 12% 2%, rgba(123, 213, 189, 0.10), transparent 25rem),
+        radial-gradient(circle at 94% 24%, rgba(216, 138, 95, 0.07), transparent 29rem),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 64px),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 64px),
+        var(--void);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0.22;
+      background: repeating-linear-gradient(
+        118deg,
+        transparent 0 11px,
+        rgba(123, 213, 189, 0.035) 11px 12px
+      );
+      mask-image: linear-gradient(to bottom, black, transparent 72%);
+    }
+
+    ::selection {
+      color: var(--void);
+      background: var(--verdigris);
+    }
+
+    a.skip-link {
+      position: fixed;
+      top: 0.75rem;
+      left: 0.75rem;
+      z-index: 20;
+      padding: 0.65rem 0.85rem;
+      color: var(--void);
+      background: var(--verdigris);
+      font: 700 0.76rem/1 var(--mono);
+      transform: translateY(-180%);
+    }
+
+    a.skip-link:focus {
+      transform: translateY(0);
+      outline: 3px solid var(--bone);
+      outline-offset: 3px;
+    }
+
+    .shell {
+      width: min(calc(100% - 2rem), var(--measure));
+      margin: 0 auto;
+      padding: 1rem 0 5rem;
+    }
+
+    .instrument-header {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(17rem, 0.55fr);
+      min-height: 32rem;
+      border: 1px solid var(--line);
+      background: linear-gradient(145deg, rgba(23, 32, 33, 0.96), rgba(8, 12, 13, 0.98));
+      box-shadow: 0 2rem 5rem var(--shadow), inset 0 1px rgba(255, 255, 255, 0.035);
+      overflow: hidden;
+    }
+
+    .instrument-header::before,
+    .instrument-header::after,
+    .panel::before,
+    .panel::after {
+      content: "";
+      position: absolute;
+      width: 1.05rem;
+      height: 1.05rem;
+      pointer-events: none;
+    }
+
+    .instrument-header::before,
+    .panel::before {
+      top: 0.55rem;
+      left: 0.55rem;
+      border-top: 1px solid var(--verdigris);
+      border-left: 1px solid var(--verdigris);
+    }
+
+    .instrument-header::after,
+    .panel::after {
+      right: 0.55rem;
+      bottom: 0.55rem;
+      border-right: 1px solid var(--copper);
+      border-bottom: 1px solid var(--copper);
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: clamp(2rem, 5vw, 5.5rem);
+      border-right: 1px solid var(--line);
+    }
+
+    .eyebrow,
+    .section-label,
+    .card-index,
+    .datum,
+    dt,
+    .shape-state,
+    .scope-title,
+    summary span,
+    .footer-mark {
+      margin: 0;
+      color: var(--verdigris);
+      font: 700 0.69rem/1.25 var(--mono);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before,
+    .section-label::before {
+      content: "// ";
+      color: var(--copper);
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 13ch;
+      margin: 1rem 0 1.3rem;
+      font: 500 clamp(3.2rem, 8.2vw, 7.8rem)/0.87 var(--serif);
+      letter-spacing: -0.055em;
+      text-wrap: balance;
+    }
+
+    h2 {
+      max-width: 18ch;
+      margin: 0.55rem 0 1.5rem;
+      font: 500 clamp(2rem, 4vw, 4rem)/0.95 var(--serif);
+      letter-spacing: -0.035em;
+      text-wrap: balance;
+    }
+
+    h3 {
+      margin-bottom: 0.75rem;
+      font: 600 1.08rem/1.2 var(--sans);
+      letter-spacing: -0.015em;
+    }
+
+    .hero-change {
+      max-width: 43rem;
+      margin: 0;
+      color: var(--paper);
+      font: 400 clamp(1.08rem, 2vw, 1.42rem)/1.55 var(--sans);
+    }
+
+    .hero-stratum {
+      margin-top: 4rem;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      color: var(--dim);
+      font: 600 0.67rem/1.2 var(--mono);
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .hero-stratum::before {
+      content: "";
+      width: 4.5rem;
+      height: 1px;
+      background: linear-gradient(to right, var(--verdigris), transparent);
+    }
+
+    .provenance {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 2rem;
+      background:
+        linear-gradient(rgba(123, 213, 189, 0.035), transparent),
+        repeating-linear-gradient(135deg, transparent 0 9px, rgba(255, 255, 255, 0.018) 9px 10px);
+    }
+
+    .status-seal {
+      width: fit-content;
+      padding: 0.55rem 0.7rem 0.48rem;
+      border: 1px solid var(--line-hot);
+      color: var(--verdigris);
+      font: 700 0.72rem/1 var(--mono);
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .status-seal--draft {
+      color: var(--amber);
+      border-color: rgba(225, 186, 98, 0.55);
+    }
+
+    .status-seal--rejected {
+      color: var(--red);
+      border-color: rgba(218, 121, 107, 0.55);
+    }
+
+    .status-seal--retired {
+      color: var(--ash);
+      border-color: var(--line);
+    }
+
+    .provenance dl {
+      display: grid;
+      gap: 1.2rem;
+      margin: 3rem 0 0;
+    }
+
+    .provenance dl > div {
+      min-width: 0;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--line);
+    }
+
+    dt {
+      color: var(--dim);
+    }
+
+    dd {
+      margin: 0.35rem 0 0;
+      color: var(--paper);
+      font: 500 0.78rem/1.45 var(--mono);
+      overflow-wrap: anywhere;
+    }
+
+    .authority-note {
+      margin: 2rem 0 0;
+      padding: 1rem;
+      border-left: 2px solid var(--copper);
+      color: var(--paper);
+      background: rgba(216, 138, 95, 0.055);
+      font-size: 0.88rem;
+    }
+
+    main {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .panel {
+      position: relative;
+      padding: clamp(1.5rem, 4vw, 3.5rem);
+      border: 1px solid var(--line);
+      background: rgba(12, 17, 18, 0.94);
+      box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
+    }
+
+    .panel-heading {
+      display: grid;
+      grid-template-columns: 1fr minmax(13rem, 0.55fr);
+      gap: 2rem;
+      align-items: end;
+      margin-bottom: 2rem;
+    }
+
+    .panel-heading > p:last-child {
+      margin-bottom: 1.6rem;
+      color: var(--ash);
+      font-size: 0.9rem;
+    }
+
+    .transition-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 5rem minmax(0, 1fr);
+      align-items: stretch;
+    }
+
+    .state-card {
+      min-height: 16rem;
+      padding: clamp(1.5rem, 3vw, 2.5rem);
+      border: 1px solid var(--line);
+      background: linear-gradient(150deg, var(--plate), rgba(17, 25, 26, 0.55));
+    }
+
+    .state-card--after {
+      border-color: var(--line-hot);
+      background: linear-gradient(150deg, rgba(46, 127, 112, 0.19), var(--plate));
+    }
+
+    .state-card p:last-child {
+      margin-bottom: 0;
+      color: var(--paper);
+      font: 400 clamp(1.05rem, 2vw, 1.35rem)/1.55 var(--serif);
+    }
+
+    .transition-arrow {
+      position: relative;
+      display: grid;
+      place-items: center;
+      color: var(--verdigris);
+      font: 500 1.5rem/1 var(--mono);
+    }
+
+    .transition-arrow::before {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(to right, var(--line), var(--verdigris), var(--line));
+    }
+
+    .transition-arrow span {
+      position: relative;
+      padding: 0.55rem;
+      border: 1px solid var(--line-hot);
+      background: var(--ink);
+    }
+
+    .transition-rail {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      margin-top: 1rem;
+      border: 1px solid var(--line);
+      background: var(--iron);
+    }
+
+    .rail-node {
+      position: relative;
+      min-height: 8.5rem;
+      padding: 1.35rem;
+      border-right: 1px solid var(--line);
+    }
+
+    .rail-node:last-child {
+      border-right: 0;
+    }
+
+    .rail-node::after {
+      content: "";
+      position: absolute;
+      right: -0.28rem;
+      top: 1.5rem;
+      z-index: 2;
+      width: 0.5rem;
+      height: 0.5rem;
+      border: 1px solid var(--verdigris);
+      background: var(--void);
+      transform: rotate(45deg);
+    }
+
+    .rail-node:last-child::after {
+      display: none;
+    }
+
+    .rail-node strong {
+      display: block;
+      margin-top: 0.7rem;
+      font: 600 0.95rem/1.25 var(--sans);
+    }
+
+    .rail-node p {
+      margin: 0.4rem 0 0;
+      color: var(--ash);
+      font-size: 0.79rem;
+    }
+
+    .decision-grid,
+    .shape-grid,
+    .visual-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+
+    .decision-card,
+    .shape-card {
+      min-width: 0;
+      padding: 1.4rem;
+      border: 1px solid var(--line);
+      background: var(--iron);
+    }
+
+    .decision-card h3 {
+      margin-top: 1.35rem;
+      font-family: var(--serif);
+      font-size: 1.6rem;
+      font-weight: 500;
+    }
+
+    .decision-card p:not(.card-index) {
+      display: grid;
+      grid-template-columns: minmax(6rem, 0.28fr) 1fr;
+      gap: 1rem;
+      margin: 0;
+      padding: 0.7rem 0;
+      border-top: 1px solid var(--line);
+      color: var(--paper);
+      font-size: 0.87rem;
+    }
+
+    .decision-card p span,
+    .shape-card p span {
+      color: var(--dim);
+      font: 700 0.65rem/1.45 var(--mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .scope-grid,
+    .proof-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+
+    .scope-column,
+    .proof-column {
+      padding: clamp(1.5rem, 3vw, 2.5rem);
+      background: var(--ink);
+    }
+
+    .scope-column--out {
+      background: #111516;
+    }
+
+    .scope-title {
+      margin-bottom: 1.25rem;
+    }
+
+    .scope-title--out {
+      color: var(--copper);
+    }
+
+    .signal-list {
+      display: grid;
+      gap: 0.85rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .signal-list li {
+      position: relative;
+      padding-left: 1.4rem;
+      color: var(--paper);
+    }
+
+    .signal-list li::before {
+      content: "";
+      position: absolute;
+      top: 0.72em;
+      left: 0;
+      width: 0.45rem;
+      height: 1px;
+      background: var(--verdigris);
+      box-shadow: 0.28rem 0 var(--verdigris-deep);
+    }
+
+    .scope-column--out .signal-list li::before,
+    .proof-column--risk .signal-list li::before {
+      background: var(--copper);
+      box-shadow: 0.28rem 0 rgba(216, 138, 95, 0.45);
+    }
+
+    .shape-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .shape-card {
+      position: relative;
+      min-height: 13rem;
+    }
+
+    .shape-card h3 {
+      margin-top: 2.8rem;
+    }
+
+    .shape-state {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.3rem 0.42rem;
+      border: 1px solid var(--line);
+      color: var(--ash);
+    }
+
+    .shape-state--yes {
+      color: var(--verdigris);
+      border-color: var(--line-hot);
+    }
+
+    .shape-state--no {
+      color: var(--dim);
+    }
+
+    .shape-card p {
+      display: grid;
+      grid-template-columns: 3.8rem 1fr;
+      gap: 0.65rem;
+      margin: 0;
+      padding: 0.52rem 0;
+      border-top: 1px solid var(--line);
+      color: var(--ash);
+      font-size: 0.77rem;
+      overflow-wrap: anywhere;
+    }
+
+    .visual-grid {
+      align-items: start;
+    }
+
+    .review-visual {
+      margin: 0;
+      padding: 0.65rem;
+      border: 1px solid var(--line);
+      background: var(--iron);
+    }
+
+    .review-visual img {
+      display: block;
+      width: 100%;
+      max-height: 38rem;
+      object-fit: contain;
+      background: var(--void);
+    }
+
+    .review-visual figcaption {
+      padding: 0.8rem 0.3rem 0.2rem;
+      color: var(--ash);
+      font-size: 0.78rem;
+    }
+
+    .empty,
+    .legacy-note {
+      margin: 0;
+      padding: 1rem;
+      border: 1px dashed var(--line);
+      color: var(--dim);
+      font: 500 0.78rem/1.5 var(--mono);
+    }
+
+    .legacy-note {
+      margin-top: 1rem;
+      color: var(--amber);
+      border-color: rgba(225, 186, 98, 0.32);
+    }
+
+    details {
+      border: 1px solid var(--line);
+      background: var(--ink);
+    }
+
+    summary {
+      display: flex;
+      min-height: 4.5rem;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 1.4rem;
+      cursor: pointer;
+      color: var(--bone);
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary::after {
+      content: "+";
+      color: var(--verdigris);
+      font: 500 1.5rem/1 var(--mono);
+    }
+
+    details[open] summary::after {
+      content: "−";
+    }
+
+    summary:focus-visible {
+      outline: 2px solid var(--verdigris);
+      outline-offset: -4px;
+    }
+
+    .source-chamber {
+      margin: 0;
+      padding: clamp(1rem, 3vw, 2rem);
+      max-height: 70vh;
+      overflow: auto;
+      border-top: 1px solid var(--line);
+      color: #c8d0cc;
+      background: #080c0d;
+      font: 400 0.78rem/1.65 var(--mono);
+      tab-size: 2;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 2rem;
+      padding: 2rem 0 0;
+      color: var(--dim);
+      font: 500 0.68rem/1.4 var(--mono);
+    }
+
+    footer p {
+      margin: 0;
+    }
+
+    .footer-mark {
+      color: var(--copper);
+    }
+
+    @media (max-width: 980px) {
+      .instrument-header,
+      .panel-heading {
+        grid-template-columns: 1fr;
+      }
+
+      .instrument-header {
+        min-height: auto;
+      }
+
+      .hero-copy {
+        min-height: 31rem;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .shape-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .panel-heading > p:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .shell {
+        width: min(calc(100% - 1rem), var(--measure));
+        padding-top: 0.5rem;
+      }
+
+      h1 {
+        font-size: clamp(3rem, 17vw, 5.2rem);
+      }
+
+      .hero-copy,
+      .provenance,
+      .panel {
+        padding: 1.35rem;
+      }
+
+      .hero-copy {
+        min-height: 29rem;
+      }
+
+      .transition-grid,
+      .scope-grid,
+      .proof-grid,
+      .decision-grid,
+      .shape-grid,
+      .visual-grid,
+      .transition-rail {
+        grid-template-columns: 1fr;
+      }
+
+      .transition-arrow {
+        min-height: 4rem;
+      }
+
+      .transition-arrow::before {
+        width: 1px;
+        height: 100%;
+        background: linear-gradient(to bottom, var(--line), var(--verdigris), var(--line));
+      }
+
+      .transition-arrow span {
+        transform: rotate(90deg);
+      }
+
+      .rail-node {
+        min-height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .rail-node:last-child {
+        border-bottom: 0;
+      }
+
+      .rail-node::after {
+        top: auto;
+        right: 1.5rem;
+        bottom: -0.28rem;
+      }
+
+      .decision-card p:not(.card-index) {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+      }
+
+      footer {
+        flex-direction: column;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+    }
+
+    @media print {
+      :root {
+        --void: #ffffff;
+        --ink: #ffffff;
+        --iron: #f6f4ef;
+        --plate: #f2efe8;
+        --plate-high: #ece8df;
+        --bone: #111514;
+        --paper: #222827;
+        --ash: #48514f;
+        --dim: #626b69;
+        --line: #a9afad;
+        --line-hot: #52756e;
+        --shadow: transparent;
+      }
+
+      body {
+        background: white;
+      }
+
+      body::before,
+      a.skip-link {
+        display: none;
+      }
+
+      .shell {
+        width: 100%;
+        padding: 0;
+      }
+
+      .instrument-header,
+      .panel,
+      .state-card,
+      .transition-rail,
+      .decision-card,
+      .shape-card,
+      .scope-column,
+      .proof-column,
+      details {
+        box-shadow: none;
+        background: white;
+        break-inside: avoid;
+      }
+
+      details:not([open]) > :not(summary) {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#atlas-main">skip to atlas</a>
+  <div class="shell">
+    <header class="instrument-header" aria-labelledby="atlas-title">
+      <div class="hero-copy">
+        <div>
+          <p class="eyebrow">change atlas / approval projection</p>
+          <h1 id="atlas-title">switchboard / worker receipts in view</h1>
+          <p class="hero-change">add a read-only local worker-attempt panel to the existing frozen switchboard.</p>
+          
+        </div>
+        <p class="hero-stratum">one source · two readings · exact revision</p>
+      </div>
+      <aside class="provenance" aria-label="source provenance">
+        <div>
+          <div class="status-seal status-seal--draft">draft</div>
+          <dl>
+            <div>
+              <dt>canonical source</dt>
+              <dd>specs/009-worker-receipt-board.md</dd>
+            </div>
+            <div>
+              <dt>source sha-256</dt>
+              <dd>e7cdd1d45592f8519fb47a1f62d00b1d3251ab94b44431d717f58c3627907741</dd>
+            </div>
+            <div>
+              <dt>renderer</dt>
+              <dd>change atlas / v1</dd>
+            </div>
+          </dl>
+        </div>
+        <p class="authority-note"><strong>authority:</strong> owner requested this saved spec. implementation is not approved. this spec authorizes no provider request, new trial budget, task dispatch or source-state mutation.. this page is generated and advisory.</p>
+      </aside>
+    </header>
+
+    <main id="atlas-main">
+      <section class="panel" aria-labelledby="transition-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">01 / transition</p>
+            <h2 id="transition-title">the state change</h2>
+          </div>
+          <p>the shortest honest account of the world before and after this transition.</p>
+        </div>
+        <div class="transition-grid">
+          <article class="state-card">
+            <p class="card-index">before</p>
+            <p>the board shows ledger claims and github facts; private worker receipts and trial reservations require separate inspection.</p>
+          </article>
+          <div class="transition-arrow" aria-hidden="true"><span>→</span></div>
+          <article class="state-card state-card--after">
+            <p class="card-index">after</p>
+            <p>a new capture shows assignments, recorded outcomes, bounded usage and local budget accounting together, with unknowns and provenance visible.</p>
+          </article>
+        </div>
+        <div class="transition-rail" aria-label="approval path">
+          <div class="rail-node"><span class="datum">01</span><strong>canonical spec</strong><p>complete transition and proof substrate</p></div>
+          <div class="rail-node"><span class="datum">02</span><strong>generated atlas</strong><p>decision-shaped projection of this revision</p></div>
+          <div class="rail-node"><span class="datum">03</span><strong>owner judgment</strong><p>inspect the changed world and its dangerous seams</p></div>
+          <div class="rail-node"><span class="datum">04</span><strong>explicit transition</strong><p>accept or reject the exact canonical source</p></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="decisions-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">02 / judgment</p>
+            <h2 id="decisions-title">owner decisions</h2>
+          </div>
+          <p>only forks that materially change scope, behavior, proof, or consequence belong here.</p>
+        </div>
+        <div class="decision-grid"><p class="empty">no owner decisions remain open.</p></div>
+      </section>
+
+      <section class="panel" aria-labelledby="scope-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">03 / boundary</p>
+            <h2 id="scope-title">what moves—and what does not</h2>
+          </div>
+          <p>scope becomes visible as a cut, not a paragraph-shaped fog bank.</p>
+        </div>
+        <div class="scope-grid">
+          <article class="scope-column">
+            <h3 class="scope-title">inside the transition</h3>
+            <p class="empty">no included outcomes were declared</p>
+          </article>
+          <article class="scope-column scope-column--out">
+            <h3 class="scope-title scope-title--out">held outside</h3>
+            <p class="empty">no exclusions were declared</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="shape-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">04 / topology</p>
+            <h2 id="shape-title">change geometry</h2>
+          </div>
+          <p>each dimension names its owner and the proof expected to close it.</p>
+        </div>
+        <div class="shape-grid"><article class="shape-card"><div class="shape-state shape-state--yes">yes</div><h3>user-visible behavior</h3><p><span>source</span>worker panel in frozen board</p><p><span>proof</span>rendered fixture/capture checks</p></article><article class="shape-card"><div class="shape-state shape-state--yes">yes</div><h3>persisted state or schema</h3><p><span>source</span>snapshot v2 only; queue unchanged</p><p><span>proof</span>v1 compatibility and no-write tests</p></article><article class="shape-card"><div class="shape-state shape-state--no">no</div><h3>external or provider-visible behavior</h3><p><span>source</span>existing github reads only</p><p><span>proof</span>provider/dispatch invocation traps</p></article><article class="shape-card"><div class="shape-state shape-state--yes">yes</div><h3>identifiers, secrets or privacy</h3><p><span>source</span>strict projection allowlist</p><p><span>proof</span>hostile canaries in HTML and JSON</p></article><article class="shape-card"><div class="shape-state shape-state--no">no</div><h3>lifecycle or terminal states</h3><p><span>source</span>existing persisted queue states</p><p><span>proof</span>no mutation or inferred transitions</p></article><article class="shape-card"><div class="shape-state shape-state--yes">yes</div><h3>setup, operation or recovery</h3><p><span>source</span>explicit optional source flag</p><p><span>proof</span>missing/locked/old-schema tests</p></article><article class="shape-card"><div class="shape-state shape-state--yes">yes</div><h3>normative contract or decision</h3><p><span>source</span>this draft projection contract</p><p><span>proof</span>owner acceptance before implementation</p></article><article class="shape-card"><div class="shape-state shape-state--no">no</div><h3>cross-repository dependency</h3><p><span>source</span>same repo, separate local queue input</p><p><span>proof</span>no teammate host/transport changes</p></article></div>
+      </section>
+
+      <section class="panel" aria-labelledby="visuals-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">05 / optical layer</p>
+            <h2 id="visuals-title">review visuals</h2>
+          </div>
+          <p>optional local raster evidence, embedded into this artifact without a remote fetch.</p>
+        </div>
+        <div class="visual-grid"><p class="empty">no review images were attached; the transition rail remains the visual summary.</p></div>
+      </section>
+
+      <section class="panel" aria-labelledby="proof-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">06 / consequence</p>
+            <h2 id="proof-title">risk and proof</h2>
+          </div>
+          <p>the teeth on the left; the evidence that cages them on the right.</p>
+        </div>
+        <div class="proof-grid">
+          <article class="proof-column proof-column--risk">
+            <h3 class="scope-title scope-title--out">risks / unknowns</h3>
+            <p class="empty">no risks or unknowns were declared</p>
+          </article>
+          <article class="proof-column">
+            <h3 class="scope-title">done when</h3>
+            <p class="empty">no completion proof was declared</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="source-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">07 / bedrock</p>
+            <h2 id="source-title">complete canonical source</h2>
+          </div>
+          <p>nothing is summarized away. open the substrate whenever the projection feels too smooth.</p>
+        </div>
+        <details>
+          <summary><span>open full spec</span><code>e7cdd1d45592</code></summary>
+          <pre class="source-chamber"><code># switchboard / worker receipts in view
+
+status: draft
+
+owner: colette · proposed implementation: asterion
+
+## owner view
+
+- change: add a read-only local worker-attempt panel to the existing frozen switchboard.
+- before: the board shows ledger claims and github facts; private worker receipts and trial reservations require separate inspection.
+- after: a new capture shows assignments, recorded outcomes, bounded usage and local budget accounting together, with unknowns and provenance visible.
+- authority: owner requested this saved spec. implementation is not approved. this spec authorizes no provider request, new trial budget, task dispatch or source-state mutation.
+
+## current ground
+
+base inspected: `984448a`, containing the observer, delegation queue and smoke
+outcome correction. [observer operations](../control_plane/README.md) owns
+capture behavior; [delegation operations](../control_plane/DELEGATION.md) and
+[spec008](008-delegation-roundtrip.md) own worker execution semantics.
+
+observed private trial evidence contains four live attempts: failed, completed,
+failed, completed. a separate offline proof also exists and must remain clearly
+offline. the live ledger records four requests and 400,000 microcredits reserved
+(0.4 credits); one request has unknown usage. these are acceptance examples,
+not constants to hardcode or private fixtures to commit.
+
+provider model/usage sanitization is a separate team follow-up. this reader must
+validate its own projection, including older receipts; do not depend on that
+follow-up landing or rewrite the queue to fit this spec.
+
+## recommended decisions
+
+1. explicit opt-in: add `--worker-state-dir PATH` to the observer. omission
+   preserves the existing board and labels worker evidence “not supplied.”
+   alternative: autodiscovery; rejected because it obscures private input scope.
+2. keep worker attempts in their own panel. task ids do not automatically join
+   ledger ids, PRs, owners or review verdicts. alternative: fuzzy matching;
+   deferred because a plausible match is not provenance.
+3. display a frozen capture with a visible capture time and source revision.
+   alternative: polling; deferred because this slice changes visibility only.
+4. show a known-usage cost subtotal and its coverage, separately from local
+   reservations. alternative: one “spent” total; rejected because first-attempt
+   usage is unknown and account billing was not observed.
+
+accepting this spec accepts those recommendations. no unresolved product choice
+is required before acceptance; implementation and independent review remain gates.
+
+## in scope / out of scope
+
+in: optional local queue reader, bounded projection, snapshot format update,
+script-free board panel, fictional test fixtures, operational documentation.
+
+out: provider calls; raw model answers, prompts or source text in captures;
+retry/cancel/dispatch buttons; leases, recovery or migration; background loops;
+account balance lookup; experimental agent changes; remote receipts; automatic
+ledger reconciliation, task closure or merge approval.
+
+## read boundary
+
+use a dedicated reader, never instantiate `delegation.Queue`: its constructor
+can create and modify state. open the existing database read-only and query-only;
+never create a missing database, alter permissions, initialize tables, checkpoint
+WAL, vacuum, migrate or repair. reject symlink inputs and unexpected schemas.
+
+read budget, acknowledgments and terminal receipt metadata in one bounded SQLite
+read transaction. preserve a consistent local view; github and ledger sources
+remain separately timed and are not an atomic distributed snapshot. use a short
+busy timeout, bounded query time and a 1,000-job ceiling; fetch one additional
+row to detect truncation. cap each encoded packet/receipt read at 96 KiB and
+aggregate scanned payload at 8 MiB. oversized/invalid entries produce categorical
+diagnostics, not raw exception strings or silently successful empty data.
+
+opening a database with a live writer must not modify source database/WAL content
+or create/delete source sidecars. if that cannot be guaranteed for a supported
+journal mode, show “worker source unavailable” rather than falling back to a
+writer-capable connection. test both rollback-journal and active-WAL cases.
+
+unavailable, not supplied, available-empty and truncated are distinct states.
+a worker-source failure must not suppress the ledger/github portions of the board.
+no source path is serialized into the capture; a generic source label, read time
+and schema/version information identify provenance without exposing private paths.
+
+## projection contract
+
+snapshot v2 adds a `workers` section; no queue schema change. the renderer accepts
+existing snapshot v1 with worker evidence “not supplied.” unsupported future
+snapshot versions are refused explicitly. private output protections and the
+new-directory/no-overwrite rule remain in force for both HTML and JSON.
+
+project only:
+
+- task id, attempt id, worker id and mode (offline/adaption), validated against
+  existing bounded identifier rules;
+- recorded state (running/completed/failed), packet hash, optional result hash,
+  acknowledged/completed timestamps, and source git revision when valid;
+- a fixed model label only when it matches the supported model; otherwise unknown;
+- nonnegative bounded integer input/output tokens, each independently unknown
+  when absent/invalid; boolean values are not integers for this purpose;
+- fixed error category/status labels from an allowlist; arbitrary provider
+  strings become unknown, never escaped-but-still-disclosed raw text;
+- persistent request count and reserved microcredits from the budget row.
+
+never export packet objective, expected deliverable, source label/text, model
+answer, raw error, credential, claim token, arbitrary receipt extras or private
+filesystem paths. validate identity/hash consistency across job/ack/receipt before
+using a terminal result. invalid evidence is labeled invalid, never “completed.”
+a hash identifies bytes; it does not prove a finding correct.
+
+running means a persisted nonterminal claim, not a live heartbeat. completed means
+accepted transport output, not task correctness, review approval or merged code.
+failed is not retryable by a board action. preserve the original evidence rather
+than revising a historical outcome based on a later trial.
+
+## accounting and limits
+
+show requests used against the configured trial limit (currently 4), and reserved
+credits separately from the reservation ceiling (currently 1). label these limits
+as the reader's known harness configuration, not immutable historical fields or
+an account quota. if capture cannot establish compatible configuration, show
+limits/remaining allowance as unknown. do not publish the owner's account balance.
+
+remaining request allowance is `max(0, limit - used)`; over-limit data is a
+diagnostic, not a negative allowance. neither remaining reservations nor credit
+balance creates permission for another request. include offline attempts without
+charging them to the live request count; surface discrepancies rather than
+silently deriving budget counters from displayed rows.
+
+for valid live token pairs, recompute estimates using the explicitly dated model
+rate basis already documented in delegation operations. include known usage from
+failed receipts. never trust an arbitrary stored cost or floating-point special
+value. use decimal arithmetic; label unknown model/rate/usage as unestimated.
+
+show estimated subtotal, known-usage attempts / total live attempts, and unknown
+count together. the four-attempt acceptance example has 3/4 known usage and an
+estimated subtotal of 0.0016241 credits, excluding the first attempt. actual billed
+spend remains unknown. truncation makes any derived subtotal partial and counts
+lower bounds; the database budget row is still presented separately if valid.
+
+## implementation sequence
+
+1. implement the isolated read-only boundary and fictional fixtures first;
+   prove no source-state changes and no writer/provider invocation.
+2. validate and project only the allowed fields; prove hostile canaries cannot
+   reach either JSON or HTML and malformed evidence remains visible as invalid.
+3. extend snapshot/rendering compatibly; keep ledger/PR and worker claims separate.
+4. add accounting with explicit estimate coverage and limit provenance.
+5. exercise desktop, 320px, keyboard and local-file/offline behavior; capture the
+   existing private trial once without new provider activity, then hand off for
+   independent review. no public/private trace copying into the repository.
+
+## acceptance and proof
+
+- fictional fixtures cover two completed/two failed live attempts, an offline
+  attempt, unknown usage, missing/locked database, malformed/oversized receipts,
+  duplicate/mismatched identities, arbitrary model/error strings and truncation.
+- a canary in every excluded field is absent from both exported artifacts.
+- before/after hashes, sizes and directory inventories prove no source content
+  or sidecar mutation during capture; a concurrent writer can keep operating.
+  filesystem access-time updates are not treated as content mutation.
+- real local trial capture shows four live requests used, 0.4 reserved credits,
+  two completed/two failed live outcomes and 3/4 known-usage coverage. the offline
+  proof is counted separately. zero provider calls and zero task transitions.
+- absent worker input preserves old-board behavior; snapshot v1 remains readable.
+- 320px reflow, keyboard reading, escaped script-free HTML, no external assets,
+  no network requests on page open, and no browser storage writes are checked.
+
+planned checks: `python3 -m unittest control_plane.test_observer control_plane.test_delegation control_plane.test_worker_projection -v`, scoped ruff, existing
+`node control_plane/browser-check.mjs CAPTURE/index.html` extended for the worker
+panel, and atlas freshness. the new test module and reader are proposed, not built.
+
+## change shape
+
+| dimension | changed? | source of truth | proof |
+|---|---|---|---|
+| user-visible behavior | yes | worker panel in frozen board | rendered fixture/capture checks |
+| persisted state or schema | yes | snapshot v2 only; queue unchanged | v1 compatibility and no-write tests |
+| external or provider-visible behavior | no | existing github reads only | provider/dispatch invocation traps |
+| identifiers, secrets or privacy | yes | strict projection allowlist | hostile canaries in HTML and JSON |
+| lifecycle or terminal states | no | existing persisted queue states | no mutation or inferred transitions |
+| setup, operation or recovery | yes | explicit optional source flag | missing/locked/old-schema tests |
+| normative contract or decision | yes | this draft projection contract | owner acceptance before implementation |
+| cross-repository dependency | no | same repo, separate local queue input | no teammate host/transport changes |
+
+## risks and review surface
+
+main risks: exposing private text through convenient JSON passthrough, implying
+billing from reservations, interpreting stale claims as live workers, and SQLite
+side effects under concurrent access. independent review must examine those
+boundaries. the sanitization follow-up may change receipt shape; compatibility
+must be tested against the exact version selected for implementation.
+
+[change atlas](worker-receipt-review/index.html) is the full review projection.
+a separate attention-aperture companion is omitted: this small read-only
+projection has neither a supported append-record trace nor a dense phase map
+that would add information beyond the atlas. the spec remains canonical.
+</code></pre>
+        </details>
+      </section>
+    </main>
+
+    <footer>
+      <p class="footer-mark">repository continuity / change atlas</p>
+      <p>generated from specs/009-worker-receipt-board.md · e7cdd1d45592 · no independent authority</p>
+    </footer>
+  </div>
+</body>
+</html>

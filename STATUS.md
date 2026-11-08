@@ -8,6 +8,12 @@
 
 ## verified checkpoint
 
+receipt-board planning: [spec009](specs/009-worker-receipt-board.md) is draft,
+with a [review atlas](specs/worker-receipt-review/index.html). it proposes an
+optional read-only worker projection, bounded private-field filtering, and
+separate usage estimates/reservation accounting. implementation is not approved
+or started. no provider activity or queue changes in this planning slice.
+
 smoke outcome correction: failures in calls 2–4 now produce aggregate `error`
 and CLI exit 1; failed call 1 counts its attempted invocation. five offline
 regression tests cover outcomes, counting, exit codes and SDK-free blocked
