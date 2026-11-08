@@ -117,10 +117,18 @@ before this runner is used as shared infrastructure.
 ## observed trial / 2026-11-07
 
 17 offline tests pass. a local offline packet completed and replayed with an
-identical receipt. all four live attempts failed; the exact provider/validation
-cause cannot be reconstructed from the immutable receipts. no automatic retry
-or reset occurred. four requests consumed, 0.4 credits reserved locally, billing
-unobserved. replay of identical packets returned the same failed receipts
+identical receipt. four-attempt chronology: attempt 1 smoke-outcome-investigation-01
+FAILED, usage unknown; attempt 2 diagnostic-transport-02 COMPLETED, 278/87 tokens,
+result sha 126c5b0ceae0d50a569d6e513677ca60ed04ed690a8c28f6134f76f663993e2e;
+attempt 3 smoke-audit-03 FAILED with response status incomplete, 1878/2048 tokens;
+attempt 4 smoke-branch-audit-04 COMPLETED, 418/341 tokens, result sha
+f6cb7c7458ee99479c988aea822b8774ac0f3ac9fed0d75272727a45258de050.
+four requests consumed, 0.4 credits reserved locally, billing unobserved. usage
+known for three attempts; dated estimate subtotal 0.0016241 credits, excluding
+the first unknown request. the second completed task was a fictional source; the
+fourth was a narrow real-code excerpt with its finding independently checked
+offline. this does not establish broad investigator quality. no automatic retry
+or reset occurred. replay of identical packets returned the same receipts
 without invoking the worker or changing the budget.
 
 the bounded live transport gate passes; investigator quality on substantive code,
