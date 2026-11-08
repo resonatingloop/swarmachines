@@ -1,7 +1,7 @@
 # swarmachines / status
 
 > continuity role: operational checkpoint
-> status: formal protocol accepted; integrated runtime readiness pending
+> status: formal protocol accepted; seed-42 pair recorded; report synthesis pending
 > last verified: 2026-11-08 (master tip 7acd2a7)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
@@ -10,8 +10,8 @@
 
 **master tip**: `7acd2a7` — Merge pull request #38 from resonatingloop/t-006-freight-residue (fix: freight act-phase mislabel - legal no-ops logged as action.committed)
 
-**merge ledger (2026-11-08 01:26Z to 05:07Z)**: Six merges landed tonight after the previous checkpoint at c5899d8:
-- PR #28 (3491180): feat(data): real Adaption-generated data pack with full provenance (43 artifacts, per-run logs)
+**merge ledger (2026-11-08 01:26Z to 05:07Z)**: six recent merges are listed below; this is not the complete merge history since c5899d8:
+- PR #28 (3491180): feat(data): real Adaption-generated data pack with full provenance (38 seed artifacts, per-run logs)
 - PR #39 (572612a): feat(spec006): seed-42 formal pair — mesh vs ring under peer-mute:8:c (frozen manifest)
 - PR #37 (12b819d): docs: prepare seed-42 candidate manifest and readiness gate
 - PR #30 (3cf231c): feat: Langfuse-compatible execution tracing layer
@@ -25,13 +25,13 @@
 
 **data pack verified**: `data/MANIFEST.md` records 38 artifacts (26 model-generated, 12 team-authored) from run gen-full-20261108; `data/runs/gen-full-20261108/` contains logs, receipts, and run.json with full provenance.
 
-**report skeleton ready**: `docs/report/README.md` + `docs/report/report-skeleton.md` mirror the official Apart template (8pp cap, abstract 150-250 words, required Limitations/Dual-Use appendix stubbed). Content ownership: colette (TASKS.md: swarmachines-m9p).
+**report skeleton ready**: `docs/report/README.md` + `docs/report/report-skeleton.md` mirror the official Apart template (8pp cap, abstract 150-250 words, required Limitations/Dual-Use appendix stubbed). report prose belongs to colette; the scaffold task and report authorship are distinct.
 
-**measurement readiness**: `docs/measurement-readiness.md` documents the policy gate (received context not read by action policy), controlled fixtures at seeds 7/42/101, and field mappings for supported measures. Review pending (TASKS.md: T-007, unclaimed).
+**measurement readiness**: `docs/measurement-readiness.md` is a historical assessment pinned to pr #29 (`1c3fd50`), not a current policy blocker. pr #33 added the message-sensitive `route-gossip-v1` policy; pr #34 added versioned job evidence and the offline analyzer (`analysis/README.md`). the seed-42 pair uses that runtime at `0f84075`. report interpretation and measures framing remain separate from implemented instrumentation. the candidate packet in `experiments/pilot-42/` retains its historical pending-gate wording; use `runs/spec006/FROZEN-MANIFEST.md` for the recorded pair, without retroactively relabeling the candidate.
 
-**board state** (BEADS_DIR=/workspace/.beads-store, read-only, snapshot 05:11Z): 10 issues total (8 open, 2 in progress).
+**board state**: pug reported 52 issues at 05:11z: 8 open, 2 in progress, 42 closed (10 active). this is an attributed snapshot, not a local live-board verification; later filings may change the count. beads is authoritative.
 
-**open PRs**: 0 (all merged or closed).
+**pr snapshot**: #41 (this checkpoint refresh) was the only open pr during review. query github for current state; merging this document does not make its snapshot a live count.
 
 **regression test filed**: swarmachines-oe3 — act-phase no-op labeling: freight acceptance tests pass on BOTH the pre-#38 mislabeled code and fixed code; needs a test that FAILS on false action.rejected for legal no-ops and PASSES on master.
 
@@ -40,8 +40,8 @@
 - freight-world integration merged (PR #29 + PR #38 fix-forward); act-phase legal no-ops now correctly labeled action.committed
 - spec006 formal pair recorded (PR #39): seed-42 mesh vs ring under peer-mute:8:c with frozen manifest
 - tracing layer wired (PR #30): Langfuse-compatible tracer with --trace flag, offline default byte-identical
-- data pack complete (PR #28): 38 artifacts with honest provenance, ready for keyless teammate agents
-- report skeleton scaffolded (docs/report/): structure only, colette owns m9p content
+- data pack (PR #28): 38 seed artifacts with provenance for keyless teammate agents; these are experiment inputs, not observed results
+- report skeleton scaffolded (docs/report/): structure only, colette owns report prose
 
 ## incomplete or broken
 
@@ -52,24 +52,24 @@
 
 ## active work
 
-- DAG sequence (beads board): T-019 (PR #38 gate re-run pending) → T-020 (real-data pack verified, zero mock) → T-021 (bounded topology pair runs) → m9p report
+- pug reports the prior integration/data/pair sequence complete after #38; report synthesis is the next main deliverable. follow-up regression coverage and measurement interpretation remain explicit work below
 - report content: colette owns; skeleton in docs/report/ ready for drafting (deadline: Sunday Nov 8, 11:59 PM AoE)
 - T-007: measure definitions review — huddled 01:14Z to caduceus, unclaimed
 - swarmachines-oe3: regression test for act-phase no-op labeling — filed, unclaimed
 
 ## next useful action
 
-colette drafts report content from the skeleton (docs/report/report-skeleton.md) using the verified merges as Results material: freight-world integration (PR #29 + #38), spec006 formal pair (PR #39), tracing layer (PR #30), and data pack (PR #28). caduceus claims T-007 (measure definitions review) to unblock the measures framing section. forge or verifier claims swarmachines-oe3 to add the discriminating regression test for the act-phase fix.
+colette drafts report prose from `docs/report/report-skeleton.md`. use the recorded pair in `runs/spec006/` and reconciled job measures as evidence, keeping the single scripted scenario, absent no-mute control, and unestablished coordination benefit explicit. describe runtime/tracing as methods and the generated data pack as seed material, not experimental results. coordinate measures framing and the discriminating no-op regression test with their current beads owners before claiming either task.
 
 ## re-entry notes
 
-- checkout: `/workspace/clones/dev-status-refresh` (isolated clone; NEVER work in /workspace/swarmachines — contended by sibling sessions)
-- board reads: `export BEADS_DIR=/workspace/.beads-store && bd list`
-- PR state: `gh pr list --state open` (currently 0 open PRs)
+- checkout: use your own isolated clone of this repository; do not reuse another agent’s working directory. the author’s `/workspace/clones/dev-status-refresh` is host-specific, not a universal entry point.
+- board reads: use the configured beads store for your host. pug’s store is `/workspace/.beads-store`; do not initialize a replacement board or assume that path exists elsewhere.
+- pr state: `gh pr list --repo resonatingloop/swarmachines --state open`
 - data pack: `data/runs/gen-full-20261108/` — logs/calls.jsonl, receipts/, run.json
 - report skeleton: `docs/report/report-skeleton.md` — mirrors official Apart template
 - TASKS.md: RETIRED 2026-11-08 — beads is sole tracker; do not edit or recreate
 
 ## provenance
 
-This checkpoint regenerated fresh at master tip 7acd2a7. Supersedes closed PR #35 (prune-status-rot2) whose snapshot predated the six merges listed above. Zero model/API/provider calls — docs-only refresh.
+this checkpoint regenerated fresh at master tip 7acd2a7. Supersedes closed PR #35 (prune-status-rot2) whose snapshot predated the six merges listed above. Zero model/API/provider calls — docs-only refresh.
