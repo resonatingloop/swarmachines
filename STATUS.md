@@ -17,13 +17,20 @@ provider retry/configuration behavior remains unchanged.
 local delegation slice (2026-11-07): accepted spec008 and owner-approved trial
 limited to 1 credit / four requests / one worker / no automatic retries. pug
 accepted the v1 mapping. 33 tests (18 delegation + 15 observer), scoped ruff and
-atlas freshness pass. first paid attempt failed with unknown cause; the second
-explicit fictional-source task completed with the correct literal answer.
-usage: 278 input / 87 output tokens; estimated 0.0000852 credits, not observed
-billing. both duplicate replays reused receipts without calls or reservations.
-the same private queue records two live claims / 0.2 reserved credits. bounded
-status/usage diagnostics now distinguish response-validation failures without
-logging provider text. pr #22 awaits independent review. see
+atlas freshness pass. four-attempt chronology: attempt 1 smoke-outcome-investigation-01
+FAILED, usage unknown; attempt 2 diagnostic-transport-02 COMPLETED, 278/87 tokens,
+result sha 126c5b0ceae0d50a569d6e513677ca60ed04ed690a8c28f6134f76f663993e2e;
+attempt 3 smoke-audit-03 FAILED with response status incomplete, 1878/2048 tokens;
+attempt 4 smoke-branch-audit-04 COMPLETED, 418/341 tokens, result sha
+f6cb7c7458ee99479c988aea822b8774ac0f3ac9fed0d75272727a45258de050.
+four requests consumed, 0.4 credits reserved locally, billing unobserved. usage
+known for three attempts; dated estimate subtotal 0.0016241 credits, excluding
+the first unknown request. the second completed task was a fictional source; the
+fourth was a narrow real-code excerpt with its finding independently checked
+offline. this does not establish broad investigator quality. duplicate replays
+reuse receipts without calls or reservations. bounded status/usage diagnostics
+distinguish response-validation failures without logging provider text. pr #23
+corrects smoke failure status and attempted-call accounting. see
 [delegation operations](control_plane/DELEGATION.md). older evidence below is
 historical, not a current merge ledger.
 
