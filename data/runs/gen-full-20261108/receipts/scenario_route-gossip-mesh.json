@@ -1,0 +1,13 @@
+{
+  "schema_version": "v1",
+  "call_name": "scenario_route-gossip_mesh",
+  "timestamp": "2026-11-08T03:44:50.388274+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 455,
+  "output_tokens": 847,
+  "total_tokens": 1302,
+  "item_path": "data/scenarios/route-gossip-mesh.json",
+  "kind": "scenario",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:43:40.800174+00:00",
+  "run_id": "gen-full-20261108"
+}
