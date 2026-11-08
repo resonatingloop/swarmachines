@@ -1,0 +1,13 @@
+{
+  "schema_version": "v1",
+  "call_name": "scenario_peer-mute_ring",
+  "timestamp": "2026-11-08T03:44:19.517595+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 485,
+  "output_tokens": 723,
+  "total_tokens": 1208,
+  "item_path": "data/scenarios/peer-mute-ring.json",
+  "kind": "scenario",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:43:40.800174+00:00",
+  "run_id": "gen-full-20261108"
+}
