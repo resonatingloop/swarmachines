@@ -1,7 +1,7 @@
 {
-  "scenario_id": "dual-disruption-mesh",
-  "title": "Dual Disruption in Mesh Topology",
-  "description": "This scenario explores dual disruption dynamics within a mesh communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "scenario_id": "dual-disruption-mesh-v2",
+  "title": "Dual Disruption in Mesh Topology: Coordination & Connectivity Stress Test",
+  "description": "This scenario explores dual disruption dynamics within a mesh communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively via multi-hop relay, and maintain freight flow under adverse conditions where both logical (agent connectivity) and physical (infrastructure) constraints occur simultaneously.",
   "seed": 42,
   "agents": [
     "a",
@@ -102,12 +102,14 @@
       "disruption_1": {
         "type": "relay-loss",
         "agent": "a",
-        "start": 2
+        "start": 2,
+        "description": "Agent 'a' loses ability to broadcast/relay messages, becoming an isolated node or a silent participant in the mesh."
       },
       "disruption_2": {
         "type": "bridge-closure",
         "bridge": "east-bridge",
-        "turn": 3
+        "turn": 3,
+        "description": "Physical link between east and south is severed, forcing rerouting through north or west."
       },
       "interaction": "compounding"
     }
@@ -115,7 +117,22 @@
   "edge_cases_to_watch": [
     "Communication loss coincides with physical route closure",
     "Agents cannot coordinate about the bridge closure",
-    "Recovery requires handling both disruptions simultaneously"
+    "Recovery requires handling both disruptions simultaneously",
+    "Network Partitioning: If agent 'a' was a critical relay between 'b' and 'c', the mesh splits into two sub-graphs",
+    "Information Asymmetry: Agent 'a' knows about the bridge closure but cannot communicate it to the rest of the mesh",
+    "Congestion Cascades: Rerouting 'east-south' traffic through 'north' exceeds capacity of 'east-north' route"
+  ],
+  "coordination_challenges": [
+    "Dynamic Topology Awareness: Maintaining a consistent belief state of the network when agents cannot talk to each other",
+    "Multi-hop Routing Reliability: Determining if a message can actually reach a destination through remaining agents",
+    "Conflict Resolution: Handling two agents attempting to use the single-capacity 'east-north' route during a crisis",
+    "Delayed Consensus: Achieving agreement on new freight routes when the communication latency or packet loss increases due to relay-loss"
+  ],
+  "suggested_agent_strategies": [
+    "Gossip-based Information Dissemination: Using epidemic protocols to spread news of bridge closures via any available neighbor",
+    "Predictive Rerouting: Agents should simulate potential route failures and preemptively move to buffer depots",
+    "Redundant Messaging: Sending critical job updates through multiple paths in the mesh to mitigate the impact of agent 'a' failure",
+    "Role Assumption: If a primary relay agent fails, other agents must elect a new coordination leader to manage the high-priority 'j-004' and 'j-001' jobs"
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
@@ -128,7 +145,8 @@
   "success_criteria": [
     "High-priority freight delivered within deadline",
     "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Recovery from disruption within expected turns",
+    "Minimal capacity violations on single-capacity routes"
   ],
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
+  "provenance": "model-enhanced: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
 }

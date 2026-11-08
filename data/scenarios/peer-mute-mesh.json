@@ -1,7 +1,7 @@
 {
   "scenario_id": "peer-mute-mesh",
   "title": "Peer Mute in Mesh Topology",
-  "description": "This scenario explores peer mute dynamics within a mesh communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "description": "This scenario explores peer mute dynamics within a mesh communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions.",
   "seed": 42,
   "agents": [
     "a",
@@ -112,7 +112,22 @@
   "edge_cases_to_watch": [
     "Muted agent can still observe and act, but cannot communicate",
     "Other agents may not realize b is muted vs. simply silent",
-    "Information from b's location becomes unavailable"
+    "Information from b's location becomes unavailable",
+    "Phantom Occupancy: Agents 'a' and 'c' may assume 'b' is occupying a route/depot based on last known intent, leading to pathing deadlocks",
+    "Asymmetric Awareness: Agent 'd' (not targeted) can see 'b', but 'a' and 'c' cannot, creating fragmented consensus",
+    "Resource Contention: Silent agent 'b' may inadvertently take high-priority cargo without notifying the group, causing task duplication or starvation"
+  ],
+  "coordination_challenges": [
+    "Maintaining a 'Global State' when a key node's telemetry is lost",
+    "Distinguishing between a technical failure (mute) and a strategic choice (agent ignoring messages)",
+    "Re-allocating urgent 'high-priority' jobs when the previous assignee becomes non-responsive",
+    "Managing capacity constraints on single-capacity routes (east-north) when agent positions are uncertain"
+  ],
+  "suggested_agent_strategies": [
+    "Heartbeat Protocol: Agents implement a turn-based ping; if no response, the agent is flagged as 'uncertain' rather than 'active'",
+    "Redundancy Allocation: High-priority jobs are assigned to a secondary 'shadow agent' if the primary agent fails to confirm receipt within 2 turns",
+    "Information Relay: Agent 'd' acts as a bridge/relay to communicate 'b's state to 'a' and 'c' to resolve asymmetry",
+    "Conservative Pathing: Agents avoid routes where a silent agent was last seen until state is verified"
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
@@ -125,7 +140,8 @@
   "success_criteria": [
     "High-priority freight delivered within deadline",
     "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Recovery from disruption within expected turns",
+    "Minimization of redundant task assignments during the mute period"
   ],
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
+  "provenance": "model-enhanced: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
 }

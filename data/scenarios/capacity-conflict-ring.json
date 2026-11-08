@@ -1,7 +1,7 @@
 {
   "scenario_id": "capacity-conflict-ring",
   "title": "Capacity Conflict in Ring Topology",
-  "description": "This scenario explores capacity conflict dynamics within a ring communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "description": "This scenario explores capacity conflict dynamics within a ring communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions.",
   "seed": 42,
   "agents": [
     "a",
@@ -99,6 +99,8 @@
   ],
   "disturbance_schedule": {
     "capacity-conflict": {
+      "start_turn": 4,
+      "end_turn": 10,
       "contested_route": "west-east",
       "capacity": 2,
       "competing_freight": 3,
@@ -108,20 +110,35 @@
   "edge_cases_to_watch": [
     "Multiple agents may attempt to route freight simultaneously",
     "Lower-priority freight must wait or find alternate routes",
-    "Coordination required to avoid wasted capacity"
+    "Coordination required to avoid wasted capacity",
+    "Information propagation delay: News of capacity drop at 'west-east' must travel through the ring topology (a->b->c->d) before reaching non-adjacent agents",
+    "Communication Bottleneck: A single agent's failure to relay capacity updates prevents the entire ring from synchronizing",
+    "Route Oscillations: Agents switching between 'west-east' and 'west-south' simultaneously, creating secondary congestion"
+  ],
+  "coordination_challenges": [
+    "Multi-hop Information Latency: Agents must account for the fact that neighbors may have outdated route status due to the ring-constrained comms",
+    "Resource Reservation: High-priority agents must signal intent to reserve capacity via multi-hop messages before movement",
+    "Conflict Resolution: Resolving contention on the 'east-north' bottleneck (capacity 1) when communicating via the ring"
+  ],
+  "suggested_agent_strategies": [
+    "Proactive Gossiping: Agents should periodically broadcast local capacity observations to neighbors to mitigate ring latency",
+    "Priority-Aware Buffering: Normal-priority agents should proactively reroute to longer paths (e.g., south-north) if high-priority signals are detected in the ring",
+    "Token-Based Reservation: Implementation of a virtual 'reservation token' passed through the ring to claim capacity on contested segments"
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
     "recovery_turns_expected": "2-4",
     "coordination_challenges": [
-      "Multiple agents may attempt to route freight simultaneously",
-      "Lower-priority freight must wait or find alternate routes"
+      "Multi-hop Information Latency",
+      "Resource Reservation",
+      "Conflict Resolution"
     ]
   },
   "success_criteria": [
     "High-priority freight delivered within deadline",
     "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Recovery from disruption within expected turns",
+    "Minimization of 'dead-heading' (empty trips caused by miscommunication)"
   ],
   "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "ring_order": [

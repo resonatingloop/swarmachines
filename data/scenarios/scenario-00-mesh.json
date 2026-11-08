@@ -1,7 +1,7 @@
 {
-  "scenario_id": "scenario-00-mesh",
-  "title": "Scenario 00 in Mesh Topology",
-  "description": "This scenario explores scenario 00 dynamics within a mesh communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "scenario_id": "scenario-00-mesh-v2",
+  "title": "Scenario 00 in Mesh Topology - Enhanced Coordination Test",
+  "description": "This scenario explores scenario 00 dynamics within a mesh communication topology. The high connectivity of the mesh topology is contrasted against a physical graph with limited route capacities, testing the agents' ability to use redundant communication channels to optimize freight flow and resolve physical bottlenecks.",
   "seed": 42,
   "agents": [
     "a",
@@ -101,25 +101,44 @@
     "baseline": {
       "note": "no disruption, baseline run",
       "purpose": "establish normal coordination patterns"
+    },
+    "bottleneck_event": {
+      "turn_start": 4,
+      "target_route": "east-north",
+      "effect": "capacity_reduction",
+      "new_capacity": 0,
+      "note": "Testing rerouting capability via mesh communication"
     }
   },
   "edge_cases_to_watch": [
-    "No disruptions to complicate coordination",
-    "Focus on efficient freight routing",
-    "Baseline for comparing disrupted runs"
+    "Information overload in mesh topology during multi-agent consensus",
+    "Capacity saturation on the east-north route causing priority conflicts",
+    "Agent synchronization lag when negotiating route access via high-bandwidth mesh channels",
+    "Ghosting: Agents attempting to use a route that has just reached capacity due to communication latency"
+  ],
+  "coordination_challenges": [
+    "Conflict resolution between high-priority j-004 and normal-priority j-003 at the south/north junction",
+    "Global vs Local optimization: Balancing individual agent pathfinding with global throughput",
+    "Congestion management: Managing the narrow capacity of the east-north route (cap: 1) through distributed negotiation"
+  ],
+  "suggested_agent_strategies": [
+    "Distributed Auction: Agents bid for route capacity based on priority and remaining turns_to_deliver",
+    "Predictive Reservation: Using mesh connectivity to broadcast intended paths 2 turns in advance to prevent bottlenecking",
+    "Priority Preemption: High-priority agents (med-kit, food) trigger a 'clear path' signal across the mesh to force lower-priority agents to hold at depots"
   ],
   "expected_outcomes": {
-    "deliveries_baseline": 3,
+    "deliveries_baseline": 4,
     "recovery_turns_expected": "2-4",
-    "coordination_challenges": [
-      "No disruptions to complicate coordination",
-      "Focus on efficient freight routing"
+    "coordination_metrics": [
+      "Average route utilization",
+      "Priority satisfaction rate",
+      "Communication overhead per turn"
     ]
   },
   "success_criteria": [
-    "High-priority freight delivered within deadline",
-    "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "All high-priority freight delivered within turns_to_deliver",
+    "Zero route capacity violations",
+    "Agent consensus reached within 1 turn of disturbance occurrence"
   ],
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
+  "provenance": "model-enhanced: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
 }

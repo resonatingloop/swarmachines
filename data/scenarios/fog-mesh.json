@@ -1,7 +1,7 @@
 {
-  "scenario_id": "fog-mesh",
-  "title": "Fog in Mesh Topology",
-  "description": "This scenario explores fog dynamics within a mesh communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "scenario_id": "fog-mesh-v2-enhanced",
+  "title": "Fog in Mesh Topology (Enhanced)",
+  "description": "This scenario explores fog dynamics within a mesh communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions. The mesh topology ensures connectivity but introduces the risk of outdated information propagation through multi-hop relays.",
   "seed": 42,
   "agents": [
     "a",
@@ -109,22 +109,39 @@
     }
   },
   "edge_cases_to_watch": [
-    "Agents may observe stale route status",
+    "Agents may observe stale route status due to multi-hop relay delays",
     "Messages about bridge closures arrive 1 turn late",
-    "Agents must decide whether to trust stale observations"
+    "Agents must decide whether to trust stale observations from fog-affected peers",
+    "Information 'echoes': An agent receives the same stale update via two different mesh paths, incorrectly increasing its confidence in the data",
+    "Topology-induced isolation: A fog-impacted agent becomes a bottleneck for routing messages between healthy agents"
+  ],
+  "coordination_challenges": [
+    "Consensus Latency: Reaching agreement on a route change when the fog-affected agents (a, b) are providing delayed/degraded telemetry",
+    "Conflicting Truths: Agent 'c' sees an open route, but Agent 'a' reports it closed; agents must resolve the conflict without direct observation",
+    "Bandwidth Congestion: High-priority job updates may be delayed by redundant mesh rerouting during fog-induced uncertainty",
+    "Trust Decay: Agents must dynamically weigh the reliability of messages based on the sender's proximity to the fog zone"
+  ],
+  "suggested_agent_strategies": [
+    "Temporal Weighting: Prioritize recent observations over historical data when calculating route probability",
+    "Redundant Verification: For high-priority jobs, require confirmation from at least two distinct mesh paths before rerouting",
+    "Conservative Routing: During fog periods, choose paths with higher capacity/redundancy even if they are sub-optimal in distance",
+    "Predictive State Estimation: Use Kalman-like filtering to estimate if a route is likely 'open' based on last known status and elapsed turns"
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
     "recovery_turns_expected": "2-4",
     "coordination_challenges": [
       "Agents may observe stale route status",
-      "Messages about bridge closures arrive 1 turn late"
+      "Messages about bridge closures arrive 1 turn late",
+      "Information echoes in mesh relay",
+      "Consensus latency during fog"
     ]
   },
   "success_criteria": [
     "High-priority freight delivered within deadline",
     "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Recovery from disruption within expected turns",
+    "Minimization of 'dead-end' movements caused by stale data"
   ],
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
+  "provenance": "model-enhanced: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
 }

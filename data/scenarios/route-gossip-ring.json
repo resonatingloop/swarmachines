@@ -1,7 +1,7 @@
 {
-  "scenario_id": "route-gossip-ring",
+  "scenario_id": "route-gossip-ring-v2",
   "title": "Route Gossip in Ring Topology",
-  "description": "This scenario explores route gossip dynamics within a ring communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "description": "This scenario explores route gossip dynamics within a ring communication topology. A sudden route closure in a low-capacity physical network tests the agents' ability to propagate critical information through a constrained communication ring, forcing re-routing under tight temporal constraints.",
   "seed": 42,
   "agents": [
     "a",
@@ -107,24 +107,36 @@
     }
   },
   "edge_cases_to_watch": [
-    "Information spreads gradually through the network",
-    "Agents far from source learn last",
-    "Ring topology slows information spread vs. mesh"
+    "Information propagation latency due to ring diameter",
+    "Split-brain scenarios where agent 'c' acts on stale route data",
+    "Resource contention on the 'east-north' bottleneck route after 'west-south' closes",
+    "Race conditions between freight movement and information arrival"
+  ],
+  "coordination_challenges": [
+    "Multi-hop latency: Information must traverse the ring to reach agents responsible for remote depots",
+    "Asymmetric information: Agent 'a' may begin rerouting while agent 'c' continues to commit capacity to the closed route",
+    "Capacity cascading: Rerouting freight from 'west-south' to 'west-east' may saturate the east-bound links"
+  ],
+  "suggested_agent_strategies": [
+    "Proactive gossip: Agents should broadcast known route changes to both ring neighbors immediately upon receipt",
+    "Conservative routing: Agents with low information confidence should favor higher-capacity routes even if they are longer",
+    "Priority-based preempting: Agents carrying 'high' priority freight should signal congestion to others to clear pathing"
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
-    "recovery_turns_expected": "2-4",
+    "recovery_turns_expected": "3-5",
     "coordination_challenges": [
       "Information spreads gradually through the network",
-      "Agents far from source learn last"
+      "Agents far from source learn last",
+      "Bottleneck saturation on secondary routes"
     ]
   },
   "success_criteria": [
     "High-priority freight delivered within deadline",
-    "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Information propagation time minimized relative to ring diameter",
+    "Minimal capacity waste on closed routes due to stale information"
   ],
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "provenance": "enhanced: gemma-4-26b-a4b-it @ 2026-11-08T04:15:00.000000+00:00",
   "ring_order": [
     "a",
     "b",

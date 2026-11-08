@@ -1,7 +1,7 @@
 {
-  "scenario_id": "dual-disruption-ring",
-  "title": "Dual Disruption in Ring Topology",
-  "description": "This scenario explores dual disruption dynamics within a ring communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "scenario_id": "dual-disruption-ring-v2",
+  "title": "Dual Disruption in Ring Topology: Communication & Physical Decoupling",
+  "description": "This scenario explores dual disruption dynamics within a ring communication topology. A relay loss for Agent A coincides with the closure of a critical physical bridge, testing the agents' ability to re-route freight and re-establish multi-hop communication paths under extreme constraints.",
   "seed": 42,
   "agents": [
     "a",
@@ -102,35 +102,54 @@
       "disruption_1": {
         "type": "relay-loss",
         "agent": "a",
-        "start": 2
+        "start": 2,
+        "duration": "variable"
       },
       "disruption_2": {
         "type": "bridge-closure",
         "bridge": "east-bridge",
-        "turn": 3
+        "turn": 3,
+        "duration": "permanent"
       },
       "interaction": "compounding"
     }
   },
   "edge_cases_to_watch": [
     "Communication loss coincides with physical route closure",
-    "Agents cannot coordinate about the bridge closure",
-    "Recovery requires handling both disruptions simultaneously"
+    "Agents cannot coordinate about the bridge closure due to Agent A's relay failure",
+    "Recovery requires handling both disruptions simultaneously",
+    "Information asymmetry: Agent B knows about the bridge, but cannot reach Agent A to warn them",
+    "Single-path bottlenecking: When the bridge closes, the remaining routes hit capacity limits",
+    "Multi-hop latency: Agents must use Agent C or D to relay messages to bypass the 'dead' node A"
+  ],
+  "coordination_challenges": [
+    "Information Propagation: Relay loss of Agent A forces all communication between B/C and D/A to use longer multi-hop paths.",
+    "Split-Brain Scenario: Agents on opposite sides of the ring may operate on outdated physical topology maps.",
+    "Congestion Cascades: Re-routing freight from the closed east-bridge onto the 'west-south' route causing capacity overflow.",
+    "Priority Conflict: Determining which agent takes the remaining capacity on the north-south route when high-priority jobs are delayed."
+  ],
+  "suggested_agent_strategies": [
+    "Gossip-based Protocols: Agents should broadcast status updates to all neighbors to ensure info reaches the ring despite node loss.",
+    "Predictive Re-routing: Agents should preemptively move toward alternative depots when they detect a neighbor's silence.",
+    "Buffer Management: Holding low-priority freight at depots to reserve capacity for high-priority rerouted goods.",
+    "Redundancy: Using the 'west-bridge' as a secondary logical communication/transit corridor if the primary ring-path is saturated."
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
     "recovery_turns_expected": "2-4",
     "coordination_challenges": [
       "Communication loss coincides with physical route closure",
-      "Agents cannot coordinate about the bridge closure"
+      "Agents cannot coordinate about the bridge closure",
+      "Information asymmetry between nodes"
     ]
   },
   "success_criteria": [
     "High-priority freight delivered within deadline",
     "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Recovery from disruption within expected turns",
+    "Zero capacity violations on remaining routes"
   ],
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "provenance": "enhanced: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "ring_order": [
     "a",
     "b",

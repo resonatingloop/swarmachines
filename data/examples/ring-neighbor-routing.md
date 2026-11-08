@@ -1,134 +1,127 @@
 # Example: Ring Routing via Two Neighbors
 
 ## Opening Context
-The simulation has entered Turn 3 of the "Freight-in-the-Fog" scenario. The environment is characterized by a high-latency Ring Topology consisting of four agents: **a**, **b**, **c**, and **d**, connected in a closed loop ($a \leftrightarrow b \leftrightarrow c \leftrightarrow d \leftrightarrow a$). A thick, computational fog has descended, reducing the visibility of direct neighbor states and forcing agents to rely heavily on multi-hop messaging to synchronize their intentions.
 
-Currently, Agent **a** holds a high-priority freight unit destined for a terminal managed by Agent **c**. Agent **a**’s intended route is $a \to b \to c$, while Agent **c** is planning a preemptive buffer move to clear the $b \to c$ link. The coordination challenge arises from a sudden "Fog Delay": the movement of freight across the $b \to c$ segment is predicted to take an extra turn due to environmental interference. Agent **a** cannot communicate with **c** directly; any strategic synchronization must be relayed through Agent **b**, making **b** a critical mediator in this multi-hop negotiation.
+The simulation enters Turn 3 within a Ring topology. The network consists of four agents (a, b, c, d) connected in a continuous loop. Currently, the freight—a high-priority payload labeled `FR-99`—is positioned at Agent **a**. The target destination for this payload is Agent **c**, which is currently two hops away in either direction.
+
+The coordination challenge is critical: Agent **a** has identified a path that requires passing through Agent **b** to reach **c**, but Agent **c** has just signaled a localized congestion event due to a secondary freight arrival. Agent **a** cannot simply push the freight blindly; it must synchronize its arrival with Agent **c**’s clearance window to avoid a bottleneck at the node. Because the topology is a ring, Agent **a** and Agent **c** are not direct neighbors. To coordinate, Agent **a** must utilize Agent **b** as a relay to bridge the communication gap.
 
 ## Message Exchange
 
-Agent **a** initiates the coordination process. Recognizing that Agent **c** is the target destination and that Agent **b** is the only bridge, **a** calculates that it must first inform **b** of its intent to utilize the $a \to b$ link, while simultaneously requesting that **b** pass a synchronization request to **c**. Agent **a**'s internal reasoning focuses on preventing a collision at node **b** and ensuring that **c** does not vacate the destination terminal too early, which would lead to idling.
+Agent **a** initiates the sequence by calculating the necessary movement. However, because Agent **a** lacks a direct link to **c**, it must craft a message intended for **c** and dispatch it to its immediate neighbor, **b**. Agent **a**'s internal reasoning focuses on timing: "If I move now, I arrive at Turn 4, but if **c** is congested, I will stall. I must confirm **c**'s availability through **b**."
 
-**Message 1: Agent a $\to$ Agent b (Relay Request)**
+**Message 1: Agent a $\rightarrow$ Agent b (Relay Request)**
 ```json
 {
-  "header": {
-    "turn": 3,
-    "sender": "a",
-    "recipient": "b",
-    "type": "RELAY_REQUEST"
-  },
+  "sender": "a",
+  "recipient": "c",
+  "relay_via": "b",
+  "turn": 3,
   "payload": {
-    "intent": "move_freight",
-    "target_node": "c",
-    "via_node": "b",
-    "priority": "high",
-    "relay_to": "c",
-    "content": {
-      "message": "Requesting coordination with c. I will occupy b in turn 4. Please confirm if c is ready to receive at turn 5 due to fog delay."
-    }
+    "type": "coordination_query",
+    "intent": "check_availability",
+    "freight_id": "FR-99",
+    "estimated_arrival_turn": 4
   },
-  "reasoning": "Direct communication with c is impossible. I must use b as a relay to synchronize arrival times with c to account for the fog-induced delay on the b-c link."
+  "reasoning": "Direct link to c is unavailable. Requesting b to forward availability check to c to prevent congestion at node c."
 }
 ```
 
-Upon receiving the message, Agent **b** processes the request. Agent **b** realizes that its own schedule for Turn 4 involves a local scan, but it must now prioritize the relay. Agent **b** verifies the path and forwards the intelligence to **c**. Agent **b**'s reasoning emphasizes the importance of the "extra turn delay" mentioned by **a**, as this affects **b**'s own capacity to move freight through that segment.
+Agent **b** receives the message. Being a relay node, its primary objective is to maintain network throughput by passing relevant coordination data. Agent **b** recognizes the urgency of the `FR-99` movement and immediately forwards the packet to **c**.
 
-**Message 2: Agent b $\to$ Agent c (Relay Forward)**
+**Message 2: Agent b $\rightarrow$ Agent c (Relay Forward)**
 ```json
 {
-  "header": {
-    "turn": 3,
-    "sender": "b",
-    "recipient": "c",
-    "type": "RELAY_FORWARD"
-  },
+  "sender": "b",
+  "recipient": "c",
+  "original_sender": "a",
+  "turn": 3,
   "payload": {
-    "original_sender": "a",
-    "relay_sender": "b",
-    "content": {
-      "message": "Agent a intends to move to c via b. Expected arrival at c is Turn 5 due to fog delay. Confirm availability."
-    }
+    "type": "coordination_query",
+    "intent": "check_availability",
+    "freight_id": "FR-99",
+    "estimated_arrival_turn": 4
   },
-  "reasoning": "Relaying intent from a to c. I am acting as the bridge. I have noted the fog delay and will adjust my local traffic management to prevent congestion at node b."
+  "reasoning": "Relaying coordination request from a. High priority freight detected."
 }
 ```
 
-Agent **c** receives the relayed message. Agent **c** evaluates its current state and realizes that if it moves to node **d** now, it will be out of position when **a**'s freight arrives in Turn 5. Agent **c** decides to hold its position and sends a confirmation back through **b**.
+Agent **c** processes the forwarded request. Agent **c**'s internal state shows that its local buffer will clear by the end of Turn 3. Therefore, it can accept `FR-99` at the start of Turn 4. Agent **c** then sends a confirmation back through the ring (via **b**) to **a**.
 
-**Message 3: Agent c $\to$ Agent b $\to$ Agent a (Confirmation Chain)**
+**Message 3: Agent c $\rightarrow$ Agent b $\rightarrow$ Agent a (Confirmation)**
 ```json
 {
-  "header": {
-    "turn": 3,
-    "sender": "c",
-    "recipient": "b",
-    "type": "RELAY_RESPONSE"
-  },
+  "sender": "c",
+  "recipient": "a",
+  "relay_via": "b",
+  "turn": 3,
   "payload": {
-    "original_sender": "a",
-    "relay_sender": "c",
-    "content": {
-      "status": "ACKNOWLEDGE",
-      "message": "Confirmed. I will hold position at c through Turn 5 to receive freight from a."
-    }
+    "type": "coordination_response",
+    "status": "clear",
+    "available_turn": 4
   },
-  "reasoning": "Coordinated with a via b. Holding position to ensure seamless transfer and avoid unnecessary movement in the fog."
+  "reasoning": "Local congestion clearing. Ready to receive FR-99 at Turn 4."
 }
 ```
 
 ## Action Resolution
 
-With the multi-hop handshake complete, the agents transition from communication to execution. Agent **a** commits to the movement, knowing the path is clear. Agent **b** prepares to facilitate the transit, and Agent **c** enters a "wait-and-receive" state. The actions are validated against the topology to ensure no two agents attempt to occupy the same edge simultaneously.
+With the confirmation received via the relay chain, Agent **a** can now commit to a movement action. Agent **a**'s logic dictates that since the destination is ready, it should proceed with the transfer to its immediate neighbor, **b**, to progress the freight toward the goal.
 
-**Agent a Action:**
+**Action: Agent a**
 ```json
 {
-  "turn": 4,
   "agent": "a",
-  "action": "MOVE",
-  "params": {
-    "from": "a",
-    "to": "b",
-    "freight_id": "F-101"
+  "turn": 3,
+  "action_type": "move_freight",
+  "parameters": {
+    "freight_id": "FR-99",
+    "destination_node": "b",
+    "expected_arrival": 4
   },
-  "validation": "SUCCESS"
+  "validation_logic": "Destination b is neighbor; b is ready to receive."
 }
 ```
 
-**Agent c Action:**
+Simultaneously, Agent **b** prepares to act as a buffer. Since the freight is moving from **a** to **b**, Agent **b** must reserve its capacity for the incoming payload.
+
+**Action: Agent b**
 ```json
 {
-  "turn": 4,
-  "agent": "c",
-  "action": "STAY",
-  "params": {
-    "node": "c"
+  "agent": "b",
+  "turn": 3,
+  "action_type": "reserve_capacity",
+  "parameters": {
+    "freight_id": "FR-99",
+    "expected_arrival_turn": 4
   },
-  "validation": "SUCCESS"
+  "validation_logic": "Preparing for inbound transit from neighbor a."
 }
 ```
 
-The simulation engine validates these actions. Because **b** is aware of the incoming freight from **a** and the planned arrival of **c**'s empty slot, there are no conflicts. The agents execute their instructions, moving the freight incrementally toward its destination.
+The simulation engine validates these actions. Agent **a**'s move is legal because **b** is a direct neighbor and has successfully reserved capacity. There is no conflict, as Agent **c**'s congestion is handled by the timing of the arrival rather than a physical collision of freight.
 
 ## Outcome
 
-The coordination was successful. By the end of Turn 4, Agent **a** has successfully moved the freight to Agent **b**. Although the fog delay persists, the agents are "on schedule" relative to their newly negotiated timeline. Agent **a** has effectively mitigated the risk of a collision or a missed connection at node **c**.
+The turn concludes successfully. The freight `FR-99` has left Agent **a** and is currently in transit to Agent **b**. The coordination successfully prevented a "collision" of intents where Agent **a** might have pushed freight into a congested Agent **c**, which would have resulted in a failed move and wasted turns.
 
-The agents have learned that in a Ring topology with high latency, proactive relaying is more efficient than waiting for direct visibility. For future turns, Agent **b** has updated its internal model to prioritize itself as a high-traffic relay node, and Agent **a** has recorded the "fog delay" coefficient to improve its future arrival time estimates.
+Agents **a** and **c** have established a "virtual handshake" despite the physical distance. This successful coordination increases the confidence score of the agents' predictive models for future turns. Agent **b** has also learned that it must prioritize relaying messages from **a** to **c** to maintain optimal ring flow. In Turn 4, the freight will arrive at **b**, and the same process will repeat to move from **b** to **c**.
 
 ## Analysis
 
-This scenario illustrates the **Multi-Hop Relay Coordination** pattern. In a Ring topology, the lack of direct adjacency between non-neighbors (a and c) necessitates a "store-and-forward" approach to intelligence. The topology hindered speed—the coordination took three steps instead of one—but it facilitated a structured sequence of handshakes that prevented chaotic, uncoordinated movements. 
+This scenario illustrates the **Multi-Hop Relay Pattern**. In a Ring topology, the lack of direct connectivity forces agents to rely on intermediate nodes not just for physical freight movement, but for information propagation. The topology significantly hindered the speed of coordination (adding a turn delay for the message to travel and return), but it did not prevent the successful synchronization of actions.
 
-Had the topology been a **Mesh** or **Fully Connected** graph, Agent **a** could have communicated with **c** directly, likely reducing the turn count to 1 and saving computational overhead. However, the Ring topology forced a level of "social awareness" where Agent **b** was forced to become a participant in the logic, rather than just a passive path. The key takeaway for agent strategy is that in constrained topologies, the "middleman" must be treated as a primary coordination partner, not just a transparent pipe.
+If this were a **Mesh topology**, Agent **a** would have likely communicated directly with **c**, reducing the message latency to zero relay turns and allowing for faster decision-making. However, in the Ring, the coordination pattern demonstrated that "neighbor-aware" routing is essential. The key takeaway for agent strategy is that in constrained topologies, the value of a neighbor is doubled: they are both a potential physical path and a vital communication conduit.
 
 ***
 
 <!-- MODEL_GENERATED: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00 -->
 <!-- RUN: gen-full-20261108 -->
 <!-- EXAMPLE: ring-neighbor-routing -->
-<!-- TOPOLOGY: ring -->
+<!-- TOPOLOGY: mesh -->
 
 This example illustrates expected coordination patterns. Actual agent behavior
 may vary based on implementation and simulation dynamics.
+
+---
+*Provenance: model-generated narrative (gemma-4-26b-a4b-it @ 2026-11-08T04:00:38.507725+00:00, call 37).*

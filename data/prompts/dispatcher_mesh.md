@@ -147,3 +147,6 @@ Respond with valid JSON in the following structure:
 This prompt is seed material for autonomous agent simulation. It defines the agent's
 capabilities, constraints, and expected response format. Adapt agent IDs and context
 as needed for specific simulation runs.
+
+---
+*Provenance: team-authored base template, model acknowledgment recorded in run log (call 3, 2026-11-08T03:56:41.807185+00:00).*

@@ -1,7 +1,7 @@
 {
-  "scenario_id": "cascading-failure-ring",
+  "scenario_id": "cascading-failure-ring-v2",
   "title": "Cascading Failure in Ring Topology",
-  "description": "This scenario explores cascading failure dynamics within a ring communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "description": "This scenario explores cascading failure dynamics within a ring communication topology. A single node/link failure disrupts the sequential information flow, causing delayed decision-making and leading to physical route congestion and capacity exhaustion.",
   "seed": 42,
   "agents": [
     "a",
@@ -101,28 +101,45 @@
     "cascading-failure": {
       "trigger": "relay-loss turn 2",
       "cascade": "route overload turn 4",
-      "propagation": "capacity exhaustion"
+      "propagation": "capacity exhaustion",
+      "details": "Agent 'b' loses ability to pass messages to 'c', forcing information to travel the long way (b->a->d->c), creating 3x latency in coordination."
     }
   },
   "edge_cases_to_watch": [
     "Initial disruption triggers secondary effects",
     "Rerouted freight overwhelms alternate routes",
-    "System may reach unstable equilibrium"
+    "System may reach unstable equilibrium",
+    "Information stale-ness: Agents acting on outdated route availability data due to ring latency",
+    "Deadlock: Two agents waiting for a bridge that is blocked by a third agent rerouted due to the initial failure",
+    "Echo Chamber effect: Localized rerouting creates a feedback loop of congestion in the remaining functional segment"
+  ],
+  "coordination_challenges": [
+    "Increased message latency: Ring diameter increases effectively when a node/link fails",
+    "Split-brain coordination: Agents on one side of the break may optimize for local flow, inadvertently causing bottlenecks for agents on the other side",
+    "Priority conflict: High-priority jobs require immediate bandwidth, but ring latency prevents preemptive negotiation"
+  ],
+  "suggested_agent_strategies": [
+    "Predictive Buffering: Agents anticipate congestion on adjacent routes based on historical latency patterns",
+    "Redundant Signaling: Agents attempt to broadcast critical updates through multiple paths if the ring allows",
+    "Consensus-Light Protocol: Switching from global optimization to local-neighborhood optimization to reduce communication overhead during high-latency periods",
+    "Priority-Based Throttling: Deliberately delaying 'normal' priority jobs to reserve capacity for high-priority 'med-kit' or 'food' jobs"
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
     "recovery_turns_expected": "2-4",
     "coordination_challenges": [
       "Initial disruption triggers secondary effects",
-      "Rerouted freight overwhelms alternate routes"
+      "Rerouted freight overwhelms alternate routes",
+      "Increased message latency via ring topology"
     ]
   },
   "success_criteria": [
     "High-priority freight delivered within deadline",
     "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Recovery from disruption within expected turns",
+    "Minimization of total system delay compared to no-failure baseline"
   ],
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "provenance": "model-enhanced: gemma-4-26b-a4b-it @ 2026-11-08T04:00:00.000Z",
   "ring_order": [
     "a",
     "b",

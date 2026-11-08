@@ -1,7 +1,7 @@
 {
   "scenario_id": "scenario-00-ring",
   "title": "Scenario 00 in Ring Topology",
-  "description": "This scenario explores scenario 00 dynamics within a ring communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "description": "This scenario explores scenario 00 dynamics within a ring communication topology. The ring topology limits information flow to immediate neighbors, creating latency and potential misinformation cascades. This tests the agents' ability to coordinate freight movement using only local information and indirect communication.",
   "seed": 42,
   "agents": [
     "a",
@@ -104,22 +104,33 @@
     }
   },
   "edge_cases_to_watch": [
-    "No disruptions to complicate coordination",
-    "Focus on efficient freight routing",
-    "Baseline for comparing disrupted runs"
+    "Information lag due to ring hop latency",
+    "Conflicting instructions from distant agents relayed through neighbors",
+    "Congestion at single-capacity routes (east-north) caused by indirect coordination failures",
+    "Deadlocks where agents wait for information that is circulating in the wrong direction"
+  ],
+  "coordination_challenges": [
+    "Multi-hop information decay: Messages losing accuracy as they pass through neighbors",
+    "Global state estimation: Agents must infer the state of the whole system using only local neighbor updates",
+    "Split-brain scenarios: Agents on opposite sides of the ring forming divergent coordination plans"
+  ],
+  "suggested_agent_strategies": [
+    "Gossip-based consensus: Periodically relaying neighbor state to increase global awareness",
+    "Predictive routing: Using historical turn data to anticipate depot congestion without direct communication",
+    "Redundancy injection: Sending high-priority job status updates in both directions (clockwise and counter-clockwise)"
   ],
   "expected_outcomes": {
-    "deliveries_baseline": 3,
-    "recovery_turns_expected": "2-4",
+    "deliveries_baseline": 4,
+    "recovery_turns_expected": "N/A (Baseline)",
     "coordination_challenges": [
-      "No disruptions to complicate coordination",
-      "Focus on efficient freight routing"
+      "Multi-hop latency",
+      "Local-only observability"
     ]
   },
   "success_criteria": [
     "High-priority freight delivered within deadline",
-    "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Agents maintain a consistent global state estimate despite topology constraints",
+    "Minimal throughput loss compared to a fully-connected communication graph"
   ],
   "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "ring_order": [

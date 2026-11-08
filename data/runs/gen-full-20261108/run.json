@@ -278,5 +278,11 @@
       "tokens": 2363
     }
   ],
-  "notes": "Full regeneration run \u2014 fat content, 38 calls"
+  "notes": "Full regeneration run \u2014 38 calls. After audit FIX-FIRST: 22 scenarios contain model-enhanced JSON (calls 9-30), 4 examples contain MESH responses (calls 31,33,35,37), 8 prompts are team-authored base templates (calls 1-8 recorded model acknowledgments). 4 team-authored files restored from 0dca625 (not in this run).",
+  "provenance_summary": {
+    "total_artifacts_on_disk": 38,
+    "model_generated": 26,
+    "team_authored": 12,
+    "fix_applied": "2026-11-08 \u2014 extracted actual model responses from calls.jsonl, restored 4 deleted files from 0dca625"
+  }
 }

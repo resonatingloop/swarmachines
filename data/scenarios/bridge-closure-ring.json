@@ -1,7 +1,7 @@
 {
-  "scenario_id": "bridge-closure-ring",
+  "scenario_id": "bridge-closure-ring-v2",
   "title": "Bridge Closure in Ring Topology",
-  "description": "This scenario explores bridge closure dynamics within a ring communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "description": "This scenario explores bridge closure dynamics within a ring communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions.",
   "seed": 42,
   "agents": [
     "a",
@@ -101,29 +101,46 @@
     "bridge-closure": {
       "bridge": "east-bridge",
       "closure_turn": 2,
-      "alternative_route": "east-south-west",
-      "delay_turns": 2
+      "alternative_route": "east-north-south",
+      "delay_turns": 3
     }
   },
   "edge_cases_to_watch": [
     "Direct route becomes unavailable",
     "Freight must be rerouted through longer path",
-    "Agents at east depot may become isolated"
+    "Agents at east depot may become isolated due to communication bottleneck",
+    "Capacity saturation on the north-south route due to massive rerouting",
+    "Information propagation delay in ring topology prevents rapid consensus on reroute",
+    "Conflicting agent decisions causing deadlocks at capacity-limited nodes"
+  ],
+  "coordination_challenges": [
+    "Latency in consensus: Agents must propagate the bridge closure status through the ring to reach all nodes",
+    "Resource competition: Multiple agents attempting to use the low-capacity 'east-north' route simultaneously",
+    "Priority-based preemption: High-priority agents must signal others to yield capacity on the alternate route",
+    "Information asymmetry: Agents on the far side of the ring acting on stale routing data"
+  ],
+  "suggested_agent_strategies": [
+    "Distributed Consensus: Use ring-passing to synchronize the 'bridge-closed' state across all agents",
+    "Dynamic Re-routing: Pre-calculate secondary paths (e.g., east -> north -> south) upon status updates",
+    "Congestion Awareness: Monitor route utilization and switch to secondary paths before capacity is reached",
+    "Priority Signaling: High-priority agents broadcast 'reservation' requests to mitigate collision at bottleneck nodes"
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
     "recovery_turns_expected": "2-4",
     "coordination_challenges": [
       "Direct route becomes unavailable",
-      "Freight must be rerouted through longer path"
+      "Freight must be rerouted through longer path",
+      "Information propagation delay"
     ]
   },
   "success_criteria": [
     "High-priority freight delivered within deadline",
     "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Recovery from disruption within expected turns",
+    "Minimal capacity violations on alternative routes"
   ],
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "provenance": "enhanced-model: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "ring_order": [
     "a",
     "b",

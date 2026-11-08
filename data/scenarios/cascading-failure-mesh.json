@@ -1,7 +1,7 @@
 {
   "scenario_id": "cascading-failure-mesh",
   "title": "Cascading Failure in Mesh Topology",
-  "description": "This scenario explores cascading failure dynamics within a mesh communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "description": "This scenario explores cascading failure dynamics within a mesh communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions.",
   "seed": 42,
   "agents": [
     "a",
@@ -107,7 +107,22 @@
   "edge_cases_to_watch": [
     "Initial disruption triggers secondary effects",
     "Rerouted freight overwhelms alternate routes",
-    "System may reach unstable equilibrium"
+    "System may reach unstable equilibrium",
+    "Information asymmetry: Agent A knows route status but Agent B cannot receive updates due to mesh relay loss",
+    "Deadlock: Agents waiting for capacity on a bridge that is blocked by a high-priority agent",
+    "Oscillatory routing: Agents constantly switching between two routes as they fluctuate in capacity"
+  ],
+  "coordination_challenges": [
+    "Synchronization failure: Disrupted mesh prevents real-time updates on route occupancy",
+    "Priority contention: High-priority jobs hogging limited 'bridge' capacities during recovery",
+    "Stale information: Agents making decisions based on outdated capacity data from previous turns",
+    "Resource starvation: Lower priority jobs being indefinitely deferred due to cascading delays"
+  ],
+  "suggested_agent_strategies": [
+    "Predictive Load Balancing: Anticipating capacity exhaustion by observing turn-over-turn occupancy trends",
+    "Gossip-based Consensus: Using multi-hop communication to propagate route status when direct links fail",
+    "Priority-Aware Reservation: Securing capacity on critical bottlenecks (bridges) in advance for high-priority freight",
+    "Conservative Buffer Management: Intentionally leaving 1 unit of capacity free to mitigate sudden cascade effects"
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,

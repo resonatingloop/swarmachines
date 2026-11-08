@@ -1,7 +1,7 @@
 {
-  "scenario_id": "contested-deliveries-mesh",
+  "scenario_id": "contested-deliveries-mesh-v2",
   "title": "Contested Deliveries in Mesh Topology",
-  "description": "This scenario explores contested deliveries dynamics within a mesh communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "description": "This scenario explores contested deliveries dynamics within a mesh communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions.",
   "seed": 42,
   "agents": [
     "a",
@@ -99,20 +99,37 @@
   ],
   "disturbance_schedule": {
     "contested-deliveries": {
-      "destination": "south",
+      "target_destination": "south",
       "freight_count": 3,
-      "capacity_in": 1,
+      "capacity_restriction": 1,
       "priority_mix": [
         "high",
         "normal",
         "low"
-      ]
+      ],
+      "start_turn": 4,
+      "duration": 6
     }
   },
   "edge_cases_to_watch": [
     "Multiple freight items competing for same destination slot",
     "Agents must coordinate to avoid congestion",
-    "Lower-priority deliveries may be significantly delayed"
+    "Lower-priority deliveries may be significantly delayed",
+    "Message propagation delay in mesh during high-traffic congestion",
+    "Communication saturation when agents attempt simultaneous rerouting",
+    "Resource starvation for low-priority jobs at the South bottleneck"
+  ],
+  "coordination_challenges": [
+    "Synchronizing arrival times to prevent South depot overflow",
+    "Negotiating route precedence when capacity is reduced to 1",
+    "Information asymmetry: Agents discovering congestion at different turns",
+    "Dynamic rerouting decisions under tight turn-to-deliver constraints"
+  ],
+  "suggested_agent_strategies": [
+    "Priority-based queuing: High-priority agents claim capacity slots first",
+    "Staggered movement: Delaying non-critical movement to avoid bottleneck peaks",
+    "Consolidated routing: Using bridges to bypass congested central routes",
+    "Broadcast-based negotiation: Using mesh topology to alert all agents of capacity drops"
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
@@ -125,7 +142,8 @@
   "success_criteria": [
     "High-priority freight delivered within deadline",
     "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Recovery from disruption within expected turns",
+    "Minimization of agent idle time at congested nodes"
   ],
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
+  "provenance": "model-enhanced: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
 }

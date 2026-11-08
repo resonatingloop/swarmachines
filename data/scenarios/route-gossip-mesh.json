@@ -1,7 +1,7 @@
 {
   "scenario_id": "route-gossip-mesh",
   "title": "Route Gossip in Mesh Topology",
-  "description": "This scenario explores route gossip dynamics within a mesh communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "description": "This scenario explores route gossip dynamics within a mesh communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions.",
   "seed": 42,
   "agents": [
     "a",
@@ -109,20 +109,37 @@
   "edge_cases_to_watch": [
     "Information spreads gradually through the network",
     "Agents far from source learn last",
-    "Ring topology slows information spread vs. mesh"
+    "Information Echo: Agents receiving outdated gossip from different neighbors causing path oscillation",
+    "Network Partitioning: Communication mesh remains intact while physical routing becomes impossible",
+    "Capacity Bottleneck: Sudden diversion of traffic from 'west-south' to 'west-east' causing congestion on the east corridor"
+  ],
+  "coordination_challenges": [
+    "Stale Information Management: Agents acting on route status that has changed since their last update",
+    "Gossip Congestion: High frequency of updates consuming agent bandwidth/processing",
+    "Conflict Resolution: Two agents attempting to utilize the single-capacity 'east-north' route simultaneously due to rerouting",
+    "Inconsistent Global State: Discrepancy between what Agent A knows and what Agent D knows about the closed route"
+  ],
+  "suggested_agent_strategies": [
+    "Timestamped Gossip: Attach temporal metadata to route updates to prevent regressing to older states",
+    "Proactive Redundancy: High-priority jobs (e.g., j-001, j-004) should seek alternative paths before the route closure signal reaches the agent",
+    "Majority Consensus: Agents wait for confirmation from multiple neighbors before committing to a significant route change",
+    "Congestion Awareness: Dynamically adjust capacity assumptions based on observed neighbor traffic density"
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
     "recovery_turns_expected": "2-4",
     "coordination_challenges": [
       "Information spreads gradually through the network",
-      "Agents far from source learn last"
+      "Agents far from source learn last",
+      "Information Echo/Path Oscillation",
+      "Capacity Bottlenecking on alternative routes"
     ]
   },
   "success_criteria": [
     "High-priority freight delivered within deadline",
     "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Recovery from disruption within expected turns",
+    "Minimization of 'stale-route' movements (unnecessary turns taken on closed routes)"
   ],
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
+  "provenance": "model-enhanced: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
 }

@@ -1,90 +1,107 @@
-# Coordination Narrative: Reroute After Relay Loss
+# Example: Reroute After Relay Loss
+## Topology: MESH
 
-## Opening Context
-Turn 4 of the simulation is underway. The operational environment is configured in a **RING topology**, consisting of four agents: **a, b, c,** and **d**, connected in a continuous loop (a-b-c-d-a). However, the network has suffered a critical degradation. Agent **a** has been unresponsive since Turn 2, creating a "black hole" in the ring. Because the topology is a ring, any data or freight intended to pass through **a** must now be diverted through the long way around the loop (b $\rightarrow$ c $\rightarrow$ d $\rightarrow$ a) or found an alternative path if the ring is broken.
+### Opening Context
 
-Currently, the priority objective is freight **j-001**, a high-priority med-kit located at Agent **b**. The original logistics plan required **b** to hand off the kit to **a**, who would then transport it to the South Depot via **d**. With **a** unreachable, the primary relay node is gone. Agent **b** detects the failure to handshake with **a** and must initiate a re-routing protocol to ensure the med-kit reaches its destination via the remaining functional nodes (**c** and **d**), despite the increased latency and path length.
+It is Turn 4 of the *Freight-in-the-Fog* simulation. The environment is currently operating under a **MESH** topology, providing multiple redundant paths between nodes, though signal strength remains variable. The active agents involved in this sector are Agent **b**, Agent **c**, and Agent **d**. Agent **a**, who previously served as the primary relay for the northern quadrant, has been unreachable since Turn 2 due to a localized sensor blackout.
 
-## Message Exchange
-Agent **b** is the first to recognize the disruption. Its internal reasoning engine flags a "Communication Timeout" error when attempting to ping **a**. Under the ring topology constraints, **b** knows it cannot reach **a** directly for a handshake, so it must broadcast its status to its neighbor, **c**, to see if the network partition is localized or systemic.
+The primary objective for this turn is the delivery of Freight **j-001** (a critical med-kit) from the North Supply Point to the South Depot. Under the original routing plan, Agent **a** was slated to receive the freight and relay it southward. However, with Agent **a** offline, the central path is severed. Agent **b** currently holds the freight, but the path toward the South Depot is now obstructed by the "fog" (high latency/noise) in the direct corridor. Agent **b** must now coordinate with Agents **c** and **d** to establish a new relay chain through the eastern perimeter to ensure the med-kit reaches its destination without delay.
 
-**b** sends a status update and a request for path recalculation to **c**:
+### Message Exchange
+
+Agent **b** realizes that its local map no longer supports the original delivery trajectory. Its internal reasoning module identifies that the direct path to the South Depot is blocked by the absence of Agent **a**, and the alternative path through the western corridor is currently experiencing 80% packet loss. To maintain mission integrity, Agent **b** must broadcast a request for a new route to its neighbors, **c** and **d**, seeking a path that utilizes the more stable eastern nodes.
+
+Agent **b** initiates the coordination by sending a discovery and proposal message to Agent **c**. Because this is a MESH topology, Agent **b** does not need to rely on a central hub; it communicates directly with its most stable neighbor to initiate the recalculation.
 
 ```json
 {
-  "msg_id": "msg-004-b-to-c",
-  "sender": "b",
-  "receiver": "c",
-  "timestamp": "T4-001",
-  "type": "STATUS_RECOVERY",
+  "sender": "agent_b",
+  "receiver": "agent_c",
+  "turn": 4,
+  "message_type": "COORDINATION_PROPOSAL",
   "payload": {
-    "status": "NODE_UNREACHABLE",
-    "target_node": "a",
-    "affected_freight": "j-001",
-    "reasoning": "Failed to establish handshake with node 'a' for 2 consecutive turns. Requesting neighbor 'c' to verify connectivity to 'd' and propose alternative route for j-001."
-  }
-}
-```
-
-Agent **c** receives the message. Because of the ring topology, **c** is aware that it acts as a bridge between the functional segment (b-c-d) and the disconnected segment (d-a). **c**'s internal reasoning determines that since **a** is silent, the only viable path for the med-kit is the clockwise traversal through **d**. However, **c** must first confirm that **d** is capable of accepting the load and that the South Depot is still accessible via **d**.
-
-**c** processes the request and responds to **b**, while simultaneously forwarding a "pre-alert" to **d** to prepare for the increased load:
-
-```json
-{
-  "msg_id": "msg-005-c-to-b",
-  "sender": "c",
-  "receiver": "b",
-  "timestamp": "T4-002",
-  "type": "ROUTE_PROPOSAL",
-  "payload": {
-    "proposed_route": ["b", "c", "d"],
-    "estimated_latency_increase": "200%",
-    "status": "CONFIRMED_PATH_AVAILABLE",
-    "reasoning": "Node 'a' is confirmed offline by neighbor 'd'. Node 'd' is functional. Rerouting j-001 through 'c' and 'd' is the only valid path in the current ring configuration."
-  }
-}
-```
-
-## Action Resolution
-Upon receiving the proposal from **c**, Agent **b** validates the route. The validation logic confirms that although the path is longer, the integrity of the med-kit's transit is more important than the speed of delivery. Agent **b** then issues the command to move the freight.
-
-Agent **b** executes the handoff to **c**:
-
-```json
-{
-  "action_id": "act-882-b",
-  "agent": "b",
-  "type": "FREIGHT_TRANSFER",
-  "params": {
-    "freight_id": "j-001",
-    "target_agent": "c",
-    "location": "transfer_point_bc"
+    "target_freight": "j-001",
+    "current_location": "north_sector_04",
+    "destination": "south_depot",
+    "issue": "relay_loss_agent_a",
+    "proposed_path": ["agent_b", "agent_c", "agent_d", "south_depot"]
   },
-  "validation_status": "SUCCESS"
+  "reasoning": "Agent_a is unresponsive. Direct path to south_depot is unavailable. Proposing eastern bypass via agent_c and agent_d to maintain delivery velocity."
 }
 ```
 
-Simultaneously, Agent **c** prepares its own movement logic to receive and then pass the freight. The simulation engine validates these actions by checking the spatial proximity of **b** and **c** and the current availability of **c**'s cargo bay. Since **c** is currently idle, the action is executed without conflict. Agent **d** is also signaled to prepare for the arrival of **j-001** in the next turn.
+Agent **c** receives the message and performs a local resource check. Agent **c** notes that while it can reach Agent **d**, its own battery levels are at 40%, making a long-distance transit difficult. However, Agent **c** determines that by acting as a short-term relay rather than a carrier, it can fulfill the requirement. Agent **c** then relays this status to Agent **d** to confirm the final leg of the journey.
 
-## Outcome
-The coordination was successful. By the end of Turn 4, the med-kit **j-001** was successfully transferred from **b** to **c**. While the freight did not move closer to the South Depot in terms of absolute distance as quickly as originally planned, the "dead" segment of the ring was bypassed, preventing the cargo from being stranded at **b**.
+```json
+{
+  "sender": "agent_c",
+  "receiver": "agent_d",
+  "turn": 4,
+  "message_type": "COORDINATION_ACKNOWLEDGE",
+  "payload": {
+    "status": "path_accepted",
+    "relay_role": "intermediary",
+    "estimated_load": "low",
+    "handover_point": "sector_east_junction"
+  },
+  "reasoning": "Proposal from agent_b received. I can facilitate the connection to agent_d, though I cannot carry the freight myself due to power constraints. Routing request to agent_d for final confirmation."
+}
+```
 
-Agents **b** and **c** updated their local routing tables to mark the edge `(b,a)` and `(a,d)` as "High Cost/Unreliable." This ensures that in future turns, they will not attempt to use **a** as a relay, even if it briefly flickers back online. The system has successfully transitioned from a "failed primary route" to a "functional secondary route."
+Agent **d** receives the confirmation from **c**. It assesses the incoming freight's priority and confirms that its current position at the eastern junction is optimal for receiving **j-001** and moving it into the South Depot.
 
-## Analysis
-This scenario illustrates the **Dynamic Rerouting** coordination pattern. In a **RING topology**, the loss of a single node effectively turns the ring into a line (a bus topology). The primary strength of the ring here was that the information could still flow in the opposite direction to bypass the failure. 
+### Action Resolution
 
-If this had been a **MESH topology**, the agents might have found a direct leap from **b** to **d**, significantly reducing the latency. However, in a ring, the agents are forced to rely on their immediate neighbors, making the "hop-by-hop" communication and consensus-building shown here essential. The key takeaway for agent strategy is that in constrained topologies, detecting a node failure early and propagating that status to the rest of the chain is more critical than trying to force a connection to a dead node.
+With the communication loop closed, the agents transition from negotiation to execution. Agent **b** prepares to move the physical freight toward the junction point, while Agent **c** positions itself to maximize signal strength between **b** and **d**. Agent **d** prepares its receiving dock.
+
+The simulation engine validates these actions against the current topology and agent states. There is a minor conflict: Agent **c**'s movement to the junction point slightly increases its "noise" footprint, but the mesh topology allows Agent **b** to maintain a connection to **d** even with the interference.
+
+```json
+[
+  {
+    "agent": "agent_b",
+    "action": "MOVE_AND_TRANSFER",
+    "parameters": {
+      "target_location": "sector_east_junction",
+      "freight_id": "j-001",
+      "handoff_to": "agent_c"
+    }
+  },
+  {
+    "agent": "agent_c",
+    "action": "POSITION_RELAY",
+    "parameters": {
+      "target_location": "junction_relay_point",
+      "mode": "passive_relay"
+    }
+  },
+  {
+    "agent": "agent_d",
+    "action": "PREPARE_RECEIVE",
+    "parameters": {
+      "freight_id": "j-001",
+      "expected_arrival_turn": 6
+    }
+  }
+]
+```
+
+### Outcome
+
+The turn concludes with Agent **b** successfully moving toward the eastern junction. While the freight did not reach the South Depot in Turn 4, the "relayed route" was successfully established. The coordination prevented the freight from idling in the north sector, where it would have been vulnerable to further environmental degradation. Agent **b** has successfully handed off the *responsibility* of the route to the collective, and the path is now mathematically verified by all three active agents.
+
+In future turns, the agents will treat the "Agent **a** zone" as a high-risk/zero-connectivity area. The intelligence gathered in this turn will likely lead to Agent **c** and **d** proactively positioning themselves closer to the eastern corridor in Turn 5 to minimize handoff latency.
+
+### Analysis
+
+This scenario illustrates the **Dynamic Rerouting** coordination pattern. In a **MESH** topology, the loss of a single node (Agent **a**) does not result in a total system failure, as the agents can "self-heal" the network by discovering alternative adjacency paths. If this had occurred in a **RING** topology, the loss of Agent **a** would have forced a much more rigid, unidirectional recovery process, likely doubling the latency as the message would have had to travel the "long way" around the ring. The MESH topology's primary advantage here was the ability of Agent **b** to reach Agent **c** directly to bypass the failure, demonstrating high resilience and rapid adaptation to environmental uncertainty.
 
 ***
-
-### Provenance Note
 
 <!-- MODEL_GENERATED: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00 -->
 <!-- RUN: gen-full-20261108 -->
 <!-- EXAMPLE: relay-loss-reroute -->
-<!-- TOPOLOGY: ring -->
+<!-- TOPOLOGY: mesh -->
 
-This example illustrates expected coordination patterns. Actual agent behavior
-may vary based on implementation and simulation dynamics.
+---
+*Provenance: model-generated narrative (gemma-4-26b-a4b-it @ 2026-11-08T03:59:45.218037+00:00, call 31).*

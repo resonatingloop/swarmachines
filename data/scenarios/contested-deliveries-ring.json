@@ -1,7 +1,7 @@
 {
   "scenario_id": "contested-deliveries-ring",
   "title": "Contested Deliveries in Ring Topology",
-  "description": "This scenario explores contested deliveries dynamics within a ring communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "description": "This scenario explores contested deliveries dynamics within a ring communication topology. The disturbance at the 'south' depot creates a bottleneck that tests the agents' ability to manage information propagation delays via the ring and coordinate freight movement under capacity constraints.",
   "seed": 42,
   "agents": [
     "a",
@@ -112,7 +112,21 @@
   "edge_cases_to_watch": [
     "Multiple freight items competing for same destination slot",
     "Agents must coordinate to avoid congestion",
-    "Lower-priority deliveries may be significantly delayed"
+    "Lower-priority deliveries may be significantly delayed",
+    "Information staleness: Ring topology latency causes agents to act on outdated congestion data",
+    "Deadlock: Agents blocking critical routes due to localized congestion at South depot",
+    "Communication relay failure: Critical coordination messages failing to traverse the full ring in time"
+  ],
+  "coordination_challenges": [
+    "Multi-hop message latency: Agents at opposite sides of the ring (e.g., a and c) receive disturbance updates with high delay",
+    "Resource contention: Simultaneous arrival of high-priority j-001 and j-004 at the south depot bottleneck",
+    "Congestion-aware rerouting: Deciding whether to use 'east-south' vs 'west-south' based on incomplete global state"
+  ],
+  "suggested_agent_strategies": [
+    "Predictive Buffer Management: Anticipating congestion at South based on incoming high-priority job trends",
+    "Priority-Based Yielding: Low-priority agents vacating route capacity to allow high-priority medical/food flows",
+    "Information Aggregation: Agents relaying summarized local congestion states to optimize ring-wide message efficiency",
+    "Path Redundancy: Utilizing 'bridges' as secondary relief valves when primary routes hit capacity"
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
@@ -127,7 +141,7 @@
     "Agents adapt communication to topology constraints",
     "Recovery from disruption within expected turns"
   ],
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "provenance": "model-enhanced: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "ring_order": [
     "a",
     "b",

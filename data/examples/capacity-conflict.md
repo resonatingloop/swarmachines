@@ -1,97 +1,122 @@
 # Example: Resolving Capacity Contention
 
 ## Opening Context
-The simulation has entered Turn 6. The environment is currently configured with a **RING topology**, where Agents A, B, C, and D are connected in a continuous loop. At this stage of the simulation, the local environment is shrouded in "fog," meaning agents have imperfect information regarding the immediate intentions of their neighbors, relying instead on explicit messaging to resolve spatial conflicts.
 
-The current challenge is a critical capacity bottleneck on the West-East segment of the ring. There are currently three distinct freight items requiring passage through this specific route: Agent A has a high-priority medical supply, while Agents B and C both have standard industrial components. However, the segment capacity is strictly limited to 2 units per turn. Without coordination, a collision or a resource deadlock could occur, stalling the flow of goods across the entire ring.
+The simulation has reached Turn 6. The environment is configured with a **MESH** topology, though the current active congestion is concentrated along a specific segment of the network that mimics a ring structure between nodes A, B, C, and D. The network is currently under heavy load due to a recent surge in freight generation. At this moment, the primary bottleneck is the West-to-East corridor connecting Agent B and Agent C, which has a maximum throughput capacity of 2 units per turn.
+
+The tension arises from a critical capacity contention. Agent B is attempting to move a high-priority medical supply crate, while Agent C is attempting to move a heavy industrial component. Simultaneously, Agent D is requesting access to the same route to clear a backlog. With three distinct freight items demanding access to a route that can only accommodate two, the agents face a "deadlock or delay" scenario. Without explicit coordination, the agents risk a collision of requests that could lead to inefficient buffer utilization or systemic gridlock.
 
 ## Message Exchange
-Agent B identifies the contention early by sensing the proximity of Agent C's freight trajectory. Because the topology is a ring, Agent B does not attempt to broadcast to the entire network; instead, it initiates a targeted negotiation. Agent B’s internal reasoning dictates that it should propose a "Yield-and-Wait" strategy to Agent C to avoid the computational overhead of a multi-agent auction, given that Agent A's high-priority freight is already a known variable in the segment.
 
-Agent B sends a negotiation request to Agent C:
+Agent B recognizes the congestion immediately through its local sensors. Its internal reasoning engine calculates that if it does not secure the route now, the medical supply will miss its delivery window, incurring a massive penalty. Agent B decides to initiate a coordination protocol by broadcasting its priority status to its immediate neighbors. Because of the MESH topology, B can reach C directly, but it also sends a signal through D to ensure the entire local cluster is aware of the impending contention.
+
+Agent B sends the following coordination request to Agent C:
 
 ```json
 {
-  "message_id": "msg-882",
-  "sender": "Agent_B",
-  "receiver": "Agent_C",
   "turn": 6,
-  "type": "PROPOSAL_RESERVATION",
+  "sender": "agent_b",
+  "receiver": "agent_c",
+  "message_type": "BID_PRIORITY",
   "payload": {
-    "requested_route": "West-East",
-    "proposed_priority": 2,
-    "duration": 1,
-    "reasoning": "Observed capacity contention with Agent_A and Agent_C. Proposing B and A occupy capacity this turn."
-  }
+    "route_segment": "W-E_04",
+    "requested_capacity": 1,
+    "priority_level": 9,
+    "cargo_type": "medical_supply",
+    "deadline_turn": 8
+  },
+  "reasoning": "High-priority cargo detected. Attempting to secure capacity before segment saturation."
 }
 ```
 
-Agent C receives this message. Its internal logic evaluates its own freight urgency. Agent C determines that its cargo is non-perishable and can afford a one-turn delay without violating its delivery window. To finalize the coordination, Agent C must send an acknowledgment that confirms its intention to yield. However, because of the ring topology, Agent C must route its response through Agent B, ensuring the local consensus is reached before the turn timer expires.
-
-Agent C responds with an acceptance:
+Agent C receives this message. Agent C’s internal logic evaluates its own cargo: a heavy industrial component with a priority of 5. Agent C realizes that yielding the route to Agent B is the mathematically optimal move to minimize total system penalty, even though it means delaying its own cargo. However, Agent C also notes that Agent D is attempting to push through. Agent C responds to Agent B to confirm the negotiation and broadcasts a "yield" signal to the local mesh to prevent Agent D from attempting a brute-force entry.
 
 ```json
 {
-  "message_id": "msg-883",
-  "sender": "Agent_C",
-  "receiver": "Agent_B",
   "turn": 6,
-  "type": "PROPOSAL_ACCEPTANCE",
+  "sender": "agent_c",
+  "receiver": "agent_b",
+  "message_type": "BID_ACCEPTANCE",
   "payload": {
-    "status": "AGREE",
-    "yield_action": "WAIT",
-    "next_available_turn": 7
-  }
+    "route_segment": "W-E_04",
+    "status": "YIELDING",
+    "allocated_capacity_to_other": 1,
+    "expected_delay_turns": 2
+  },
+  "reasoning": "Agent B priority (9) exceeds Agent C priority (5). Yielding to optimize global penalty scores."
+}
+```
+
+Agent D, receiving the implicit signal of the negotiation through the mesh, realizes the capacity is being partitioned. It sends a final message to the cluster to update its own routing intention, preventing a redundant request that would have triggered a conflict resolution error.
+
+```json
+{
+  "turn": 6,
+  "sender": "agent_d",
+  "receiver": "all",
+  "message_type": "STATUS_UPDATE",
+  "payload": {
+    "intended_route": "N-S_02",
+    "capacity_requirement": 1,
+    "status": "REROUTING"
+  },
+  "reasoning": "Observed capacity contention on W-E_04. Diverting to alternate N-S route to avoid congestion."
 }
 ```
 
 ## Action Resolution
-With the agreement reached, Agents A, B, and C prepare their action packets. Agent A, unaware of the specific negotiation between B and C but aware of the capacity limit via the global state broadcast, proceeds with its high-priority movement. Agent B, having secured its slot through the agreement with C, moves its freight into the West-East segment. Agent C, adhering to the negotiated outcome, issues a "Wait" command to remain stationary, effectively preserving the remaining capacity for the other two agents.
 
-The execution of these actions is validated by the simulation engine, which checks for capacity violations before finalizing the turn state.
+With the negotiation concluded, the agents move from the communication phase to the execution phase. The simulation engine validates these actions against the physical constraints of the MESH topology. Agent B and Agent D (who successfully rerouted) are granted the two available slots on the W-E_04 segment. Agent C, having agreed to yield, must execute a "wait" action, holding its freight in its local buffer.
+
+The validated action set for the turn is processed as follows:
 
 ```json
-{
-  "turn": 6,
-  "actions": [
-    {
-      "agent": "Agent_A",
-      "action_type": "MOVE",
-      "route": "West-East",
-      "load_id": "MED-99"
-    },
-    {
-      "agent": "Agent_B",
-      "action_type": "MOVE",
-      "route": "West-East",
-      "load_id": "IND-42"
-    },
-    {
-      "agent": "Agent_C",
-      "action_type": "WAIT",
-      "route": "null",
-      "load_id": "IND-43"
-    }
-  ]
-}
+[
+  {
+    "agent": "agent_b",
+    "action": "MOVE_FREIGHT",
+    "target_route": "W-E_04",
+    "capacity_consumed": 1,
+    "validation": "SUCCESS"
+  },
+  {
+    "agent": "agent_d",
+    "action": "MOVE_FREIGHT",
+    "target_route": "N-S_02",
+    "capacity_consumed": 1,
+    "validation": "SUCCESS"
+  },
+  {
+    "agent": "agent_c",
+    "action": "HOLD_IN_BUFFER",
+    "target_route": null,
+    "capacity_consumed": 0,
+    "validation": "SUCCESS"
+  }
+]
 ```
 
-## Outcome
-The resolution of Turn 6 is successful. The West-East segment reached its maximum capacity of 2/2, but no contention errors were triggered. Agent A’s high-priority medical supply moved one node closer to its destination, and Agent B’s industrial component successfully navigated the bottleneck. 
+The execution is seamless. Because the agents coordinated via the MESH network, there was no "collision" of requests at the controller level. The simulation engine accepted the instructions because the total `capacity_consumed` on the contested segment (W-E_04) did not exceed the limit of 2.
 
-Agent C remains at its current node, but because the coordination was explicit, it has "reserved" its place in the queue for Turn 7. The agents have successfully learned that in a ring topology, local negotiation is more efficient than attempting to resolve capacity through global broadcast. This turn establishes a precedent for Agent C to claim priority in the next turn if Agent B's cargo is cleared.
+## Outcome
+
+The turn concludes successfully. Agent B’s medical supply moves one node closer to its destination, maintaining its high-priority trajectory. Agent D successfully bypasses the bottleneck by utilizing the N-S route, effectively spreading the load across the mesh. Agent C remains stationary; while this results in a minor local penalty for Agent C, it prevents a catastrophic system-wide delay that would have occurred if all three agents had attempted to force entry simultaneously.
+
+Through this process, the agents have updated their internal "congestion maps." Agent C now marks the W-E_04 segment as "High Contention" for the next three turns, and Agent D has learned that the N-S corridor is a viable relief valve for West-East bottlenecks. This turn has reinforced the value of proactive priority-based negotiation over reactive collision avoidance.
 
 ## Analysis
-This scenario illustrates the **Cooperative Yielding** coordination pattern. In a ring topology, the limited connectivity actually aids coordination by forcing agents to communicate with their immediate neighbors, preventing "information storms" that can occur in fully connected mesh networks. If this had occurred in a **Star topology**, the central hub would have likely imposed a strict priority rule (A > B > C), potentially ignoring the nuance of Agent C's ability to wait. In the ring, the agents used peer-to-peer negotiation to reach an optimal local equilibrium. The key takeaway is that capacity contention can be mitigated through local consensus, provided agents possess the reasoning capability to value "waiting" as a valid strategic move.
+
+This interaction illustrates the **Priority-Based Yielding** coordination pattern. In a MESH topology, the agents benefited from multiple communication paths, allowing Agent B to communicate its intent and Agent D to observe the negotiation, thereby facilitating a more intelligent rerouting decision. If this had occurred in a **STAR** topology, all messages would have had to pass through a central hub, increasing latency and creating a single point of failure for the coordination. If it had been a **RING** topology, the "broadcast" from Agent B might have taken longer to reach Agent D, potentially causing Agent D to commit to the W-E route before the negotiation was finalized. The MESH topology allowed for the rapid, decentralized consensus required to resolve the capacity contention efficiently.
 
 ***
-
-### Provenance Note
 
 <!-- MODEL_GENERATED: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00 -->
 <!-- RUN: gen-full-20261108 -->
 <!-- EXAMPLE: capacity-conflict -->
-<!-- TOPOLOGY: ring -->
+<!-- TOPOLOGY: mesh -->
 
 This example illustrates expected coordination patterns. Actual agent behavior
 may vary based on implementation and simulation dynamics.
+
+---
+*Provenance: model-generated narrative (gemma-4-26b-a4b-it @ 2026-11-08T04:00:02.216371+00:00, call 33).*

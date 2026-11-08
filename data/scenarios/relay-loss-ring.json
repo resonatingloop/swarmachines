@@ -1,7 +1,7 @@
 {
   "scenario_id": "relay-loss-ring",
   "title": "Relay Loss in Ring Topology",
-  "description": "This scenario explores relay loss dynamics within a ring communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
+  "description": "This scenario explores relay loss dynamics within a ring communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions.",
   "seed": 42,
   "agents": [
     "a",
@@ -107,22 +107,36 @@
     }
   },
   "edge_cases_to_watch": [
-    "Ring topology: losing a neighbor cuts off half the network",
-    "Mesh topology: direct communication still possible with others",
-    "Agents must detect absence through missing messages"
+    "Information Partitioning: Agent 'b' and 'd' can no longer communicate via agent 'a', forcing all multi-hop messages to traverse the longer path (b-c-d).",
+    "Congestion Cascades: The sudden shift in communication traffic from the direct path to the indirect path may delay critical coordination messages.",
+    "Deadlock via Silence: Agents may assume 'a' is incapacitated and stop assigning jobs to its location, causing freight stagnation at 'west' or 'north' depots.",
+    "Message Latency Jitter: Increased hop counts (from 1 to 3) causing timing mismatches in synchronized freight handoffs."
+  ],
+  "coordination_challenges": [
+    "Path-finding in Communication: Agents must recalculate the shortest communicative path for multi-agent consensus.",
+    "Consensus Fragmentation: Reaching a global agreement on job priority becomes difficult when a subset of agents is isolated.",
+    "Resource Re-allocation: Re-assigning agent 'a's physical tasks to agents 'b' or 'd' without direct coordination with 'a'."
+  ],
+  "suggested_agent_strategies": [
+    "Redundant Messaging: Send critical coordination packets to both neighbors to ensure packet arrival if one link is suspect.",
+    "Heartbeat Monitoring: Implement periodic 'alive' signals to distinguish between a broken link and a silent but active agent.",
+    "Adaptive Routing: If the 'a' link fails, immediately switch to a 'long-way-round' protocol for all inter-agent synchronization.",
+    "Proactive Buffer Management: Increase local inventory at depots near the muted agent to mitigate the risk of uncoordinated supply drops."
   ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
     "recovery_turns_expected": "2-4",
     "coordination_challenges": [
-      "Ring topology: losing a neighbor cuts off half the network",
-      "Mesh topology: direct communication still possible with others"
+      "Information Partitioning",
+      "Congestion Cascades",
+      "Consensus Fragmentation"
     ]
   },
   "success_criteria": [
     "High-priority freight delivered within deadline",
     "Agents adapt communication to topology constraints",
-    "Recovery from disruption within expected turns"
+    "Recovery from disruption within expected turns",
+    "Successful implementation of fallback communication protocols"
   ],
   "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "ring_order": [
