@@ -34,6 +34,9 @@ def fresh_clone(repo_url: str, target_dir: Path) -> None:
     Args:
         repo_url: Git repository URL (local path or remote)
         target_dir: Destination directory for clone
+
+    Raises:
+        subprocess.CalledProcessError: If git clone fails
     """
     if target_dir.exists():
         shutil.rmtree(target_dir)
@@ -53,6 +56,7 @@ def run_runner(
     output_path: Path,
     world: str = "freight",
     topology: str = "mesh",
+    disturbance: str | None = None,
 ) -> tuple[int, str]:
     """Run the runner with given parameters.
 
@@ -63,6 +67,7 @@ def run_runner(
         output_path: Output file path for episode JSONL
         world: World mode ("freight" or "scripted")
         topology: Communication topology
+        disturbance: Optional disturbance spec (e.g., "relay-loss:2:a")
 
     Returns:
         Tuple of (exit_code, stdout output)
@@ -83,6 +88,8 @@ def run_runner(
         "--output",
         str(output_path),
     ]
+    if disturbance:
+        cmd.extend(["--disturbance", disturbance])
     result = subprocess.run(
         cmd,
         check=False,
@@ -130,17 +137,14 @@ def check_determinism(workdir: Path, seed: int, turns: int) -> tuple[bool, str]:
         run1 = tmp / "run1.jsonl"
         run2 = tmp / "run2.jsonl"
 
-        # First run
         code1, out1 = run_runner(workdir, seed, turns, run1)
         if code1 != 0:
             return False, f"Run 1 failed with code {code1}: {out1}"
 
-        # Second run
         code2, out2 = run_runner(workdir, seed, turns, run2)
         if code2 != 0:
             return False, f"Run 2 failed with code {code2}: {out2}"
 
-        # Compare byte-identical
         hash1 = hashlib.sha256(run1.read_bytes()).hexdigest()
         hash2 = hashlib.sha256(run2.read_bytes()).hexdigest()
 
@@ -150,27 +154,25 @@ def check_determinism(workdir: Path, seed: int, turns: int) -> tuple[bool, str]:
         return True, f"Determinism OK: {hash1[:16]}"
 
 
-def check_viewer_replay(episode_path: Path) -> tuple[bool, str]:
+def check_viewer_replay(episode_path: Path) -> tuple[str, str]:
     """Check that the episode can be parsed by viewer's replay.js.
 
     Uses Node.js to run a headless check of the replay.js loader contract.
+    Returns SKIP if node is not available.
 
     Args:
         episode_path: Path to episode JSONL file
 
     Returns:
-        Tuple of (success, message)
+        Tuple of (status, message) where status is "PASS", "SKIP", or "FAIL"
     """
-    # Create a Node.js script to test replay.js
     check_script = """
 const fs = require('fs');
 const path = require('path');
 
-// Load replay.js
 const replayPath = path.join(process.argv[2], 'viewer', 'replay.js');
 const Replay = require(replayPath);
 
-// Read episode
 const episodePath = process.argv[3];
 const content = fs.readFileSync(episodePath, 'utf-8');
 
@@ -178,7 +180,6 @@ try {
     const episode = Replay.parseEpisode(content);
     console.log(`Viewer replay OK: ${episode.runId}, ${episode.events.length} events, ${episode.turns.length} turns`);
 
-    // Check snapshot at cursor 0 and last
     const snapshot0 = Replay.snapshot(episode, 0);
     const snapshotLast = Replay.snapshot(episode, episode.events.length - 1);
 
@@ -206,14 +207,16 @@ try {
             capture_output=True,
             text=True,
         )
-        if result.returncode != 0:
-            return False, f"Viewer check failed: {result.stderr.strip()}"
-
-        # Parse output
-        lines = result.stdout.strip().split("\n")
-        return True, "; ".join(lines)
+    except FileNotFoundError:
+        return "SKIP", "Node.js not available (viewer replay check skipped)"
     finally:
         os.unlink(script_path)
+
+    if result.returncode != 0:
+        return "FAIL", f"Viewer check failed: {result.stderr.strip()}"
+
+    lines = result.stdout.strip().split("\n")
+    return "PASS", "; ".join(lines)
 
 
 def check_trace_layer(workdir: Path) -> tuple[str, str]:
@@ -233,7 +236,6 @@ def check_trace_layer(workdir: Path) -> tuple[str, str]:
     if not tracer_path.exists():
         return "SKIP", "Tracer module not present (Langfuse layer absent)"
 
-    # Try to import and instantiate tracer
     check_script = """
 import sys
 sys.path.insert(0, 'runtime')
@@ -241,7 +243,6 @@ sys.path.insert(0, 'runtime')
 try:
     from tracer import Tracer, TraceConfig, create_tracer
 
-    # Test basic instantiation with fake exporter (no network)
     tracer, exporter = create_tracer(
         run_id="test-e2e-smoke",
         condition="e2e-test",
@@ -249,18 +250,16 @@ try:
         use_fake_exporter=True,
     )
 
-    # Exercise basic trace lifecycle
     tracer.start_trace(run_id="test-e2e-smoke", condition="e2e-test", seed=42)
 
     with tracer.span("test-span", metadata={"test": "e2e"}):
-        pass  # Minimal work
+        pass
 
     tracer.end_trace(
         status=__import__('tracer').RunStatus.COMPLETED,
         reason="e2e smoke test completed",
     )
 
-    # Verify exporter captured events
     if len(exporter.traces) == 0:
         print("FAIL: No traces recorded")
         sys.exit(1)
@@ -274,7 +273,7 @@ try:
 
 except ImportError as e:
     print(f"SKIP: Tracer import failed - {e}")
-    sys.exit(0)  # SKIP, not FAIL
+    sys.exit(0)
 except Exception as e:
     print(f"FAIL: Trace smoke failed - {e}")
     sys.exit(1)
@@ -316,15 +315,12 @@ def run_e2e_test(repo_path: Path | None = None) -> dict:
         "overall": "PENDING",
     }
 
-    # Determine repo source
     if repo_path is None:
         repo_path = Path(__file__).parent.parent
 
-    # Create temp directory for fresh clone
     with tempfile.TemporaryDirectory() as tmpdir:
         clone_dir = Path(tmpdir) / "swarmachines-clone"
 
-        # Step 1: Fresh clone
         print("Step 1: Fresh clone...")
         try:
             fresh_clone(str(repo_path), clone_dir)
@@ -337,13 +333,13 @@ def run_e2e_test(repo_path: Path | None = None) -> dict:
             }
             return results
 
-        # Step 2: Runner execution with --world freight
         print("Step 2: Runner execution (--world freight)...")
         episode_path = clone_dir / "runtime" / "e2e-episode.jsonl"
-        seed = 42
+        seed = 7
         turns = 4
+        disturbance = "relay-loss:2:a"
 
-        code, out = run_runner(clone_dir, seed, turns, episode_path)
+        code, out = run_runner(clone_dir, seed, turns, episode_path, disturbance=disturbance)
         if code != 0:
             results["runner_execution"] = {
                 "status": "FAIL",
@@ -360,33 +356,23 @@ def run_e2e_test(repo_path: Path | None = None) -> dict:
             results["overall"] = "FAIL"
             return results
 
-        event_count = sum(
-            1 for line in episode_path.read_text().splitlines() if line.strip()
-        )
+        event_count = sum(1 for line in episode_path.read_text().splitlines() if line.strip())
         results["runner_execution"] = {
             "status": "PASS",
             "message": f"Generated {event_count} events to {episode_path.name}",
         }
         print(f"  {results['runner_execution']['message']}")
 
-        # Step 3: Schema validation
         print("Step 3: Schema validation...")
         code, out = verify_events(clone_dir, episode_path)
         if code != 0:
-            results["schema_validation"] = {
-                "status": "FAIL",
-                "message": out,
-            }
+            results["schema_validation"] = {"status": "FAIL", "message": out}
             results["overall"] = "FAIL"
             return results
 
-        results["schema_validation"] = {
-            "status": "PASS",
-            "message": out.split("\n")[-1],
-        }
+        results["schema_validation"] = {"status": "PASS", "message": out.split("\n")[-1]}
         print(f"  {results['schema_validation']['message']}")
 
-        # Step 4: Determinism check
         print("Step 4: Determinism check...")
         success, msg = check_determinism(clone_dir, seed, turns)
         if not success:
@@ -397,24 +383,21 @@ def run_e2e_test(repo_path: Path | None = None) -> dict:
         results["determinism"] = {"status": "PASS", "message": msg}
         print(f"  {results['determinism']['message']}")
 
-        # Step 5: Viewer replay readiness
         print("Step 5: Viewer replay readiness...")
-        success, msg = check_viewer_replay(episode_path)
-        if not success:
-            results["viewer_replay"] = {"status": "FAIL", "message": msg}
+        status, msg = check_viewer_replay(episode_path)
+        if status == "FAIL":
+            results["viewer_replay"] = {"status": status, "message": msg}
             results["overall"] = "FAIL"
             return results
 
-        results["viewer_replay"] = {"status": "PASS", "message": msg}
+        results["viewer_replay"] = {"status": status, "message": msg}
         print(f"  {results['viewer_replay']['message']}")
 
-        # Step 6: Trace-layer smoke
         print("Step 6: Trace-layer smoke...")
         status, msg = check_trace_layer(clone_dir)
         results["trace_layer"] = {"status": status, "message": msg}
         print(f"  {results['trace_layer']['message']}")
 
-        # Overall result
         if status == "FAIL":
             results["overall"] = "FAIL"
         else:
@@ -423,8 +406,15 @@ def run_e2e_test(repo_path: Path | None = None) -> dict:
     return results
 
 
-def main():
-    """Main entry point."""
+def main() -> int:
+    """Main entry point for the e2e pipeline test.
+
+    Args:
+        None (reads CLI args: --repo, --json)
+
+    Returns:
+        Exit code: 0 if all tests pass, 1 otherwise
+    """
     import argparse
 
     parser = argparse.ArgumentParser(
