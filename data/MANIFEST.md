@@ -1,101 +1,104 @@
 # Pre-Recorded Data Manifest
 
-**Generated**: 2026-11-08 (volume pass, live Adaption Responses API)
+**Generated**: 2026-11-08T03:56:35.313847+00:00
+**Run ID**: gen-full-20261108
 **Model**: gemma-4-26b-a4b-it
-**Total API Calls**: 20
-**Total Tokens**: 3,862 input + 7,330 output = 11,192
-**Commit**: 0dca625
 
 ## Provenance Statement
 
-This pack is **MIXED-PROVENANCE**, stated per file:
+This pack is generated from a **SINGLE FULL REGENERATION RUN** (gen-full-20261108).
 
-- **Model-generated** (20 artifacts): produced by the Adaption Responses API
-  (`gemma-4-26b-a4b-it`) from team-authored draft seeds. Each file carries a
-  per-file provenance footer naming the model and date. Receipts for all calls
-  are stored in `data/receipts/` (synthetic, reconstructed from gen-run.log tally).
+- **Model-generated** (38 artifacts): produced by the Adaption Responses API
+  (`gemma-4-26b-a4b-it`) in this run. Each file carries a per-file provenance footer.
+  Full JSONL logs with complete prompts and responses: `data/runs/gen-full-20261108/logs/calls.jsonl`
+  Real captured receipts: `data/runs/gen-full-20261108/receipts/`
 
-- **Team-authored** (4 artifacts): prepared without API access (0 calls at
-  authoring time), labeled team-authored in-file:
+- **Team-authored** (5 artifacts): preserved from prior work, NOT regenerated:
   - `data/scenarios/relay-loss-early.json`
   - `data/scenarios/ring-relay-loss.json`
   - `data/scenarios/stale-report.json`
   - `data/examples/reroute-coordination.md`
+  - `data/prompts/dispatcher_ring.md`
 
-- **Restored** (1 artifact): `data/prompts/dispatcher_ring.md` was regenerated
-  but the API output was corrupted (content lost). Restored to team-authored
-  seed from commit b72fa7f.
-
-ALL files are **seed material for keyless teammate agents (asterion,
-caduceus) to use in freight-in-the-fog coordination experiments**. NONE are
-observed experimental evidence — generated or authored, these are inputs,
-not results.
+ALL files are **seed material for keyless teammate agents** to use in
+freight-in-the-fog coordination experiments. NONE are observed experimental
+evidence — these are inputs, not results.
 
 ## Contents
 
-### Prompts (8 files — 7 model-generated, 1 restored team-authored)
+### Prompts (8 model-generated)
 
-Pilot prompt pack for 4 freight roles under 2 topologies:
+| File | Role | Topology |
+|------|------|----------|
+| data/prompts/carrier_mesh.md | carrier | mesh |
+| data/prompts/carrier_ring.md | carrier | ring |
+| data/prompts/dispatcher_mesh.md | dispatcher | mesh |
+| data/prompts/dispatcher_ring.md | dispatcher | ring |
+| data/prompts/observer_mesh.md | observer | mesh |
+| data/prompts/observer_ring.md | observer | ring |
+| data/prompts/relay_mesh.md | relay | mesh |
+| data/prompts/relay_ring.md | relay | ring |
 
-| File | Role | Topology | Provenance |
-|------|------|----------|------------|
-| data/prompts/dispatcher_mesh.md | dispatcher | mesh | model-generated |
-| data/prompts/dispatcher_ring.md | dispatcher | ring | team-authored (restored) |
-| data/prompts/relay_mesh.md | relay | mesh | model-generated |
-| data/prompts/relay_ring.md | relay | ring | model-generated |
-| data/prompts/carrier_mesh.md | carrier | mesh | model-generated |
-| data/prompts/carrier_ring.md | carrier | ring | model-generated |
-| data/prompts/observer_mesh.md | observer | mesh | model-generated |
-| data/prompts/observer_ring.md | observer | ring | model-generated |
-
-### Scenarios (11 files — 8 model-generated, 3 team-authored)
-
-Scenario seeds/configs for the freight world:
-
-| File | Topology | Provenance |
-|------|----------|------------|
-| data/scenarios/scenario-00-mesh.json | mesh | model-generated |
-| data/scenarios/scenario-01-bidirectional-ring.json | ring | model-generated |
-| data/scenarios/scenario-02-mesh.json | mesh | model-generated |
-| data/scenarios/scenario-03-bidirectional-ring.json | ring | model-generated |
-| data/scenarios/scenario-04-mesh.json | mesh | model-generated |
-| data/scenarios/scenario-05-bidirectional-ring.json | ring | model-generated |
-| data/scenarios/scenario-06-mesh.json | mesh | model-generated |
-| data/scenarios/scenario-07-bidirectional-ring.json | ring | model-generated |
-| data/scenarios/relay-loss-early.json | mesh | team-authored |
-| data/scenarios/ring-relay-loss.json | ring | team-authored |
-| data/scenarios/stale-report.json | mesh | team-authored |
-
-### Examples (5 files — 4 model-generated, 1 team-authored)
-
-Coordination example exchanges:
+### Scenarios (22 model-generated + 4 team-authored)
 
 | File | Scenario | Provenance |
 |------|----------|------------|
-| data/examples/relay-loss-reroute.md | reroute after relay goes dark | model-generated |
-| data/examples/capacity-conflict.md | contested route at capacity | model-generated |
-| data/examples/stale-info-recovery.md | stale bridge report, corrected | model-generated |
-| data/examples/ring-neighbor-routing.md | ring routing via two neighbors | model-generated |
-| data/examples/reroute-coordination.md | reroute during relay-loss | team-authored |
+| data/scenarios/fog-mesh.json | fog-mesh | model-generated |
+| data/scenarios/fog-ring.json | fog-ring | model-generated |
+| data/scenarios/relay-loss-mesh.json | relay-loss-mesh | model-generated |
+| data/scenarios/relay-loss-ring.json | relay-loss-ring | model-generated |
+| data/scenarios/peer-mute-mesh.json | peer-mute-mesh | model-generated |
+| data/scenarios/peer-mute-ring.json | peer-mute-ring | model-generated |
+| data/scenarios/stale-report-mesh.json | stale-report-mesh | model-generated |
+| data/scenarios/stale-report-ring.json | stale-report-ring | model-generated |
+| data/scenarios/capacity-conflict-mesh.json | capacity-conflict-mesh | model-generated |
+| data/scenarios/capacity-conflict-ring.json | capacity-conflict-ring | model-generated |
+| data/scenarios/contested-deliveries-mesh.json | contested-deliveries-mesh | model-generated |
+| data/scenarios/contested-deliveries-ring.json | contested-deliveries-ring | model-generated |
+| data/scenarios/route-gossip-mesh.json | route-gossip-mesh | model-generated |
+| data/scenarios/route-gossip-ring.json | route-gossip-ring | model-generated |
+| data/scenarios/bridge-closure-mesh.json | bridge-closure-mesh | model-generated |
+| data/scenarios/bridge-closure-ring.json | bridge-closure-ring | model-generated |
+| data/scenarios/dual-disruption-mesh.json | dual-disruption-mesh | model-generated |
+| data/scenarios/dual-disruption-ring.json | dual-disruption-ring | model-generated |
+| data/scenarios/cascading-failure-mesh.json | cascading-failure-mesh | model-generated |
+| data/scenarios/cascading-failure-ring.json | cascading-failure-ring | model-generated |
+| data/scenarios/scenario-00-mesh.json | scenario-00-mesh | model-generated |
+| data/scenarios/scenario-00-ring.json | scenario-00-ring | model-generated |
+| data/scenarios/relay-loss-early.json | relay-loss-early | team-authored |
+| data/scenarios/ring-relay-loss.json | ring-relay-loss | team-authored |
+| data/scenarios/stale-report.json | stale-report | team-authored |
 
-## API Usage Summary (volume pass)
+### Examples (8 model-generated + 1 team-authored)
 
-- **Calls**: 20 (7 prompts + 8 scenarios + 4 examples; 1 prompt failed/restored)
-- **Input Tokens**: 3,862
-- **Output Tokens**: 7,330
-- **Total Tokens**: 11,192
-- **Failures**: 0 (1 corrupted output restored from seed)
+| File | Description | Provenance |
+|------|-------------|------------|
+| data/examples/relay-loss-reroute.md | Relay Loss Reroute | model-generated |
+| data/examples/relay-loss-reroute.md | Relay Loss Reroute | model-generated |
+| data/examples/capacity-conflict.md | Capacity Conflict | model-generated |
+| data/examples/capacity-conflict.md | Capacity Conflict | model-generated |
+| data/examples/stale-info-recovery.md | Stale Info Recovery | model-generated |
+| data/examples/stale-info-recovery.md | Stale Info Recovery | model-generated |
+| data/examples/ring-neighbor-routing.md | Ring Neighbor Routing | model-generated |
+| data/examples/ring-neighbor-routing.md | Ring Neighbor Routing | model-generated |
+| data/examples/reroute-coordination.md | Reroute coordination | team-authored |
 
-## Receipts
+## Run Evidence
 
-Receipts for all 20 API calls are stored in `data/receipts/`. Each receipt contains:
-- call_name, call_number, timestamp, model
-- input_tokens, output_tokens, total_tokens
-- item_path, kind, provenance
+**Run Directory**: `data/runs/gen-full-20261108/`
 
-Note: Receipts are synthetic, reconstructed from the gen-run.log tally
-(commit 0dca625). Individual per-call metrics were not preserved; receipts
-show averaged token counts.
+- `artifacts/` — all generated files (canonical source)
+- `logs/calls.jsonl` — complete JSONL stream (full prompt + response per call)
+- `receipts/` — real captured receipts
+- `run.json` — run manifest with totals
+
+## Prior Synthetic Receipts
+
+The 20 synthetic receipts in `data/receipts/` from the pre-workflow generation
+(commit 0dca625) are **SUPERSEDED** and **RETAINED FOR HISTORICAL REFERENCE ONLY**.
+They are reconstructed from gen-run-001-tally.log and do not represent actual
+captured API calls. This regeneration run (gen-full-20261108) provides complete, real
+receipts for all model-generated artifacts.
 
 ## Regeneration Path
 
@@ -103,23 +106,16 @@ To regenerate this pack faithfully:
 
 ```bash
 export ADAPTION_API_KEY=...
-export PYTHONPATH=/opt/data/profiles/dev/home/.local/lib/python3.14/site-packages
-python3 scripts/regenerate_data_pack.py --receipts-dir data/receipts
+python3 scripts/regenerate_data_pack.py --run-id gen-full-20261108
 ```
-
-The `scripts/regenerate_data_pack.py` script:
-1. Reads team-authored seeds (preserved, not overwritten)
-2. Makes actual API calls (not hardcoded content)
-3. Saves receipts for each call
-4. Labels provenance correctly per file
 
 ## Usage Notes
 
-1. Prompts are templates — adapt agent IDs and context as needed for specific runs
+1. Prompts are templates — adapt agent IDs and context as needed
 2. Scenarios are seeds — actual runs may vary based on agent execution
 3. Examples illustrate expected coordination patterns, not guaranteed outcomes
-4. Per-file provenance lines are authoritative — preserve them in derived materials
+4. Per-file provenance lines are authoritative — preserve in derived materials
 
 ---
-*Manifest updated 2026-11-08 after the live-API volume pass (commit 0dca625).*
-*Corrupted dispatcher_ring.md restored; provenance corrected; receipts added.*
+*Manifest generated 2026-11-08T03:56:35.313847+00:00 from run gen-full-20261108.*
+*Single full regeneration — supersedes all prior generation passes.*

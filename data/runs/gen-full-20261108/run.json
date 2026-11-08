@@ -1,0 +1,282 @@
+{
+  "run_id": "gen-full-20261108",
+  "session": "gen-full-20261108",
+  "model": "gemma-4-26b-a4b-it",
+  "started": "2026-11-08T03:56:35.536604+00:00",
+  "finished": "2026-11-08T04:00:50.305572+00:00",
+  "totals": {
+    "calls": 38,
+    "tokens_in": 40224,
+    "tokens_out": 46354,
+    "total_tokens": 86578
+  },
+  "artifacts": [
+    {
+      "kind": "prompt",
+      "path": "prompts/carrier_mesh.md",
+      "role": "carrier",
+      "topology": "mesh",
+      "tokens": 1410
+    },
+    {
+      "kind": "prompt",
+      "path": "prompts/carrier_ring.md",
+      "role": "carrier",
+      "topology": "ring",
+      "tokens": 2017
+    },
+    {
+      "kind": "prompt",
+      "path": "prompts/dispatcher_mesh.md",
+      "role": "dispatcher",
+      "topology": "mesh",
+      "tokens": 1600
+    },
+    {
+      "kind": "prompt",
+      "path": "prompts/dispatcher_ring.md",
+      "role": "dispatcher",
+      "topology": "ring",
+      "tokens": 1569
+    },
+    {
+      "kind": "prompt",
+      "path": "prompts/observer_mesh.md",
+      "role": "observer",
+      "topology": "mesh",
+      "tokens": 1575
+    },
+    {
+      "kind": "prompt",
+      "path": "prompts/observer_ring.md",
+      "role": "observer",
+      "topology": "ring",
+      "tokens": 1738
+    },
+    {
+      "kind": "prompt",
+      "path": "prompts/relay_mesh.md",
+      "role": "relay",
+      "topology": "mesh",
+      "tokens": 1580
+    },
+    {
+      "kind": "prompt",
+      "path": "prompts/relay_ring.md",
+      "role": "relay",
+      "topology": "ring",
+      "tokens": 1768
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/fog-mesh.json",
+      "role": "system",
+      "topology": "mesh",
+      "tokens": 2478
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/fog-ring.json",
+      "role": "system",
+      "topology": "ring",
+      "tokens": 2690
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/relay-loss-mesh.json",
+      "role": "system",
+      "topology": "mesh",
+      "tokens": 2443
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/relay-loss-ring.json",
+      "role": "system",
+      "topology": "ring",
+      "tokens": 2680
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/peer-mute-mesh.json",
+      "role": "system",
+      "topology": "mesh",
+      "tokens": 2511
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/peer-mute-ring.json",
+      "role": "system",
+      "topology": "ring",
+      "tokens": 2834
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/stale-report-mesh.json",
+      "role": "system",
+      "topology": "mesh",
+      "tokens": 2490
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/stale-report-ring.json",
+      "role": "system",
+      "topology": "ring",
+      "tokens": 2670
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/capacity-conflict-mesh.json",
+      "role": "system",
+      "topology": "mesh",
+      "tokens": 2457
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/capacity-conflict-ring.json",
+      "role": "system",
+      "topology": "ring",
+      "tokens": 2667
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/contested-deliveries-mesh.json",
+      "role": "system",
+      "topology": "mesh",
+      "tokens": 2350
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/contested-deliveries-ring.json",
+      "role": "system",
+      "topology": "ring",
+      "tokens": 2632
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/route-gossip-mesh.json",
+      "role": "system",
+      "topology": "mesh",
+      "tokens": 2403
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/route-gossip-ring.json",
+      "role": "system",
+      "topology": "ring",
+      "tokens": 2554
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/bridge-closure-mesh.json",
+      "role": "system",
+      "topology": "mesh",
+      "tokens": 2375
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/bridge-closure-ring.json",
+      "role": "system",
+      "topology": "ring",
+      "tokens": 2591
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/dual-disruption-mesh.json",
+      "role": "system",
+      "topology": "mesh",
+      "tokens": 2601
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/dual-disruption-ring.json",
+      "role": "system",
+      "topology": "ring",
+      "tokens": 2786
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/cascading-failure-mesh.json",
+      "role": "system",
+      "topology": "mesh",
+      "tokens": 2324
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/cascading-failure-ring.json",
+      "role": "system",
+      "topology": "ring",
+      "tokens": 2642
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/scenario-00-mesh.json",
+      "role": "system",
+      "topology": "mesh",
+      "tokens": 2352
+    },
+    {
+      "kind": "scenario",
+      "path": "scenarios/scenario-00-ring.json",
+      "role": "system",
+      "topology": "ring",
+      "tokens": 2469
+    },
+    {
+      "kind": "example",
+      "path": "examples/relay-loss-reroute.md",
+      "role": "narrator",
+      "topology": "mesh",
+      "tokens": 2179
+    },
+    {
+      "kind": "example",
+      "path": "examples/relay-loss-reroute.md",
+      "role": "narrator",
+      "topology": "ring",
+      "tokens": 2123
+    },
+    {
+      "kind": "example",
+      "path": "examples/capacity-conflict.md",
+      "role": "narrator",
+      "topology": "mesh",
+      "tokens": 2196
+    },
+    {
+      "kind": "example",
+      "path": "examples/capacity-conflict.md",
+      "role": "narrator",
+      "topology": "ring",
+      "tokens": 1861
+    },
+    {
+      "kind": "example",
+      "path": "examples/stale-info-recovery.md",
+      "role": "narrator",
+      "topology": "mesh",
+      "tokens": 2180
+    },
+    {
+      "kind": "example",
+      "path": "examples/stale-info-recovery.md",
+      "role": "narrator",
+      "topology": "ring",
+      "tokens": 2232
+    },
+    {
+      "kind": "example",
+      "path": "examples/ring-neighbor-routing.md",
+      "role": "narrator",
+      "topology": "mesh",
+      "tokens": 2188
+    },
+    {
+      "kind": "example",
+      "path": "examples/ring-neighbor-routing.md",
+      "role": "narrator",
+      "topology": "ring",
+      "tokens": 2363
+    }
+  ],
+  "notes": "Full regeneration run \u2014 fat content, 38 calls"
+}
