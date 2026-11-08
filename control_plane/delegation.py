@@ -23,6 +23,33 @@ RESERVATION_MICRO = 100_000  # 0.1 credits, retained even after failure.
 MAX_PACKET_BYTES = 24_000
 MAX_OUTPUT_TOKENS = 2048
 MAX_RESULT_BYTES = 64_000
+MAX_USAGE_TOKENS = 10**9  # Upper bound for usage token counts
+
+
+def _sanitize_model(response_model: str) -> str:
+    """Sanitize provider-controlled model name before persisting.
+
+    Only record the model when it equals the module's fixed MODEL constant.
+    Any other value (including hostile/garbage input) records as 'unknown'.
+    """
+    if response_model == MODEL:
+        return MODEL
+    return "unknown"
+
+
+def _coerce_usage_token(value) -> int | None:
+    """Coerce a usage token count to int with 0..MAX_USAGE_TOKENS bounds.
+
+    Returns None if the value is not a valid integer or out of bounds.
+    Reused by both live and diagnostics paths for consistent coercion.
+    """
+    if type(value) is not int:
+        return None
+    if value < 0 or value > MAX_USAGE_TOKENS:
+        return None
+    return value
+
+
 INSTRUCTIONS = (
     "You are a read-only code investigator. Analyze only the supplied source. "
     "Return concise findings, source evidence, uncertainty, and a proposed next step. "
@@ -350,17 +377,16 @@ def adaption_worker(packet):
         raise ValueError("empty or oversized model result")
     usage = getattr(response, "usage", None)
     tokens = {
-        key: getattr(usage, key, None) for key in ("input_tokens", "output_tokens")
+        key: _coerce_usage_token(getattr(usage, key, None))
+        for key in ("input_tokens", "output_tokens")
     }
-    if any(type(n) is not int or n < 0 for n in tokens.values()):
-        tokens = {"input_tokens": None, "output_tokens": None}
     cost = (
         (tokens["input_tokens"] * 0.15 + tokens["output_tokens"] * 0.50) / 1_000_000
         if tokens["input_tokens"] is not None
         else None
     )
     return {
-        "model": response.model,
+        "model": _sanitize_model(response.model),
         "text": text,
         "usage": tokens,
         "estimated_credits": cost,
