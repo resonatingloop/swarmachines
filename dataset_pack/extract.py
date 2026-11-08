@@ -24,6 +24,49 @@ from pathlib import Path
 from typing import Any
 
 
+def _sanitize_artifact_id(artifact_id: str, base_dir: Path) -> str:
+    """
+    Sanitize artifact_id to prevent path traversal attacks.
+
+    Security rules:
+    1. Reject absolute paths (starts with /)
+    2. Reject '..' path segments (traversal attempt)
+    3. Allowlist charset: [A-Za-z0-9_-] only
+    4. Resolve full path and assert containment within base_dir
+
+    Args:
+        artifact_id: Untrusted artifact identifier from model response
+        base_dir: Base directory that must contain the output file
+
+    Returns:
+        Sanitized artifact_id (safe to use in path join)
+
+    Raises:
+        ValueError: If artifact_id fails security validation
+    """
+    # Rule 1: Reject absolute paths
+    if artifact_id.startswith("/"):
+        raise ValueError(f"artifact_id cannot be absolute path: {artifact_id}")
+
+    # Rule 2: Reject '..' path segments
+    if ".." in artifact_id:
+        raise ValueError(f"artifact_id cannot contain '..': {artifact_id}")
+
+    # Rule 3: Allowlist charset [A-Za-z0-9_-]
+    if not re.match(r"^[A-Za-z0-9_-]+$", artifact_id):
+        raise ValueError(f"artifact_id contains invalid chars (allowed: A-Za-z0-9_-): {artifact_id}")
+
+    # Rule 4: Resolve and verify containment
+    resolved_base = base_dir.resolve()
+    candidate_path = (base_dir / artifact_id).resolve()
+    try:
+        candidate_path.relative_to(resolved_base)
+    except ValueError:
+        raise ValueError(f"artifact_id would escape base directory: {artifact_id}")
+
+    return artifact_id
+
+
 @dataclass
 class ExtractedArtifact:
     """
@@ -250,8 +293,14 @@ class ArtifactExtractor:
 
             self.extracted.append(artifact)
 
-            # Write artifact to disk
-            artifact_path = self.artifacts_dir / f"{artifact.artifact_id}.txt"
+            # Write artifact to disk - sanitize artifact_id to prevent path traversal
+            try:
+                safe_artifact_id = _sanitize_artifact_id(artifact.artifact_id, self.artifacts_dir)
+            except ValueError as e:
+                # Security rejection - skip this artifact and log the rejection
+                print(f"  SECURITY: Skipping artifact - {e}")
+                continue
+            artifact_path = self.artifacts_dir / f"{safe_artifact_id}.txt"
             with open(artifact_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
