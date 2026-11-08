@@ -68,6 +68,9 @@ class CallRecord:
     receipt_ref: str
     credits_estimated: str = "0"
     provenance: str = "model-generated"
+    status: str = "completed"
+    incomplete_reason: str | None = None
+    reasoning_tokens: int = 0
 
     def to_jsonl_line(self) -> str:
         """Serialize to a JSONL line."""
@@ -87,6 +90,9 @@ class CallRecord:
                 "receipt_ref": self.receipt_ref,
                 "credits_estimated": self.credits_estimated,
                 "provenance": self.provenance,
+                "status": self.status,
+                "incomplete_reason": self.incomplete_reason,
+                "reasoning_tokens": self.reasoning_tokens,
             },
             separators=(",", ":"),
             ensure_ascii=False,
@@ -164,6 +170,9 @@ def _model_call_payload(
         "tokens_out": record.tokens_out,
         "receipt_ref": record.receipt_ref,
         "provenance": record.provenance,
+        "status": record.status,
+        "incomplete_reason": record.incomplete_reason,
+        "reasoning_tokens": record.reasoning_tokens,
     }
 
 
@@ -286,6 +295,9 @@ class GovernedRunner:
         tokens_in: int = 0,
         tokens_out: int = 0,
         credits_estimated: str = "0",
+        status: str = "completed",
+        incomplete_reason: str | None = None,
+        reasoning_tokens: int = 0,
     ) -> CallRecord:
         """
         Generate a call record with full provenance and append to call_records.
@@ -324,6 +336,9 @@ class GovernedRunner:
             receipt_ref=receipt_ref,
             credits_estimated=credits_estimated,
             provenance="model-generated",
+            status=status,
+            incomplete_reason=incomplete_reason,
+            reasoning_tokens=reasoning_tokens,
         )
         # N1 fix: Append the record so dry-run ships real calls/receipts/artifacts
         self.call_records.append(record)
@@ -446,11 +461,26 @@ class GovernedRunner:
                 messages=[{"role": "user", "content": prompt}],
                 max_output_tokens=self.budget.MAX_OUTPUT_TOKENS,
             )
-            # or6 repair: fail closed on incomplete/empty responses — the
-            # diagnostics (status, incomplete_reason, reasoning_tokens)
-            # ride in the error message, so a silent-empty call can never
-            # again be recorded as a completed one.
-            model_response.validate_complete()
+            # or6 repair: fail closed on incomplete/empty responses — and
+            # persist the failure itself as a call record (status,
+            # incomplete_reason, reasoning_tokens, error text) so a failed
+            # call is identifiable after capture instead of vanishing.
+            try:
+                model_response.validate_complete()
+            except Exception as ve:
+                self._generate_call_record(
+                    role=role,
+                    prompt=prompt,
+                    response=f"VALIDATION-FAILED: {ve}",
+                    model="glm-53-flash",
+                    artifact=artifact,
+                    tokens_in=model_response.usage.input_tokens,
+                    tokens_out=model_response.usage.output_tokens,
+                    status=model_response.status or "unknown",
+                    incomplete_reason=model_response.incomplete_reason,
+                    reasoning_tokens=model_response.usage.reasoning_tokens,
+                )
+                raise
         except Exception:
             self.budget.fail(reservation)
             raise
@@ -478,6 +508,9 @@ class GovernedRunner:
             tokens_in=model_response.usage.input_tokens,
             tokens_out=model_response.usage.output_tokens,
             credits_estimated=format(credits, "f"),
+            status=model_response.status or "unknown",
+            incomplete_reason=model_response.incomplete_reason,
+            reasoning_tokens=model_response.usage.reasoning_tokens,
         )
 
     def _append_dry_model_call(

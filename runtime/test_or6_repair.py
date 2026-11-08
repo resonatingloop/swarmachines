@@ -137,3 +137,49 @@ class TestAdapterCapture(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCallRecordPersistence(unittest.TestCase):
+    """Diagnostics reach CallRecord, jsonl, and the sealed payload."""
+
+    def test_call_record_carries_diagnostics(self):
+        """Fields land on the record and serialize to the jsonl line."""
+        import json
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).parent.parent))
+        from dataset_pack.run import CallRecord
+        r = CallRecord(
+            ts="t", run_id="r", call_id="c1", role="alpha", topology="ring",
+            artifact=None, model="glm-53-flash", prompt_full="p",
+            response_full="visible answer", tokens_in=72, tokens_out=256,
+            receipt_ref="receipt-1", credits_estimated="0.0001",
+            status="completed", incomplete_reason=None, reasoning_tokens=180,
+        )
+        line = json.loads(r.to_jsonl_line())
+        self.assertEqual(line["status"], "completed")
+        self.assertEqual(line["reasoning_tokens"], 180)
+        self.assertIsNone(line["incomplete_reason"])
+
+    def test_failed_call_record_is_persistable(self):
+        """A validation-failed call records its diagnostics, not silence."""
+        import json
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).parent.parent))
+        from dataset_pack.run import CallRecord
+        r = CallRecord(
+            ts="t", run_id="r", call_id="c2", role="alpha", topology="ring",
+            artifact=None, model="glm-53-flash", prompt_full="p",
+            response_full="VALIDATION-FAILED: incomplete model response: status='incomplete'",
+            tokens_in=72, tokens_out=256, receipt_ref="receipt-2",
+            credits_estimated="0", status="incomplete",
+            incomplete_reason="max_output_tokens", reasoning_tokens=256,
+        )
+        line = json.loads(r.to_jsonl_line())
+        self.assertEqual(line["status"], "incomplete")
+        self.assertEqual(line["incomplete_reason"], "max_output_tokens")
+        self.assertIn("VALIDATION-FAILED", line["response_full"])
+        self.assertEqual(line["reasoning_tokens"], 256)
+
+
+if __name__ == "__main__":
+    unittest.main()
