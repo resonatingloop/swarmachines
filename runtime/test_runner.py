@@ -982,13 +982,6 @@ def test_freight_illegal_move_noop():
     # Get all rejected actions
     rejected = [e for e in events if e["type"] == "action.rejected"]
 
-    # Get all world.changed events related to freight movement
-    freight_world_changes = [
-        e
-        for e in events
-        if e["type"] == "world.changed" and "freight" in e["payload"].get("what", "")
-    ]
-
     # Build set of action_ids that caused world changes
     # Note: world.changed events don't have action_id, but we can verify that
     # rejected actions don't have corresponding commits
@@ -1021,9 +1014,15 @@ def test_freight_illegal_move_noop():
     ]
 
     if not no_ops:
-        return False, "Expected committed no-ops (fixed code commits legal no-ops, master rejects them)"
+        return (
+            False,
+            "Expected committed no-ops (fixed code commits legal no-ops, master rejects them)",
+        )
     if apply_failed_rejections:
-        return False, f"Found {len(apply_failed_rejections)} action.rejected with 'apply failed' (master mislabel - should be action.committed)"
+        return (
+            False,
+            f"Found {len(apply_failed_rejections)} action.rejected with 'apply failed' (master mislabel - should be action.committed)",
+        )
 
     # Conservation check: count unique freight items that moved from committed payloads
     # (world.changed never carries freight_id — count from committed payloads instead)
@@ -1165,6 +1164,7 @@ def test_freight_capacity_check():
     # and validation can reject for capacity reasons
     # Assert that capacity checking is actually wired by verifying routes have capacity defined
     from freight_world import FreightWorld
+
     fw = FreightWorld(seed=42)
     routes_with_capacity = [r for r in fw.routes.values() if r.capacity > 0]
     if not routes_with_capacity:
