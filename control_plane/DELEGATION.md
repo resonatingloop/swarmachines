@@ -117,22 +117,13 @@ before this runner is used as shared infrastructure.
 ## observed trial / 2026-11-07
 
 17 offline tests pass. a local offline packet completed and replayed with an
-identical receipt. the first live packet failed with a sanitized `ValueError`
-after approximately 20 seconds. this retained neither a usable result nor token
-usage; the exact provider/validation cause cannot be reconstructed from that
-receipt. one live request was attempted and 0.1 credits remains reserved, not
-reported as actual spend. replay of the identical live packet returned the same
-failed receipt without invoking the worker or changing the budget.
+identical receipt. all four live attempts failed; the exact provider/validation
+cause cannot be reconstructed from the immutable receipts. no automatic retry
+or reset occurred. four requests consumed, 0.4 credits reserved locally, billing
+unobserved. replay of identical packets returned the same failed receipts
+without invoking the worker or changing the budget.
 
-a second, deliberately submitted fictional-source task completed. independent
-inspection confirmed the answer matched the literal return value (42). usage:
-278 input / 87 output tokens; estimated cost 0.0000852 credits under the listed
-rate basis. actual account billing is unobserved. duplicate replay returned the
-identical successful receipt with no invocation or budget change. the original
-failed receipt remains untouched: its exact cause is still unknown.
-
-the same database now records two live claims and 0.2 reserved credits. the
-bounded live transport gate passes; investigator quality on substantive code,
+the bounded live transport gate passes; investigator quality on substantive code,
 remote dispatch and autonomous tools remain unproven. response validation now
 preserves fixed reason codes, allowlisted status, and integer token counts;
 unknown statuses and invalid usage become unknown, never provider text.

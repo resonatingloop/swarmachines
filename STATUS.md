@@ -17,13 +17,12 @@ provider retry/configuration behavior remains unchanged.
 local delegation slice (2026-11-07): accepted spec008 and owner-approved trial
 limited to 1 credit / four requests / one worker / no automatic retries. pug
 accepted the v1 mapping. 33 tests (18 delegation + 15 observer), scoped ruff and
-atlas freshness pass. first paid attempt failed with unknown cause; the second
-explicit fictional-source task completed with the correct literal answer.
-usage: 278 input / 87 output tokens; estimated 0.0000852 credits, not observed
-billing. both duplicate replays reused receipts without calls or reservations.
-the same private queue records two live claims / 0.2 reserved credits. bounded
-status/usage diagnostics now distinguish response-validation failures without
-logging provider text. pr #22 awaits independent review. see
+atlas freshness pass. all four live attempts failed with immutable records; the
+exact cause remains unknown, no automatic retry or reset occurred. four requests
+consumed, 0.4 credits reserved locally, billing unobserved. duplicate replays
+reuse receipts without calls or reservations. bounded status/usage diagnostics
+distinguish response-validation failures without logging provider text. pr #23
+corrects smoke failure status and attempted-call accounting. see
 [delegation operations](control_plane/DELEGATION.md). older evidence below is
 historical, not a current merge ledger.
 
