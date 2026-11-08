@@ -271,3 +271,7 @@ separate owner lane.
   coordination expectations in [AGENTS.md](AGENTS.md).
 - consult [development](docs/DEVELOPMENT.md) for a busy port, missing browser
   tooling, repeatable checks, and the checker's casing mismatch.
+
+## 2026-11-08 checkpoint (tracing)
+
+- t-004-trace-wiring: langfuse-compatible tracer wired into the runner (optional tracer param + --trace flag); offline default byte-identical to master; telemetry failures contained; acceptance test drives the real runner with a fake exporter (10/10 tracer suite, 24/24 runner suite). Live cloud export untested in this environment — fake exporter + fake SDK module used for verification.
