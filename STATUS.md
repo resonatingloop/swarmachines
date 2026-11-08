@@ -246,17 +246,13 @@ the proposal was unchanged by the bootstrap.
 
 ## next useful action
 
-<<<<<<< HEAD
-review pr #24's receipt projection at its current head before merging. refresh
-private captures deliberately after task/receipt changes; existing HTML is frozen.
-no dispatch, retries or new provider budget are implied by the board. separate
-runtime integration and provider-sanitization work remain with their owners.
-=======
-independently review pr #26 at its final implementation head. explicit tasks in
-the authorized read-only session may use its remaining allowance; no automatic
-loop, task-purpose expansion or new budget is implied. preserve all prior trial
-records and handle provider-sanitization work on its separate owner lane.
->>>>>>> 25ec714 (feat: prepare and submit tasks within persistent authorized sessions)
+independently review pr #26 at its final implementation head. the spec010
+submission workflow is implemented and tested; explicit tasks in the authorized
+read-only session may use its remaining allowance (1/20 used, 0.1 reserved,
+0.0003147 estimated); no automatic loop, task-purpose expansion or new budget
+is implied. preserve all prior trial records (receipt-board: four attempts,
+0.4 reserved, billing unobserved) and handle provider-sanitization work on its
+separate owner lane.
 
 ## re-entry notes
 
