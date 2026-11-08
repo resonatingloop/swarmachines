@@ -21,6 +21,18 @@ task-submission workflow) is held for owner review with no merge request and
 zero provider calls; the delegation slice below carries a post-merge sast redo
 tracked as task t-011.
 
+spec010 session planning: [spec010](specs/010-explicit-task-submission.md) drafts explicit
+prepare/inspect/submit and post-run capture within a persistent named paid session.
+implementation and session approval are separate gates; neither has started.
+explicit submission slice: owner accepted spec010 and raised the new session
+ceiling to 2 credits; the implementation supports up to 20 requests at 0.1
+credits reserved each, one worker and no automatic retries. pinned-source packet
+preparation, fingerprint-bound run, persistent session binding and separate capture
+are implemented. 65 offline tests and ruff pass. CLI offline and paid proofs
+completed; the new private session has 1/20 requests used, 0.1 credits reserved
+and 0.0003147 estimated credits. billing unobserved; first trial untouched.
+independent review remains pending. [operations](control_plane/SUBMISSION.md).
+
 receipt-board slice: owner accepted [spec009](specs/009-worker-receipt-board.md)
 on 2026-11-08. optional read-only worker projection implemented; snapshot v2
 preserves v1 rendering. 48 offline tests pass, scoped ruff passes, and browser
@@ -234,10 +246,13 @@ the proposal was unchanged by the bootstrap.
 
 ## next useful action
 
-review pr #24's receipt projection at its current head before merging. refresh
-private captures deliberately after task/receipt changes; existing HTML is frozen.
-no dispatch, retries or new provider budget are implied by the board. separate
-runtime integration and provider-sanitization work remain with their owners.
+independently review pr #26 at its final implementation head. the spec010
+submission workflow is implemented and tested; explicit tasks in the authorized
+read-only session may use its remaining allowance (1/20 used, 0.1 reserved,
+0.0003147 estimated); no automatic loop, task-purpose expansion or new budget
+is implied. preserve all prior trial records (receipt-board: four attempts,
+0.4 reserved, billing unobserved) and handle provider-sanitization work on its
+separate owner lane.
 
 ## re-entry notes
 

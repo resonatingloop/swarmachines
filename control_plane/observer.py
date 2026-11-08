@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import html
 import json
+import os
 import re
 import subprocess
 import unicodedata
@@ -255,6 +256,8 @@ def render_workers(workers):
     status = workers.get("status", "not supplied")
     body = f"<p class='id'>worker source · {display(status)}</p>"
     body += fields({"read_at": workers.get("read_at"), "source": "local worker queue"})
+    if workers.get("session"):
+        body += fields(workers["session"])
     if workers.get("budget"):
         body += (
             "<div class='sources'><article><h3>local reservations</h3>"
@@ -344,6 +347,18 @@ def render(snapshot):
     return re.sub(r"@@(\w+)@@", lambda m: values[m.group(1)], template)
 
 
+def write_snapshot(output, snapshot):
+    """Persist a new private capture; never overwrite an earlier observation."""
+    output.mkdir(mode=0o700, parents=False, exist_ok=False)
+    for name, content in (
+        ("snapshot.json", json.dumps(snapshot, indent=2) + "\n"),
+        ("index.html", render(snapshot)),
+    ):
+        fd = os.open(output / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(content)
+
+
 def main():
     """Write a new private snapshot directory; never overwrite an earlier capture."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -356,15 +371,7 @@ def main():
     snapshot = collect(
         args.repo, args.github_repo, args.ledger_ref, args.worker_state_dir
     )
-    args.output.mkdir(mode=0o700, parents=False, exist_ok=False)
-    for name, content in (
-        ("snapshot.json", json.dumps(snapshot, indent=2) + "\n"),
-        ("index.html", render(snapshot)),
-    ):
-        target = args.output / name
-        with target.open("x", encoding="utf-8") as stream:
-            target.chmod(0o600)
-            stream.write(content)
+    write_snapshot(args.output, snapshot)
     print(
         "observation captured; inspect source availability and diagnostics in index.html"
     )
