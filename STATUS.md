@@ -8,6 +8,8 @@
 
 ## verified checkpoint
 
+measurement readiness: [pinned source mapping](docs/measurement-readiness.md) records the pr #29 policy gate: received context is not read by the action policy. controlled fixtures at seeds 7/42/101 preserve all action events and final counts when context changes. mapping review remains pending; no formal runs or analyzer implementation authorized by this observation.
+
 merge ledger (2026-11-07 23:25z to 2026-11-08 00:52z): master tip is c5899d8
 (pr #24: read-only worker receipts projection; verifier clear 48/48 and sast
 clear). this window also merged pr #16 (331a65c: viewer evidence escaping
