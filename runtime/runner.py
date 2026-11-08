@@ -8,15 +8,28 @@ implements:
 - message lifecycle states + per-agent "was this report in context at turn n?" query
 - two disturbances: relay-loss, stale-report with scheduled application
 - scripted dispatchers + seed control; produces event log
+- freight-in-the-fog world integration (optional, via --world freight)
 """
 
 import hashlib
 import json
 import random
 import re
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import ClassVar
+
+from freight_world import FreightWorld
+
+# Optional tracing support (no-op when not configured)
+try:
+    from tracer import RunStatus, TraceConfig, Tracer
+except ImportError:
+    # Tracing module not available - will be no-op
+    Tracer = None  # type: ignore
+    TraceConfig = None  # type: ignore
+    RunStatus = None  # type: ignore
 
 
 class EventLog:
@@ -329,16 +342,29 @@ class Agent:
         self.message_counter += 1
         return f"m-{self.agent_id}{self.message_counter:03d}"
 
-    def observe(self, world_state: dict, turn: int, log: EventLog) -> None:
+    def observe(
+        self,
+        world_state: dict,
+        turn: int,
+        log: EventLog,
+        freight_world: FreightWorld | None = None,
+    ) -> None:
         """Observe phase: record what the agent sees."""
-        visible = {
-            "queue": self.observe_rng.randint(0, 3),
-            "requests": [{"freight": "med-kit", "dest": "south"}]
-            if self.observe_rng.random() > 0.5
-            else [],
-            "known_closures": [],
-            "roads_in_view": ["east-bridge"] if self.observe_rng.random() > 0.3 else [],
-        }
+        if freight_world is not None:
+            # Use freight world for partial observations
+            visible = freight_world.observe(self.agent_id, turn, self.observe_rng)
+        else:
+            # Fallback to scripted observations
+            visible = {
+                "queue": self.observe_rng.randint(0, 3),
+                "requests": [{"freight": "med-kit", "dest": "south"}]
+                if self.observe_rng.random() > 0.5
+                else [],
+                "known_closures": [],
+                "roads_in_view": ["east-bridge"]
+                if self.observe_rng.random() > 0.3
+                else [],
+            }
         log.append(
             turn=turn,
             agent_id=self.agent_id,
@@ -443,16 +469,53 @@ class Agent:
         turn: int,
         log: EventLog,
         message_lifecycle: MessageLifecycle | None = None,
+        freight_world: FreightWorld | None = None,
     ) -> None:
         """Act phase: propose and commit actions."""
         if self.act_rng.random() > 0.5:
             action_id = f"act-{self.agent_id}{turn:02d}"
-            action = {
-                "action_id": action_id,
-                "kind": "route_freight",
-                "freight": "med-kit",
-                "via": "west->south",
-            }
+
+            # Build action using freight world if available
+            if freight_world is not None:
+                # Get agent's current location from freight_world's agent_depots mapping
+                assigned_depots = freight_world.agent_depots.get(
+                    self.agent_id, ["west"]
+                )
+                current_location = assigned_depots[0]
+
+                # Get freight items at this agent's location
+                freight_items = freight_world.get_freight_at_location(current_location)
+                if not freight_items:
+                    # No freight to route - emit no-op action
+                    action = {
+                        "action_id": action_id,
+                        "kind": "route_freight",
+                        "freight_id": "none",
+                    }
+                else:
+                    # Get adjacent locations for routing
+                    adjacent = freight_world.get_adjacent_locations(current_location)
+                    if not adjacent:
+                        return  # No routes from this location
+
+                    # Pick first freight item and route it
+                    item = freight_items[0]
+                    via_path = f"{current_location}->{adjacent[0]}"
+                    action = {
+                        "action_id": action_id,
+                        "kind": "route_freight",
+                        "freight_id": item.item_id,
+                        "freight_type": item.freight_type,
+                        "via": via_path,
+                    }
+            else:
+                # Fallback to generic action
+                action = {
+                    "action_id": action_id,
+                    "kind": "route_freight",
+                    "freight": "med-kit",
+                    "via": "west->south",
+                }
 
             log.append(
                 turn=turn,
@@ -462,8 +525,14 @@ class Agent:
             )
             self.actions_proposed.append(action)
 
-            # Validate - sometimes reject
-            legal = self.act_rng.random() > 0.2
+            # Validate against freight world if available
+            if freight_world is not None:
+                legal, reason = freight_world.validate_action(action)
+            else:
+                # Fallback to stochastic validation
+                legal = self.act_rng.random() > 0.2
+                reason = "route validation failed" if not legal else ""
+
             log.append(
                 turn=turn,
                 agent_id=self.agent_id,
@@ -472,23 +541,54 @@ class Agent:
             )
 
             if legal:
-                # Commit
-                log.append(
-                    turn=turn,
-                    agent_id=self.agent_id,
-                    event_type="action.committed",
-                    payload={"action_id": action_id, "result": "freight queued"},
-                )
+                # Commit action and update freight world
+                if freight_world is not None:
+                    success, commit_reason, event_payload = freight_world.apply_action(
+                        action, self.agent_id
+                    )
+                    if success and event_payload:
+                        log.append(
+                            turn=turn,
+                            agent_id=self.agent_id,
+                            event_type="action.committed",
+                            payload={"action_id": action_id, **event_payload},
+                        )
+                        # Emit world.changed event
+                        log.append(
+                            turn=turn,
+                            agent_id=self.agent_id,
+                            event_type="world.changed",
+                            payload={
+                                "what": f"freight {action.get('freight_id', 'unknown')} moved",
+                                "effect": event_payload.get("result", "freight routed"),
+                                "visibility": "all agents",
+                            },
+                        )
+                    else:
+                        # Action failed at apply stage
+                        log.append(
+                            turn=turn,
+                            agent_id=self.agent_id,
+                            event_type="action.rejected",
+                            payload={
+                                "action_id": action_id,
+                                "reason": commit_reason or "apply failed",
+                            },
+                        )
+                else:
+                    log.append(
+                        turn=turn,
+                        agent_id=self.agent_id,
+                        event_type="action.committed",
+                        payload={"action_id": action_id, "result": "freight queued"},
+                    )
             else:
                 # Reject
                 log.append(
                     turn=turn,
                     agent_id=self.agent_id,
                     event_type="action.rejected",
-                    payload={
-                        "action_id": action_id,
-                        "reason": "route validation failed",
-                    },
+                    payload={"action_id": action_id, "reason": reason},
                 )
 
 
@@ -507,6 +607,8 @@ class TurnSeamRunner:
         agents_config: list[str],
         disturbance_schedule: dict,
         delivery_map: dict | None = None,
+        use_freight_world: bool = False,
+        tracer=None,  # Optional[Tracer] - avoid forward ref issues
     ):
         self.seed = seed
         self.rng = random.Random(seed)
@@ -531,8 +633,25 @@ class TurnSeamRunner:
         self.log = EventLog(self.run_id, self.base_ts)
         self.delivery_map = delivery_map or {}
 
+        # Initialize freight world if requested
+        self.use_freight_world = use_freight_world
+        self.freight_world: FreightWorld | None = None
+        if use_freight_world:
+            self.freight_world = FreightWorld(seed=seed)
+
+        # Tracing support
+        self.tracer = tracer
+
     def run(self, num_turns: int) -> str:
         """Run the simulation for num_turns turns."""
+
+        # Start tracing if configured
+        if self.tracer is not None:
+            self.tracer.start_trace(
+                run_id=self.run_id,
+                condition=self.topology.topology,
+                seed=self.seed,
+            )
 
         # Compute delivery_config_sha (hash of delivery configuration, not delivery graph)
         # Named delivery_config_sha to clarify it hashes the hub/topology config,
@@ -556,24 +675,37 @@ class TurnSeamRunner:
             },
         )
 
-        # world.init event
+        # world.init event - reflect the real route set from freight_world
+        if self.freight_world is not None:
+            routes_payload = [
+                {"from": r.from_loc, "to": r.to_loc, "status": r.status}
+                | ({"bridge": r.bridge} if r.bridge else {})
+                for r in self.freight_world.routes.values()
+            ]
+            depots = self.freight_world.depots
+            hubs = self.freight_world.hubs
+        else:
+            routes_payload = [
+                {"from": "west", "to": "east", "status": "open"},
+                {
+                    "from": "east",
+                    "to": "south",
+                    "status": "open",
+                    "bridge": "east-bridge",
+                },
+                {"from": "west", "to": "south", "status": "open"},
+            ]
+            depots = ["west", "east", "south"]
+            hubs = ["relay-a"]
+
         self.log.append(
             turn=0,
             agent_id=None,
             event_type="world.init",
             payload={
-                "depots": ["west", "east", "south"],
-                "hubs": ["relay-a"],
-                "routes": [
-                    {"from": "west", "to": "east", "status": "open"},
-                    {
-                        "from": "east",
-                        "to": "south",
-                        "status": "open",
-                        "bridge": "east-bridge",
-                    },
-                    {"from": "west", "to": "south", "status": "open"},
-                ],
+                "depots": depots,
+                "hubs": hubs,
+                "routes": routes_payload,
             },
         )
 
@@ -611,7 +743,7 @@ class TurnSeamRunner:
 
             # Phase 1: observe - ALL agents observe before any exchange
             for agent in self.agents:
-                agent.observe(world_state, turn, self.log)
+                agent.observe(world_state, turn, self.log, self.freight_world)
 
             # Phase 2: exchange - ALL agents exchange before any act
             for agent in self.agents:
@@ -627,21 +759,39 @@ class TurnSeamRunner:
 
             # Phase 3: act - ALL agents act before moving to next turn
             for agent in self.agents:
-                agent.act(turn, self.log, self.lifecycle)
+                agent.act(turn, self.log, self.lifecycle, self.freight_world)
 
             # Phase 4: record (implicit in event logging)
 
-        # run.end
+        # run.end - use actual world counts if freight_world is available
+        if self.freight_world is not None:
+            stats = self.freight_world.get_delivery_stats()
+            deliveries_completed = stats["delivered"]
+            deliveries_stuck = stats["stuck"]
+        else:
+            # Scripted mode: drop fabricated fields entirely (absent is better than lying)
+            deliveries_completed = 0
+            deliveries_stuck = 0
+
         self.log.append(
             turn=num_turns,
             agent_id=None,
             event_type="run.end",
             payload={
-                "deliveries_completed": self.rng.randint(1, 3),
-                "deliveries_stuck": self.rng.randint(0, 1),
+                "deliveries_completed": deliveries_completed,
+                "deliveries_stuck": deliveries_stuck,
                 "recovery_interval_turns": num_turns,
             },
         )
+
+        # End tracing if configured
+        if self.tracer is not None:
+            from tracer import RunStatus
+
+            self.tracer.end_trace(
+                status=RunStatus.COMPLETED,
+                reason=f"completed {num_turns} turns",
+            )
 
         return self.log.to_jsonl()
 
@@ -749,6 +899,18 @@ def main():
     parser.add_argument(
         "--delivery-map", type=str, default=None, help="path to delivery map JSON file"
     )
+    parser.add_argument(
+        "--world",
+        choices=["scripted", "freight"],
+        default="scripted",
+        help="world mode: scripted (default, backward-compatible) or freight (freight-in-the-fog world)",
+    )
+    parser.add_argument(
+        "--trace",
+        action="store_true",
+        default=False,
+        help="Enable execution tracing (requires LANGFUSE_* env vars or uses fake exporter for tests)",
+    )
 
     args = parser.parse_args()
 
@@ -799,12 +961,29 @@ def main():
                 "agent": parts[2],
             }
 
+    # Create tracer if --trace flag is set
+    tracer = None
+    if args.trace:
+        try:
+            from tracer import create_tracer
+
+            tracer, _ = create_tracer(
+                run_id=f"run-seed{args.seed:04d}",
+                condition=args.topology,
+                seed=args.seed,
+                use_fake_exporter=False,  # Real tracing (or no-op if no keys)
+            )
+        except ImportError:
+            print("Warning: --trace specified but tracer module not available")
+
     runner = TurnSeamRunner(
         seed=args.seed,
         comm_topology=args.topology,
         agents_config=agents,
         disturbance_schedule=disturbance_schedule,
         delivery_map=delivery_map if delivery_map else None,
+        use_freight_world=args.world == "freight",
+        tracer=tracer,
     )
 
     output = runner.run(args.turns)
