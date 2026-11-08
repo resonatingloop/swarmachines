@@ -840,6 +840,8 @@ class TurnSeamRunner:
         use_freight_world: bool = False,
         policy: str = "legacy",
         tracer: object | None = None,
+        world_graph: dict | None = None,
+        job_set: list[dict] | None = None,
     ):
         if policy not in ("legacy", POLICY) or (
             policy == POLICY and not use_freight_world
@@ -879,6 +881,8 @@ class TurnSeamRunner:
 
         self.log = EventLog(self.run_id, self.base_ts)
         self.delivery_map = delivery_map or {}
+        self.world_graph = world_graph
+        self.job_set = job_set
 
         # Initialize freight world if requested
         self.use_freight_world = use_freight_world
@@ -886,7 +890,12 @@ class TurnSeamRunner:
         # Optional execution tracer (spec: langfuse-compatible, offline no-op)
         self.tracer: Any = tracer
         if use_freight_world:
-            self.freight_world = FreightWorld(seed=seed)
+            self.freight_world = FreightWorld(
+                seed=seed,
+                graph=world_graph,
+                job_set=job_set,
+                agent_roster=agents_config if world_graph is not None else None,
+            )
 
     def _run_phase(
         self,
@@ -953,7 +962,14 @@ class TurnSeamRunner:
         # Compute delivery_config_sha (hash of delivery configuration, not delivery graph)
         # Named delivery_config_sha to clarify it hashes the hub/topology config,
         # not a graph of message deliveries (which is tracked separately in MessageLifecycle)
-        delivery_map_json = json.dumps(self.delivery_map, sort_keys=True)
+        delivery_config = self.delivery_map
+        if self.world_graph is not None or self.job_set is not None:
+            delivery_config = {
+                "delivery_map": self.delivery_map,
+                "graph": self.world_graph,
+                "job_set": self.job_set,
+            }
+        delivery_map_json = json.dumps(delivery_config, sort_keys=True)
         delivery_config_sha = hashlib.sha256(delivery_map_json.encode()).hexdigest()[
             :16
         ]

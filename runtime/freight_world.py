@@ -66,31 +66,53 @@ class FreightWorld:
     - Route validation and action application
     """
 
-    def __init__(self, seed: int):
+    def __init__(
+        self,
+        seed: int,
+        graph: dict[str, Any] | None = None,
+        job_set: list[dict[str, str]] | None = None,
+        agent_roster: list[str] | None = None,
+    ):
         self.seed = seed
         self.rng = random.Random(seed)
 
         # Initialize world graph
-        self.depots = ["west", "east", "south"]
-        self.hubs = ["relay-a"]
+        self.depots = (
+            list(graph["depots"]) if graph is not None else ["west", "east", "south"]
+        )
+        self.hubs = list(graph["hubs"]) if graph is not None else ["relay-a"]
         self.all_locations = self.depots + self.hubs
 
         # Initialize routes (bidirectional)
         self.routes: dict[str, Route] = {}
-        self._init_routes()
+        if graph is None:
+            self._init_routes()
+        else:
+            self._init_configured_routes(graph)
 
         # Initialize freight items
         self.freight_items: dict[str, FreightItem] = {}
         self.delivery_jobs: dict[str, DeliveryJob] = {}
-        self._init_freight()
+        if job_set is None:
+            self._init_freight()
+        else:
+            self._init_configured_freight(job_set)
 
         # Agent-to-depot assignment (for partial observations)
-        self.agent_depots: dict[str, list[str]] = {
-            "a": ["west"],
-            "b": ["east"],
-            "c": ["south"],
-            "d": ["relay-a"],
-        }
+        if agent_roster is None:
+            self.agent_depots: dict[str, list[str]] = {
+                "a": ["west"],
+                "b": ["east"],
+                "c": ["south"],
+                "d": ["relay-a"],
+            }
+        else:
+            if not self.all_locations:
+                raise ValueError("configured graph has no locations")
+            self.agent_depots = {
+                agent_id: [self.all_locations[index % len(self.all_locations)]]
+                for index, agent_id in enumerate(agent_roster)
+            }
 
         # Event sequence counter for determinism
         self.event_seq = 0
@@ -113,6 +135,47 @@ class FreightWorld:
         for depot in self.depots:
             self.routes[f"{depot}->relay-a"] = Route(depot, "relay-a", "open")
             self.routes[f"relay-a->{depot}"] = Route("relay-a", depot, "open")
+
+    def _init_configured_routes(self, graph: dict[str, Any]) -> None:
+        """initialize the exact validated route set declared by a task config."""
+        if (
+            not self.depots
+            or len(set(self.all_locations)) != len(self.all_locations)
+            or any(
+                not isinstance(location, str) or not location
+                for location in self.all_locations
+            )
+        ):
+            raise ValueError("invalid configured locations")
+        routes = graph.get("routes")
+        if not isinstance(routes, list) or not routes:
+            raise ValueError("configured graph requires routes")
+        for row in routes:
+            if not isinstance(row, dict):
+                raise TypeError("invalid configured route")
+            from_loc = row.get("from")
+            to_loc = row.get("to")
+            status = row.get("status", "open")
+            capacity = row.get("capacity", 3)
+            if (
+                from_loc not in self.all_locations
+                or to_loc not in self.all_locations
+                or from_loc == to_loc
+                or status not in ("open", "closed")
+                or not isinstance(capacity, int)
+                or not 1 <= capacity <= 100
+            ):
+                raise ValueError("invalid configured route")
+            route = Route(
+                from_loc=from_loc,
+                to_loc=to_loc,
+                status=status,
+                bridge=row.get("bridge"),
+                capacity=capacity,
+            )
+            if route.key() in self.routes:
+                raise ValueError("duplicate configured route")
+            self.routes[route.key()] = route
 
     def _init_freight(self) -> None:
         """Initialize freight items and delivery jobs."""
@@ -143,6 +206,45 @@ class FreightWorld:
                 state="pending",
             )
             self.delivery_jobs[job.job_id] = job
+
+    def _init_configured_freight(self, job_set: list[dict[str, str]]) -> None:
+        """initialize the exact validated freight roster declared by a task config."""
+        if not 1 <= len(job_set) <= 32:
+            raise ValueError("configured job set must contain 1..32 jobs")
+        for row in job_set:
+            if not isinstance(row, dict):
+                raise TypeError("invalid configured job")
+            item_id = row.get("freight_id")
+            freight_type = row.get("freight_type")
+            origin = row.get("origin")
+            destination = row.get("destination")
+            if (
+                not all(
+                    isinstance(value, str) and value
+                    for value in (item_id, freight_type, origin, destination)
+                )
+                or origin not in self.all_locations
+                or destination not in self.all_locations
+                or origin == destination
+                or item_id in self.freight_items
+            ):
+                raise ValueError("invalid configured job")
+            item = FreightItem(
+                item_id=item_id,
+                freight_type=freight_type,
+                origin=origin,
+                destination=destination,
+                current_location=origin,
+                state="pending",
+            )
+            self.freight_items[item_id] = item
+            self.delivery_jobs[f"j-{item_id}"] = DeliveryJob(
+                job_id=f"j-{item_id}",
+                freight_id=item_id,
+                origin=origin,
+                destination=destination,
+                state="pending",
+            )
 
     def get_freight_at_location(self, location: str) -> list[FreightItem]:
         """Get all freight items at a given location."""

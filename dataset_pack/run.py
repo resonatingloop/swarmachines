@@ -29,6 +29,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from runtime.runner import EventLog
 
+from .budget import CreditBudget
 from .configs import TaskInstanceConfig
 
 
@@ -65,6 +66,7 @@ class CallRecord:
     tokens_in: int
     tokens_out: int
     receipt_ref: str
+    credits_estimated: str = "0"
     provenance: str = "model-generated"
 
     def to_jsonl_line(self) -> str:
@@ -83,6 +85,7 @@ class CallRecord:
                 "tokens_in": self.tokens_in,
                 "tokens_out": self.tokens_out,
                 "receipt_ref": self.receipt_ref,
+                "credits_estimated": self.credits_estimated,
                 "provenance": self.provenance,
             },
             separators=(",", ":"),
@@ -122,6 +125,7 @@ class RunMetadata:
     started_at: str
     completed_at: str
     status: str
+    failure_type: str | None = None
     calls_count: int = 0
     config_hash: str = ""
 
@@ -139,6 +143,7 @@ class RunMetadata:
             "started_at": self.started_at,
             "completed_at": self.completed_at,
             "status": self.status,
+            "failure_type": self.failure_type,
             "calls_count": self.calls_count,
             "config_hash": self.config_hash,
         }
@@ -208,10 +213,16 @@ class GovernedRunner:
         base_dir: str,
         config: TaskInstanceConfig,
         dry_run: bool = True,
+        budget: CreditBudget | None = None,
     ):
         self.base_dir = Path(base_dir)
         self.config = config
         self.dry_run = dry_run
+        if not dry_run and budget is None:
+            raise ValueError("live governed runs require an explicit credit budget")
+        self.budget = budget
+        self.status = "prepared"
+        self.failure_type: str | None = None
         self.run_id = f"run-{config.instance_id}"
         self.run_dir = self.base_dir / self.run_id
         self.logs_dir = self.run_dir / "logs"
@@ -254,6 +265,9 @@ class GovernedRunner:
             "disturbance_schedule": self.config.disturbance_schedule,
             "turns": self.config.turns,
             "policy": self.config.policy,
+            "graph": self.config.graph,
+            "job_set": self.config.job_set,
+            "agent_roster": self.config.agent_roster,
             "config_hash": self.config.config_hash(),
         }
         config_path = self.run_dir / "config.json"
@@ -271,6 +285,7 @@ class GovernedRunner:
         artifact: str | None = None,
         tokens_in: int = 0,
         tokens_out: int = 0,
+        credits_estimated: str = "0",
     ) -> CallRecord:
         """
         Generate a call record with full provenance and append to call_records.
@@ -307,6 +322,7 @@ class GovernedRunner:
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             receipt_ref=receipt_ref,
+            credits_estimated=credits_estimated,
             provenance="model-generated",
         )
         # N1 fix: Append the record so dry-run ships real calls/receipts/artifacts
@@ -336,6 +352,7 @@ class GovernedRunner:
         else:
             # Live execution via governed workflow
             self._execute_live_run()
+        self.status = "dry-run" if self.dry_run else "completed"
 
     def _execute_live_run(self) -> None:
         """
@@ -365,7 +382,13 @@ class GovernedRunner:
             delivery_map=runner_args.get("delivery_map", {}),
             use_freight_world=runner_args.get("use_freight_world", False),
             policy=runner_args.get("policy", "legacy"),
+            world_graph=runner_args.get("world_graph"),
+            job_set=runner_args.get("job_set"),
         )
+        # The dataset instance identity owns every layer of the persisted run.
+        # TurnSeamRunner's seed-derived default is useful for standalone runs,
+        # but would split calls/run metadata from the sealed event log here.
+        runner.run_id = self.run_id
 
         # Model calls happen at the event seam while the genuine turn loop is
         # running. A dedicated model.call record is appended immediately after
@@ -381,10 +404,11 @@ class GovernedRunner:
 
         # B1: Execute the genuine turn loop (observe→exchange→act→record)
         # The runner.run() method handles the full turn cycle and seals the event log
-        runner.run(num_turns=self.config.turns)
-
-        # Use the runner's sealed event log as the source of truth.
-        self.event_log = runner.log
+        try:
+            runner.run(num_turns=self.config.turns)
+        finally:
+            # Preserve attempted-call evidence even when the episode aborts.
+            self.event_log = runner.log
 
     def _capture_live_event(
         self,
@@ -413,10 +437,32 @@ class GovernedRunner:
         else:
             return None
 
-        model_response = adapter.chat(
-            model="glm-53-flash",
-            messages=[{"role": "user", "content": prompt}],
-        )
+        if self.budget is None:
+            raise RuntimeError("live provider call attempted without credit budget")
+        reservation = self.budget.begin(prompt)
+        try:
+            model_response = adapter.chat(
+                model="glm-53-flash",
+                messages=[{"role": "user", "content": prompt}],
+                max_output_tokens=self.budget.MAX_OUTPUT_TOKENS,
+            )
+        except Exception:
+            self.budget.fail(reservation)
+            raise
+        try:
+            credits = self.budget.finish(
+                reservation,
+                input_tokens=model_response.usage.input_tokens,
+                output_tokens=model_response.usage.output_tokens,
+                provider_credits=getattr(
+                    getattr(model_response, "raw_response", None),
+                    "estimated_credits_consumed",
+                    None,
+                ),
+            )
+        except Exception:
+            self.budget.fail(reservation)
+            raise
         response = model_response.output_text
         return self._generate_call_record(
             role=role,
@@ -426,6 +472,7 @@ class GovernedRunner:
             artifact=artifact,
             tokens_in=model_response.usage.input_tokens,
             tokens_out=model_response.usage.output_tokens,
+            credits_estimated=format(credits, "f"),
         )
 
     def _append_dry_model_call(
@@ -630,6 +677,7 @@ class GovernedRunner:
                 "model": record.model,
                 "tokens_in": record.tokens_in,
                 "tokens_out": record.tokens_out,
+                "credits_estimated": record.credits_estimated,
                 "ts": record.ts,
             }
             with open(receipt_path, "w", encoding="utf-8") as f:
@@ -648,7 +696,8 @@ class GovernedRunner:
             policy=self.config.policy,
             started_at=self.call_records[0].ts if self.call_records else completed_at,
             completed_at=completed_at,
-            status="dry-run" if self.dry_run else "completed",
+            status=self.status,
+            failure_type=self.failure_type,
             calls_count=len(self.call_records),
             config_hash=self.config.config_hash(),
         )
@@ -678,15 +727,29 @@ class GovernedRunner:
         # Prepare
         run_dir = self.prepare()
 
-        # Submit (execute or simulate)
-        self.submit()
+        # Submit (execute or simulate), retaining partial evidence on failure.
+        try:
+            self.submit()
+        except BaseException as error:
+            self.status = "failed"
+            self.failure_type = type(error).__name__
+            self.capture()
+            raise
 
         # Capture
         capture_result = self.capture()
 
+        # Extract only from the persisted response fields after capture.
+        from .extract import extract_artifacts
+
+        extraction_result = extract_artifacts(
+            capture_result["calls_jsonl"], str(self.artifacts_dir)
+        )
+
         return {
             "run_dir": str(run_dir),
             **capture_result,
+            "extraction": extraction_result,
         }
 
 
@@ -694,6 +757,7 @@ def run_governed_run(
     config: TaskInstanceConfig,
     base_dir: str,
     dry_run: bool = True,
+    budget: CreditBudget | None = None,
 ) -> dict[str, Any]:
     """
     Convenience function to run a full governed workflow.
@@ -702,11 +766,12 @@ def run_governed_run(
         config: Task instance configuration
         base_dir: Base directory for run output
         dry_run: If True, simulate without model calls
+        budget: Shared fail-closed batch governor required for live calls
 
     Returns:
         Dict with workflow results.
     """
-    runner = GovernedRunner(base_dir, config, dry_run=dry_run)
+    runner = GovernedRunner(base_dir, config, dry_run=dry_run, budget=budget)
     return runner.run_full_workflow()
 
 

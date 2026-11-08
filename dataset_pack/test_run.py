@@ -15,6 +15,7 @@ import jsonschema
 
 from runtime.runner import verify_seal
 
+from .budget import BudgetExceeded, CreditBudget
 from .configs import get_task_configs
 from .package import find_potential_credentials
 from .run import GovernedRunner
@@ -25,12 +26,23 @@ class _FakeAdapter:
 
     calls = 0
 
-    def chat(self, *, model: str, messages: list[dict[str, str]]):
+    def chat(self, *, model: str, messages: list[dict[str, str]], **kwargs):
         type(self).calls += 1
         return SimpleNamespace(
             output_text=f"offline-response-{type(self).calls}",
             usage=SimpleNamespace(input_tokens=7, output_tokens=3),
+            raw_response=SimpleNamespace(estimated_credits_consumed="0.00001"),
         )
+
+
+class _FailingAdapter(_FakeAdapter):
+    """fail on the second attempted transport."""
+
+    def chat(self, *, model: str, messages: list[dict[str, str]], **kwargs):
+        if type(self).calls == 1:
+            type(self).calls += 1
+            raise RuntimeError("synthetic provider failure")
+        return super().chat(model=model, messages=messages, **kwargs)
 
 
 def _read_jsonl(path: Path) -> list[dict]:
@@ -64,7 +76,8 @@ class GovernedRunCausalityTests(unittest.TestCase):
         config = replace(get_task_configs()[0], turns=1)
         _FakeAdapter.calls = 0
         with tempfile.TemporaryDirectory() as root:
-            runner = GovernedRunner(root, config, dry_run=False)
+            budget = CreditBudget("10", max_calls=8)
+            runner = GovernedRunner(root, config, dry_run=False, budget=budget)
             runner.prepare()
             with patch("runtime.adaption_adapter.AdaptionAdapter", _FakeAdapter):
                 runner.submit()
@@ -84,6 +97,53 @@ class GovernedRunCausalityTests(unittest.TestCase):
             }
             self.assertEqual(call_pairs, event_pairs)
             self.assertEqual(len(call_pairs), 8)
+            self.assertEqual(
+                {event["run_id"] for event in runner.event_log.events},
+                {runner.run_id},
+            )
+            self.assertEqual(budget.calls_completed, 8)
+            self.assertEqual(budget.calls_failed, 0)
+
+    def test_live_run_refuses_to_start_without_budget(self):
+        config = replace(get_task_configs()[0], turns=1)
+        with (
+            tempfile.TemporaryDirectory() as root,
+            self.assertRaisesRegex(ValueError, "explicit credit budget"),
+        ):
+            GovernedRunner(root, config, dry_run=False)
+
+    def test_budget_preflight_and_stop_are_fail_closed(self):
+        budget = CreditBudget("0.004", max_calls=2)
+        proof = budget.preflight(2)
+        self.assertEqual(proof["planned_calls"], 2)
+
+        first = budget.begin("bounded prompt")
+        budget.finish(first, input_tokens=10, output_tokens=10)
+        second = budget.begin("bounded prompt")
+        budget.fail(second)
+        with self.assertRaises(BudgetExceeded):
+            budget.begin("one call too many")
+
+    def test_failed_live_run_retains_partial_attempt_evidence(self):
+        config = replace(get_task_configs()[0], turns=1)
+        budget = CreditBudget("10", max_calls=8)
+        _FailingAdapter.calls = 0
+        with tempfile.TemporaryDirectory() as root:
+            runner = GovernedRunner(root, config, dry_run=False, budget=budget)
+            with (
+                patch("runtime.adaption_adapter.AdaptionAdapter", _FailingAdapter),
+                self.assertRaisesRegex(RuntimeError, "synthetic provider failure"),
+            ):
+                runner.run_full_workflow()
+
+            run_dir = Path(root) / runner.run_id
+            metadata = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+            calls = _read_jsonl(run_dir / "logs" / "calls.jsonl")
+            self.assertEqual(metadata["status"], "failed")
+            self.assertEqual(metadata["failure_type"], "RuntimeError")
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(budget.calls_completed, 1)
+            self.assertEqual(budget.calls_failed, 1)
 
     def test_disturbance_call_matches_a_preseal_event(self):
         config = replace(get_task_configs()[1], turns=5)
