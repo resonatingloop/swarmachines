@@ -264,9 +264,16 @@ class DatasetPackager:
             # Count calls in calls.jsonl
             calls_jsonl_path = run_dir / "logs" / "calls.jsonl"
             calls_count = 0
+            events_count = 0  # Count from sealed event log
             if calls_jsonl_path.exists():
                 with open(calls_jsonl_path, "r", encoding="utf-8") as f:
                     calls_count = sum(1 for line in f if line.strip())
+
+            # Count events from sealed event log (events.jsonl)
+            events_jsonl_path = run_dir / "logs" / "events.jsonl"
+            if events_jsonl_path.exists():
+                with open(events_jsonl_path, "r", encoding="utf-8") as f:
+                    events_count = sum(1 for line in f if line.strip())
 
             # Verify counts match
             run_manifest = {
@@ -284,7 +291,16 @@ class DatasetPackager:
                 "receipts": {
                     "counted_on_disk": receipts_count,
                 },
-                "logs": ["logs/calls.jsonl"] if calls_jsonl_path.exists() else [],
+                "events": {
+                    "counted_on_disk": events_count,
+                },
+                "logs": (
+                    ["logs/calls.jsonl", "logs/events.jsonl"]
+                    if events_jsonl_path.exists()
+                    else ["logs/calls.jsonl"]
+                    if calls_jsonl_path.exists()
+                    else []
+                ),
             }
 
             manifest["runs"].append(run_manifest)
@@ -294,6 +310,7 @@ class DatasetPackager:
             manifest["totals"]["calls"] += calls_count
             manifest["totals"]["artifacts"] += artifacts_count
             manifest["totals"]["receipts"] += receipts_count
+            manifest["totals"]["events"] += events_count
 
             # Sum tokens
             receipts_dir = run_dir / "receipts"
@@ -335,7 +352,7 @@ class DatasetPackager:
             f"- **Calls:** {self.manifest_data['totals']['calls']}",
             f"- **Artifacts:** {self.manifest_data['totals']['artifacts']}",
             f"- **Receipts:** {self.manifest_data['totals']['receipts']}",
-            f"- **Events:** {self.manifest_data['totals'].get('events', 0)}",
+            f"- **Events:** {self.manifest_data['totals']['events']}",
             f"- **Input Tokens:** {self.manifest_data['totals']['input_tokens']}",
             f"- **Output Tokens:** {self.manifest_data['totals']['output_tokens']}",
             f"- **Total Tokens:** {self.manifest_data['totals']['total_tokens']}",
@@ -544,9 +561,10 @@ If you use this dataset, please cite the associated hackathon report.
 
     def build_event_records(self) -> list[EventRecord]:
         """
-        Build event records from calls.jsonl files.
+        Build event records from the sealed event log (source of truth).
 
-        Each call generates multiple event records (observation, decision, etc.)
+        B11: Derive turn + event_type from the run's sealed event log,
+        not from artifact string parsing or response substring guessing.
 
         Returns:
             List of EventRecord objects.
@@ -571,7 +589,25 @@ If you use this dataset, please cite the associated hackathon report.
             seed = run_data.get("seed", 0)
             topology = run_data.get("topology", "unknown")
 
-            # Load calls.jsonl
+            # B11: Load sealed event log as source of truth for turn + event_type
+            events_path = run_dir / "logs" / "events.jsonl"
+            events = []
+            if events_path.exists():
+                with open(events_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            events.append(json.loads(line))
+
+            # Build a map from event payload to event metadata
+            event_by_payload = {}
+            for event in events:
+                payload = event.get("payload", {})
+                if "prompt" in payload and "response" in payload:
+                    key = (payload["prompt"], payload["response"])
+                    event_by_payload[key] = event
+
+            # Load calls.jsonl for content
             calls_jsonl_path = run_dir / "logs" / "calls.jsonl"
             if not calls_jsonl_path.exists():
                 continue
@@ -584,37 +620,32 @@ If you use this dataset, please cite the associated hackathon report.
 
                     call = json.loads(line)
 
-                    # Extract turn from call_id or artifact reference
-                    turn = 0
-                    artifact = call.get("artifact", "")
-                    if "-t" in artifact:
-                        try:
-                            turn = int(artifact.split("-t")[-1].replace("d", ""))
-                        except ValueError:
-                            pass
+                    # B11: Derive turn + event_type from sealed event log
+                    prompt = call.get("prompt_full", "")
+                    response = call.get("response_full", "")
+                    key = (prompt, response)
 
-                    # Create event record for this call
+                    # Look up in event log
+                    event_meta = event_by_payload.get(key, {})
+                    turn = event_meta.get("turn", 0)  # From sealed event log
+                    event_type = event_meta.get(
+                        "type", "observation.recorded"
+                    )  # From sealed event log
+
                     role = call.get("role", "unknown")
                     agent_id = role if role != "system" else None
                     agent_role = role
-
-                    # Determine event type based on content
-                    event_type = "observation.recorded"
-                    if "Decision" in call.get("response_full", ""):
-                        event_type = "policy.decision"
-                    elif "Disturbance" in call.get("response_full", ""):
-                        event_type = "disturbance.applied"
 
                     record = EventRecord(
                         run_id=run_id,
                         task_id=task_id,
                         seed=seed,
                         topology=topology,
-                        turn=turn,
+                        turn=turn,  # B11: from sealed event log
                         agent_id=agent_id,
                         agent_role=agent_role,
-                        event_type=event_type,
-                        content=call.get("response_full", ""),
+                        event_type=event_type,  # B11: from sealed event log
+                        content=response,
                         model=call.get("model"),
                         tokens_in=call.get("tokens_in"),
                         tokens_out=call.get("tokens_out"),
@@ -811,9 +842,18 @@ If you use this dataset, please cite the associated hackathon report.
         """
         Execute full packaging workflow.
 
+        Ships:
+        - MANIFEST.md: Reconciled counts
+        - README.md: HF dataset card
+        - data/records.jsonl: Event records table
+        - data/runs.jsonl: Run summaries table
+        - data/runs/<run_id>/: Raw per-run layer (calls.jsonl, events.jsonl, receipts/, artifacts/)
+
         Returns:
             Dict with packaging results.
         """
+        import shutil
+
         # Reconcile manifest
         manifest = self.reconcile_manifest()
 
@@ -826,6 +866,19 @@ If you use this dataset, please cite the associated hackathon report.
         card_path = self.generate_dataset_card()
         records_path = self.write_records_jsonl()
         runs_path = self.write_runs_jsonl()
+
+        # Copy raw run directories into the pack (B3: ship raw per-run layer)
+        data_runs_dir = self.output_dir / "data" / "runs"
+        data_runs_dir.mkdir(parents=True, exist_ok=True)
+
+        run_dirs = sorted(self.base_dir.glob("run-*"))
+        for run_dir in run_dirs:
+            if not run_dir.is_dir():
+                continue
+            dest_dir = data_runs_dir / run_dir.name
+            if dest_dir.exists():
+                shutil.rmtree(dest_dir)
+            shutil.copytree(run_dir, dest_dir)
 
         # Verify no split
         split_check = self.verify_no_split()
@@ -841,6 +894,7 @@ If you use this dataset, please cite the associated hackathon report.
             "runs_path": str(runs_path),
             "event_records": len(self.event_records),
             "run_summaries": len(self.run_summaries),
+            "raw_runs_shipped": len(run_dirs),
             "no_split_check": split_check,
             "no_key_check": key_check,
         }
@@ -903,6 +957,6 @@ if __name__ == "__main__":
             print(f"  Files with key: {result['no_key_check']['files_with_key']}")
             sys.exit(1)
 
-    except Exception as e:
+    except (RuntimeError, OSError, json.JSONDecodeError) as e:
         print(f"Packaging failed: {e}", file=sys.stderr)
         sys.exit(1)

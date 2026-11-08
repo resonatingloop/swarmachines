@@ -17,11 +17,17 @@ Provenance contract:
 from __future__ import annotations
 
 import json
+import os
 import random
+import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+# Add parent to path for runtime import
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from runtime.runner import EventLog
 
 from .configs import TaskInstanceConfig
 
@@ -167,6 +173,7 @@ class GovernedRunner:
         self.receipts_dir = self.run_dir / "receipts"
         self.call_records: list[CallRecord] = []
         self.call_counter = 0
+        self.event_log: EventLog | None = None  # Sealed event log
 
     def prepare(self) -> Path:
         """
@@ -247,31 +254,194 @@ class GovernedRunner:
             provenance="model-generated",
         )
 
+    def _init_event_log(self) -> None:
+        """Initialize the sealed event log for this run."""
+        base_ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        self.event_log = EventLog(self.run_id, base_ts)
+
     def submit(self) -> None:
         """
         Submit the run for execution.
 
         In dry-run mode: generates fixture log from a predefined scenario.
-        In live mode: would execute through TurnSeamRunner with real API calls.
+        In live mode: executes through the governed task-submission workflow
+        (prepare → submit → capture) with real API calls via Adaption.
 
-        Note: This implementation is for dry-run only (task 7).
-        Live execution is task 10 (HELD).
+        Live mode integration:
+        - Uses ADAPTION_API_KEY from environment (never printed/written)
+        - Reads real token counts from API response
+        - Writes sealed event log per run
         """
         if self.dry_run:
             self._simulate_run()
         else:
-            # Live execution would go here (task 10 - HELD)
-            raise NotImplementedError(
-                "Live execution is HELD until coordinator approval (task 10)"
-            )
+            # Live execution via governed workflow
+            self._execute_live_run()
+
+    def _execute_live_run(self) -> None:
+        """
+        Execute a live run through the governed task-submission workflow.
+
+        Uses Adaption API for model calls with full provenance logging.
+        API key is read from ADAPTION_API_KEY environment variable only.
+        """
+        from adaption import Adaption
+
+        api_key = os.environ.get("ADAPTION_API_KEY")
+        if not api_key:
+            raise RuntimeError("ADAPTION_API_KEY not set in environment")
+
+        # Initialize Adaption client (key from env, never printed)
+        client = Adaption()
+
+        # Initialize event log for sealing
+        self._init_event_log()
+
+        rng = random.Random(self.config.seed)
+        agents = self.config.agent_roster
+
+        for turn in range(1, self.config.turns + 1):
+            # Apply disturbance if scheduled
+            for dist_kind, dist_config in self.config.disturbance_schedule.items():
+                if dist_config.get("turn") == turn:
+                    # Log disturbance to event log
+                    self.event_log.append(
+                        turn=turn,
+                        agent_id=None,
+                        event_type="disturbance.applied",
+                        payload={"kind": dist_kind, "config": dist_config},
+                    )
+                    # Generate call record for disturbance
+                    self._generate_call_record(
+                        role="system",
+                        prompt=f"Apply disturbance: {dist_kind} at turn {turn}",
+                        response=f"Disturbance {dist_kind} applied: {json.dumps(dist_config)}",
+                        model="glm-53-flash",
+                        artifact=None,
+                    )
+
+            # Simulate each agent's turn
+            for agent_id in agents:
+                # Check if agent is muted
+                if "peer-mute" in self.config.disturbance_schedule:
+                    mute_config = self.config.disturbance_schedule["peer-mute"]
+                    if mute_config.get("agent") == agent_id and turn >= mute_config.get(
+                        "turn", 0
+                    ):
+                        # Log mute event
+                        self.event_log.append(
+                            turn=turn,
+                            agent_id=agent_id,
+                            event_type="agent.muted",
+                            payload={"by": "peer-mute"},
+                        )
+                        continue  # Muted agent skips communication
+
+                # Generate observation prompt
+                obs_prompt = (
+                    f"Agent {agent_id} observes at turn {turn} in {self.config.topology} topology. "
+                    f"Seed: {self.config.seed}. Location: {rng.choice(['west', 'east', 'south', 'relay-a'])}. "
+                    f"Visible freight: {rng.randint(0, 3)} items."
+                )
+
+                # Call Adaption API
+                response = client.chat.completions.create(
+                    model="glm-53-flash",
+                    messages=[{"role": "user", "content": obs_prompt}],
+                )
+                obs_response = response.choices[0].message.content
+                tokens_in = response.usage.prompt_tokens
+                tokens_out = response.usage.completion_tokens
+
+                # Log to event log
+                self.event_log.append(
+                    turn=turn,
+                    agent_id=agent_id,
+                    event_type="observation.recorded",
+                    payload={"prompt": obs_prompt, "response": obs_response},
+                )
+
+                # Generate call record with REAL token counts
+                self.call_counter += 1
+                now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+                receipt_ref = f"receipt-{self.run_id}-{self.call_counter:04d}"
+                self.call_records.append(
+                    CallRecord(
+                        ts=now,
+                        run_id=self.run_id,
+                        call_id=f"call-{self.call_counter:04d}",
+                        role=agent_id,
+                        topology=self.config.topology,
+                        artifact=f"obs-{agent_id}-t{turn:02d}",
+                        model="glm-53-flash",
+                        prompt_full=obs_prompt,
+                        response_full=obs_response,
+                        tokens_in=tokens_in,
+                        tokens_out=tokens_out,
+                        receipt_ref=receipt_ref,
+                        provenance="model-generated",
+                    )
+                )
+
+                # Generate decision prompt
+                decision_prompt = (
+                    f"Agent {agent_id} decides at turn {turn}. "
+                    f"Context: {obs_response}. Inbox: {rng.randint(0, 2)} messages."
+                )
+
+                # Call Adaption API for decision
+                response = client.chat.completions.create(
+                    model="glm-53-flash",
+                    messages=[{"role": "user", "content": decision_prompt}],
+                )
+                decision_response = response.choices[0].message.content
+                tokens_in = response.usage.prompt_tokens
+                tokens_out = response.usage.completion_tokens
+
+                # Log to event log
+                self.event_log.append(
+                    turn=turn,
+                    agent_id=agent_id,
+                    event_type="policy.decision",
+                    payload={"prompt": decision_prompt, "response": decision_response},
+                )
+
+                # Generate call record with REAL token counts
+                self.call_counter += 1
+                now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+                receipt_ref = f"receipt-{self.run_id}-{self.call_counter:04d}"
+                self.call_records.append(
+                    CallRecord(
+                        ts=now,
+                        run_id=self.run_id,
+                        call_id=f"call-{self.call_counter:04d}",
+                        role=agent_id,
+                        topology=self.config.topology,
+                        artifact=f"dec-{agent_id}-t{turn:02d}",
+                        model="glm-53-flash",
+                        prompt_full=decision_prompt,
+                        response_full=decision_response,
+                        tokens_in=tokens_in,
+                        tokens_out=tokens_out,
+                        receipt_ref=receipt_ref,
+                        provenance="model-generated",
+                    )
+                )
+
+        # Seal the event log
+        if self.event_log:
+            self.event_log.seal()
 
     def _simulate_run(self) -> None:
         """
         Simulate a run for dry-run testing.
 
         Generates fixture call records that exercise the full event vocabulary
-        including disturbances.
+        including disturbances. Also creates a sealed event log.
         """
+        # Initialize event log for sealing
+        self._init_event_log()
+
         # Simulate agent observations and decisions
         rng = random.Random(self.config.seed)
         agents = self.config.agent_roster
@@ -280,6 +450,13 @@ class GovernedRunner:
             # Apply disturbance if scheduled
             for dist_kind, dist_config in self.config.disturbance_schedule.items():
                 if dist_config.get("turn") == turn:
+                    # Log disturbance to event log
+                    self.event_log.append(
+                        turn=turn,
+                        agent_id=None,
+                        event_type="disturbance.applied",
+                        payload={"kind": dist_kind, "config": dist_config},
+                    )
                     # Log disturbance application
                     self._generate_call_record(
                         role="system",
@@ -297,6 +474,13 @@ class GovernedRunner:
                     if mute_config.get("agent") == agent_id and turn >= mute_config.get(
                         "turn", 0
                     ):
+                        # Log mute event
+                        self.event_log.append(
+                            turn=turn,
+                            agent_id=agent_id,
+                            event_type="agent.muted",
+                            payload={"by": "peer-mute"},
+                        )
                         continue  # Muted agent skips communication
 
                 # Generate observation prompt
@@ -309,6 +493,13 @@ class GovernedRunner:
                     f"Observation for {agent_id}: queue={rng.randint(0, 3)}, "
                     f"requests=[{{'freight': 'med-kit', 'dest': 'south'}}], "
                     f"known_closures=[], roads_in_view=['east-bridge']"
+                )
+                # Log observation to event log
+                self.event_log.append(
+                    turn=turn,
+                    agent_id=agent_id,
+                    event_type="observation.recorded",
+                    payload={"prompt": obs_prompt, "response": obs_response},
                 )
                 self._generate_call_record(
                     role=agent_id,
@@ -326,6 +517,13 @@ class GovernedRunner:
                     f"Decision for {agent_id}: route_freight(f-00{rng.randint(1, 4)}, "
                     f"via='{rng.choice(['west', 'east', 'south'])}->{rng.choice(['west', 'east', 'south'])}')"
                 )
+                # Log decision to event log
+                self.event_log.append(
+                    turn=turn,
+                    agent_id=agent_id,
+                    event_type="policy.decision",
+                    payload={"prompt": decision_prompt, "response": decision_response},
+                )
                 self._generate_call_record(
                     role=agent_id,
                     prompt=decision_prompt,
@@ -333,12 +531,17 @@ class GovernedRunner:
                     artifact=f"dec-{agent_id}-t{turn:02d}",
                 )
 
+        # Seal the event log
+        if self.event_log:
+            self.event_log.seal()
+
     def capture(self) -> dict[str, Any]:
         """
         Capture run results to disk.
 
         Writes:
         - logs/calls.jsonl: Full call records
+        - logs/events.jsonl: Sealed event log (eventlog-seal-v1)
         - receipts/: Individual receipt files
         - run.json: Run metadata
 
@@ -349,6 +552,12 @@ class GovernedRunner:
         calls_path = self.logs_dir / "calls.jsonl"
         with open(calls_path, "w", encoding="utf-8") as f:
             f.writelines(record.to_jsonl_line() + "\n" for record in self.call_records)
+
+        # Write sealed event log
+        if self.event_log:
+            events_path = self.logs_dir / "events.jsonl"
+            with open(events_path, "w", encoding="utf-8") as f:
+                f.write(self.event_log.to_jsonl())
 
         # Write individual receipts
         for record in self.call_records:
@@ -392,6 +601,10 @@ class GovernedRunner:
             "receipts_written": len(self.call_records),
             "run_json": str(run_json_path),
             "calls_jsonl": str(calls_path),
+            "events_jsonl": str(self.logs_dir / "events.jsonl")
+            if self.event_log
+            else None,
+            "event_log_sealed": self.event_log.sealed if self.event_log else False,
         }
 
     def run_full_workflow(self) -> dict[str, Any]:
@@ -458,6 +671,6 @@ if __name__ == "__main__":
         print(f"  Receipts: {result['receipts_written']}")
         print(f"  Run JSON: {result['run_json']}")
         print(f"  Calls JSONL: {result['calls_jsonl']}")
-    except Exception as e:
+    except (RuntimeError, OSError, json.JSONDecodeError) as e:
         print(f"Run failed: {e}", file=sys.stderr)
         sys.exit(1)

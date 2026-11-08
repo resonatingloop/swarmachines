@@ -156,8 +156,9 @@ class HFUploader:
         Uploads:
         - README.md (dataset card)
         - MANIFEST.md
-        - data/train.jsonl
-        - data/runs/ (all run directories)
+        - data/records.jsonl (event records table)
+        - data/runs.jsonl (run summaries table)
+        - data/runs/ (all run directories with raw layer)
 
         Returns:
             Dict with upload results.
@@ -165,8 +166,13 @@ class HFUploader:
         if self.dry_run:
             return self._dry_run_upload()
 
-        # Validate pack directory
-        required_files = ["README.md", "MANIFEST.md", "data/train.jsonl"]
+        # Validate pack directory (spec-conformant: no train/test split)
+        required_files = [
+            "README.md",
+            "MANIFEST.md",
+            "data/records.jsonl",
+            "data/runs.jsonl",
+        ]
         for filename in required_files:
             file_path = self.pack_dir / filename
             if not file_path.exists():
@@ -196,19 +202,31 @@ class HFUploader:
             ]
         )
 
-        # Upload data/train.jsonl
+        # Upload data/records.jsonl (B5: spec-conformant, no train/test split)
         self._run_hf_command(
             [
                 "upload-file",
                 self.repo_id,
-                str(self.pack_dir / "data" / "train.jsonl"),
-                "data/train.jsonl",
+                str(self.pack_dir / "data" / "records.jsonl"),
+                "data/records.jsonl",
                 "--repo-type",
                 "dataset",
             ]
         )
 
-        # Upload data/runs/ directory
+        # Upload data/runs.jsonl
+        self._run_hf_command(
+            [
+                "upload-file",
+                self.repo_id,
+                str(self.pack_dir / "data" / "runs.jsonl"),
+                "data/runs.jsonl",
+                "--repo-type",
+                "dataset",
+            ]
+        )
+
+        # Upload data/runs/ directory (raw per-run layer)
         runs_dir = self.pack_dir / "data" / "runs"
         if runs_dir.exists():
             self._run_hf_command(
@@ -228,7 +246,8 @@ class HFUploader:
             "files_uploaded": [
                 "README.md",
                 "MANIFEST.md",
-                "data/train.jsonl",
+                "data/records.jsonl",
+                "data/runs.jsonl",
                 "data/runs/",
             ],
             "dry_run": False,
@@ -243,8 +262,13 @@ class HFUploader:
         """
         files_to_upload = []
 
-        # Check required files
-        required_files = ["README.md", "MANIFEST.md", "data/train.jsonl"]
+        # Check required files (spec-conformant: no train/test split)
+        required_files = [
+            "README.md",
+            "MANIFEST.md",
+            "data/records.jsonl",
+            "data/runs.jsonl",
+        ]
         for filename in required_files:
             file_path = self.pack_dir / filename
             if file_path.exists():
@@ -331,8 +355,8 @@ def determine_repo_id(org_preference: str = "swarmachines") -> str:
             # Org exists and we have access
             slug = "freight-swarm-runs"
             return f"{org_preference}/{slug}"
-    except Exception:
-        pass
+    except (RuntimeError, OSError):
+        pass  # Org check failed; fall through to user namespace
 
     # Fall back to user namespace
     slug = "swarmachines-freight-swarm-runs"

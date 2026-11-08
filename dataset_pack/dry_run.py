@@ -13,7 +13,6 @@ No real model/API calls. Uses fixture data only.
 from __future__ import annotations
 
 import json
-import shutil
 import tempfile
 from pathlib import Path
 
@@ -91,8 +90,7 @@ def create_fixture_run(run_dir: Path) -> dict:
 
     calls_path = logs_dir / "calls.jsonl"
     with open(calls_path, "w", encoding="utf-8") as f:
-        for call in calls:
-            f.write(json.dumps(call, separators=(",", ":")) + "\n")
+        f.writelines(json.dumps(call, separators=(",", ":")) + "\n" for call in calls)
 
     # Create mock receipts
     for call in calls:
@@ -172,7 +170,7 @@ def run_dry_run() -> dict:
         )
         package_result = packager.package_all()
 
-        print(f"Packaging complete:")
+        print("Packaging complete:")
         print(f"  Manifest: {package_result['manifest_path']}")
         print(f"  Card: {package_result['card_path']}")
         print(
@@ -188,18 +186,42 @@ def run_dry_run() -> dict:
             f"  No API key: {'PASSED' if package_result['no_key_check']['passed'] else 'FAILED'}"
         )
 
-        # Run tests (task 8)
-        test_results = run_all_tests(
-            str(output_dir),
+        # Run tests (task 8) - B9: test against BOTH fixture runs dir AND produced pack
+        # Test against the fixture runs (base_dir)
+        print("\n--- Testing fixture runs (base_dir) ---")
+        test_results_fixture = run_all_tests(
+            str(base_dir),  # Fixture runs dir
             package_result["manifest_path"],
             package_result["card_path"],
             package_result["records_path"],
         )
 
-        print(
-            f"\nTest Results: {test_results['tests_passed']}/{test_results['tests_run']} passed"
+        # Test against the produced pack (output_dir/data/runs)
+        print("\n--- Testing produced pack (output_dir/data/runs) ---")
+        pack_runs_dir = str(output_dir / "data" / "runs")
+        test_results_pack = run_all_tests(
+            pack_runs_dir,  # Produced pack runs dir
+            package_result["manifest_path"],
+            package_result["card_path"],
+            package_result["records_path"],
         )
-        for test in test_results["results"]:
+
+        # Combine results
+        all_passed = (
+            test_results_fixture["all_passed"] and test_results_pack["all_passed"]
+        )
+
+        print(
+            f"\nFixture Tests: {test_results_fixture['tests_passed']}/{test_results_fixture['tests_run']} passed"
+        )
+        for test in test_results_fixture["results"]:
+            status = "✓" if test["passed"] else "✗"
+            print(f"  {status} {test['test']}")
+
+        print(
+            f"\nPack Tests: {test_results_pack['tests_passed']}/{test_results_pack['tests_run']} passed"
+        )
+        for test in test_results_pack["results"]:
             status = "✓" if test["passed"] else "✗"
             print(f"  {status} {test['test']}")
 
@@ -207,8 +229,9 @@ def run_dry_run() -> dict:
             "fixture_meta": fixture_meta,
             "extract_result": extract_result,
             "package_result": package_result,
-            "test_results": test_results,
-            "all_passed": test_results["all_passed"],
+            "test_results_fixture": test_results_fixture,
+            "test_results_pack": test_results_pack,
+            "all_passed": all_passed,
         }
 
 
@@ -229,7 +252,7 @@ if __name__ == "__main__":
             print("✗ Dry-run FAILED — some tests failed")
             sys.exit(1)
 
-    except Exception as e:
+    except (RuntimeError, OSError, json.JSONDecodeError) as e:
         print(f"Dry-run failed with exception: {e}", file=sys.stderr)
         import traceback
 

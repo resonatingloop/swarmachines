@@ -168,7 +168,10 @@ class ArtifactExtractor:
         call_id: str,
     ) -> bool:
         """
-        Validate that artifact content is identical to call's response field.
+        Validate that artifact content is IDENTICAL to call's response field.
+
+        B10: Identity failure is BLOCKING - refuse to ship the artifact.
+        Uses byte-exact comparison only (no .strip() leniency).
 
         Args:
             artifact_content: Extracted artifact content
@@ -176,21 +179,16 @@ class ArtifactExtractor:
             call_id: Call ID for error reporting
 
         Returns:
-            True if content matches, False otherwise.
+            True if content matches byte-exactly, False otherwise.
         """
-        # For artifacts extracted with markers, check exact match
-        # For full-response artifacts, they should be identical
-        if artifact_content.strip() == call_response.strip():
+        # B10: Byte-identical comparison only (no strip/substring leniency)
+        if artifact_content == call_response:
             return True
 
-        # Check if artifact is a substring of response (marker-extracted)
-        if artifact_content.strip() in call_response:
-            return True
-
-        # Content mismatch - record validation error
+        # Content mismatch - this is BLOCKING
         self.validation_errors.append(
-            f"Content identity check failed for {call_id}: "
-            f"artifact content does not match response field"
+            f"BLOCKING: Content identity check failed for {call_id}: "
+            f"artifact content does not match response field byte-for-byte"
         )
         return False
 
@@ -198,8 +196,10 @@ class ArtifactExtractor:
         """
         Extract all artifacts from calls.jsonl.
 
+        B10: Identity failure is BLOCKING - refuse to ship artifacts that fail.
+
         Returns:
-            List of extracted artifacts.
+            List of extracted artifacts (only those passing identity check).
         """
         calls = self.load_calls()
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -215,12 +215,12 @@ class ArtifactExtractor:
             if content is None:
                 continue
 
-            # Validate content identity
+            # B10: Validate content identity - BLOCKING on failure
             if not self._validate_content_identity(
                 content, response, call.get("call_id", "unknown")
             ):
-                # Continue anyway but error is recorded
-                pass
+                # BLOCKING: refuse to ship this artifact
+                continue
 
             # Determine provenance label
             label = call.get("provenance", "model-generated")
@@ -307,6 +307,62 @@ class ArtifactExtractor:
             },
         }
 
+    def verify_team_authored_byte_exact(
+        self,
+        artifact_path: Path,
+        git_commit: str,
+        git_file_path: str,
+    ) -> dict[str, Any]:
+        """
+        B10: Verify team-authored artifact is byte-exact from git commit.
+
+        Args:
+            artifact_path: Path to the extracted artifact
+            git_commit: Git commit hash that held the file
+            git_file_path: Path to the file in the git repo
+
+        Returns:
+            Dict with verification results.
+        """
+        import subprocess
+
+        try:
+            # Get file content from git commit
+            result = subprocess.run(
+                ["git", "show", f"{git_commit}:{git_file_path}"],
+                capture_output=True,
+                text=False,  # Binary mode for byte-exact comparison
+                check=True,
+            )
+            git_content = result.stdout
+
+            # Read artifact content
+            with open(artifact_path, "rb") as f:
+                artifact_content = f.read()
+
+            # Byte-exact comparison
+            if artifact_content == git_content:
+                return {
+                    "verified": True,
+                    "artifact_path": str(artifact_path),
+                    "git_commit": git_commit,
+                    "git_file_path": git_file_path,
+                    "artifact_hash": hashlib.sha256(artifact_content).hexdigest()[:16],
+                }
+            else:
+                return {
+                    "verified": False,
+                    "error": "byte_mismatch",
+                    "artifact_hash": hashlib.sha256(artifact_content).hexdigest()[:16],
+                    "git_hash": hashlib.sha256(git_content).hexdigest()[:16],
+                }
+        except subprocess.CalledProcessError as e:
+            return {
+                "verified": False,
+                "error": "git_command_failed",
+                "stderr": e.stderr.decode("utf-8") if e.stderr else str(e),
+            }
+
 
 def extract_artifacts(
     calls_jsonl_path: str,
@@ -385,22 +441,23 @@ def verify_wrong_side_guard(
         response_content = call.get("response_full", "")
 
         # Check identity
-        if artifact_content.strip() != response_content.strip():
-            # Check if artifact is substring of response (marker-extracted)
-            if artifact_content.strip() not in response_content:
-                mismatches.append(
-                    {
-                        "call_id": call.get("call_id"),
-                        "artifact_id": artifact_id,
-                        "error": "content mismatch",
-                        "artifact_hash": hashlib.sha256(
-                            artifact_content.encode("utf-8")
-                        ).hexdigest()[:16],
-                        "response_hash": hashlib.sha256(
-                            response_content.encode("utf-8")
-                        ).hexdigest()[:16],
-                    }
-                )
+        if (
+            artifact_content.strip() != response_content.strip()
+            and artifact_content.strip() not in response_content
+        ):
+            mismatches.append(
+                {
+                    "call_id": call.get("call_id"),
+                    "artifact_id": artifact_id,
+                    "error": "content mismatch",
+                    "artifact_hash": hashlib.sha256(
+                        artifact_content.encode("utf-8")
+                    ).hexdigest()[:16],
+                    "response_hash": hashlib.sha256(
+                        response_content.encode("utf-8")
+                    ).hexdigest()[:16],
+                }
+            )
 
     return {
         "total_calls": len(calls),
@@ -439,6 +496,6 @@ if __name__ == "__main__":
         if not guard_result["guard_passed"]:
             print(f"  Mismatches: {guard_result['mismatches']}")
 
-    except Exception as e:
+    except (RuntimeError, OSError, json.JSONDecodeError) as e:
         print(f"Extraction failed: {e}", file=sys.stderr)
         sys.exit(1)

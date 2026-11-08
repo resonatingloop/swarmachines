@@ -79,21 +79,23 @@ def test_wrong_side_guard(pack_dir: str) -> dict[str, Any]:
             response_content = call.get("response_full", "")
 
             # Check identity (artifact should be identical to response or substring)
-            if artifact_content.strip() != response_content.strip():
-                if artifact_content.strip() not in response_content:
-                    mismatches.append(
-                        {
-                            "run_id": run_dir.name,
-                            "call_id": call.get("call_id"),
-                            "artifact_id": artifact_id,
-                            "artifact_hash": hashlib.sha256(
-                                artifact_content.encode("utf-8")
-                            ).hexdigest()[:16],
-                            "response_hash": hashlib.sha256(
-                                response_content.encode("utf-8")
-                            ).hexdigest()[:16],
-                        }
-                    )
+            if (
+                artifact_content.strip() != response_content.strip()
+                and artifact_content.strip() not in response_content
+            ):
+                mismatches.append(
+                    {
+                        "run_id": run_dir.name,
+                        "call_id": call.get("call_id"),
+                        "artifact_id": artifact_id,
+                        "artifact_hash": hashlib.sha256(
+                            artifact_content.encode("utf-8")
+                        ).hexdigest()[:16],
+                        "response_hash": hashlib.sha256(
+                            response_content.encode("utf-8")
+                        ).hexdigest()[:16],
+                    }
+                )
 
             artifacts_checked += 1
 
@@ -131,7 +133,7 @@ def test_manifest_equals_disk(pack_dir: str, manifest_path: str) -> dict[str, An
     manifest_content = manifest.read_text(encoding="utf-8")
     expected_counts = {}
 
-    # Parse totals from markdown
+    # Parse totals from markdown (format: "- **Field:** value")
     in_totals_section = False
     for line in manifest_content.split("\n"):
         line = line.strip()
@@ -146,10 +148,15 @@ def test_manifest_equals_disk(pack_dir: str, manifest_path: str) -> dict[str, An
 
         # Parse totals (format: "- **Field:** value")
         if in_totals_section and line.startswith("- **"):
+            # Extract field name: between ** and :
             parts = line.split("**")
             if len(parts) >= 3:
-                field = parts[1].strip().lower().replace(" ", "_")
-                value_str = parts[2].strip()
+                # parts[1] is the field name with colon, e.g., "Runs:"
+                field_raw = parts[1].strip()
+                # Remove trailing colon and normalize
+                field = field_raw.rstrip(":").lower().replace(" ", "_")
+                # parts[2] is ": value" - extract the value
+                value_str = parts[2].strip().lstrip(":").strip()
                 try:
                     value = int(value_str)
                     if field == "runs":
@@ -160,6 +167,8 @@ def test_manifest_equals_disk(pack_dir: str, manifest_path: str) -> dict[str, An
                         expected_counts["artifacts"] = value
                     elif field == "receipts":
                         expected_counts["receipts"] = value
+                    elif field == "events":
+                        expected_counts["events"] = value
                 except ValueError:
                     pass
 
@@ -193,12 +202,12 @@ def test_manifest_equals_disk(pack_dir: str, manifest_path: str) -> dict[str, An
             actual_counts["receipts"] += len(list(receipts_dir.glob("*.json")))
 
     mismatches = []
-    for key in expected_counts:
-        if key in actual_counts and expected_counts[key] != actual_counts[key]:
+    for key, expected_value in expected_counts.items():
+        if key in actual_counts and expected_value != actual_counts[key]:
             mismatches.append(
                 {
                     "field": key,
-                    "expected": expected_counts[key],
+                    "expected": expected_value,
                     "actual": actual_counts[key],
                 }
             )
@@ -262,19 +271,32 @@ def test_no_key_in_pack(pack_dir: str) -> dict[str, Any]:
     """
     Test: API key never appears in any pack file.
 
+    Scans for:
+    - Actual credential value from ADAPTION_API_KEY environment variable
+    - Common key prefixes: sk-, hf_, adk_, adaption
+
     Args:
         pack_dir: Directory containing the packaged dataset
 
     Returns:
         Dict with test results.
     """
+    import os
+
     pack_path = Path(pack_dir)
+
+    # B8: Scan for actual credential VALUE from env (never print it)
+    api_key_value = os.environ.get("ADAPTION_API_KEY", "")
 
     api_key_patterns = [
         "ADAPTION_API_KEY",
         "adaption_api_key",
         "sk-adaption",
         "adaption-key",
+        "sk-",  # Common API key prefix
+        "hf_",  # Hugging Face prefix
+        "adk_",  # Adaption prefix
+        "adaption",  # Provider name in suspicious contexts
     ]
 
     found = []
@@ -282,16 +304,44 @@ def test_no_key_in_pack(pack_dir: str) -> dict[str, Any]:
         if file_path.is_file():
             try:
                 content = file_path.read_text(encoding="utf-8")
+
+                # Check for actual credential value (B8)
+                if (
+                    api_key_value
+                    and len(api_key_value) > 10
+                    and api_key_value in content
+                ):
+                    found.append(f"{file_path}:contains_actual_api_key_value")
+                    continue
+
+                # Check for common prefixes - must be at word boundary (not substring of other words)
+                import re
+
                 for pattern in api_key_patterns:
-                    if pattern in content:
-                        found.append(str(file_path))
-                        break
+                    # Word boundary check: pattern must be at start or preceded by non-alphanumeric
+                    if pattern in ("sk-", "hf_", "adk_"):
+                        # These are almost always credential leaks - check word boundary
+                        if re.search(rf"(^|[^a-zA-Z0-9]){re.escape(pattern)}", content):
+                            found.append(f"{file_path}:contains_{pattern}")
+                            break
+                    elif pattern == "adaption":
+                        # Check if it's in a suspicious context (not just docs)
+                        if "key" in content.lower() and re.search(
+                            rf"(^|[^a-zA-Z0-9]){re.escape(pattern)}", content
+                        ):
+                            found.append(f"{file_path}:contains_{pattern}_with_key")
+                            break
+                    else:
+                        # Other patterns - simple substring match
+                        if pattern in content:
+                            found.append(f"{file_path}:contains_{pattern}")
+                            break
             except (UnicodeDecodeError, PermissionError):
                 continue
 
     return {
         "test": "no-key-in-pack",
-        "patterns_checked": api_key_patterns,
+        "patterns_checked": api_key_patterns + ["actual_api_key_value"],
         "files_with_key": found,
         "passed": len(found) == 0,
     }
@@ -301,7 +351,8 @@ def test_verbatim_transcript_diff(pack_dir: str) -> dict[str, Any]:
     """
     Test: records/calls match source event log byte-for-byte.
 
-    Samples records and diffs paired prompt/response against source.
+    Diffs paired prompt/response against the source sealed event log
+    and calls.jsonl to verify no truncation or paraphrasing.
 
     Args:
         pack_dir: Directory containing the packaged dataset
@@ -321,6 +372,16 @@ def test_verbatim_transcript_diff(pack_dir: str) -> dict[str, Any]:
         calls_path = run_dir / "logs" / "calls.jsonl"
         if not calls_path.exists():
             continue
+
+        # Load sealed event log (source of truth)
+        events_path = run_dir / "logs" / "events.jsonl"
+        events = []
+        if events_path.exists():
+            with open(events_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        events.append(json.loads(line))
 
         # Load records.jsonl if exists
         records_path = pack_path / "data" / "records.jsonl"
@@ -344,27 +405,16 @@ def test_verbatim_transcript_diff(pack_dir: str) -> dict[str, Any]:
                 if line:
                     calls.append(json.loads(line))
 
-        # Sample check: verify content matches
-        for i, call in enumerate(calls[:10]):  # Sample first 10
-            response = call.get("response_full", "")
-            if not response:
-                continue
+        # B7: Genuinely diff records/calls against SOURCE event log + calls.jsonl
+        # Build a map from call_id to event log entries
+        event_by_payload = {}
+        for event in events:
+            payload = event.get("payload", {})
+            if "prompt" in payload and "response" in payload:
+                key = (payload["prompt"], payload["response"])
+                event_by_payload[key] = event
 
-            # Find corresponding record
-            call.get("artifact", "")
-            matching_records = [
-                r
-                for r in run_records
-                if r.get("content") == response or response in r.get("content", "")
-            ]
-
-            if not matching_records and len(response) > 20:
-                # Content should be in records
-                pass  # May not have exact match due to aggregation
-
-            records_checked += 1
-
-        # Verify calls.jsonl has full prompt and response (no truncation markers)
+        # Verify each call's prompt/response matches the event log
         for call in calls:
             prompt = call.get("prompt_full", "")
             response = call.get("response_full", "")
@@ -385,6 +435,52 @@ def test_verbatim_transcript_diff(pack_dir: str) -> dict[str, Any]:
                         "run_id": run_id,
                         "call_id": call.get("call_id"),
                         "error": "response appears truncated",
+                    }
+                )
+
+            # Verify against event log (byte-for-byte)
+            key = (prompt, response)
+            if key not in event_by_payload and events:
+                # Call should have a corresponding event log entry
+                # Check if any event has matching content
+                found_match = False
+                for event in events:
+                    payload = event.get("payload", {})
+                    if (
+                        payload.get("prompt") == prompt
+                        and payload.get("response") == response
+                    ):
+                        found_match = True
+                        break
+                if not found_match and len(prompt) > 10 and len(response) > 10:
+                    # Only flag for substantial content
+                    mismatches.append(
+                        {
+                            "run_id": run_id,
+                            "call_id": call.get("call_id"),
+                            "error": "call not found in sealed event log",
+                        }
+                    )
+
+            records_checked += 1
+
+        # Verify records match calls.jsonl content
+        for record in run_records[:10]:  # Sample first 10
+            content = record.get("content", "")
+            # Find corresponding call
+            found_in_calls = False
+            for call in calls:
+                if content == call.get("response_full", "") or content in call.get(
+                    "response_full", ""
+                ):
+                    found_in_calls = True
+                    break
+            if not found_in_calls and len(content) > 20:
+                mismatches.append(
+                    {
+                        "run_id": run_id,
+                        "record_turn": record.get("turn"),
+                        "error": "record content not found in calls.jsonl",
                     }
                 )
 
