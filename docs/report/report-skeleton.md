@@ -4,7 +4,7 @@
 **Affiliations:** [PLACEHOLDER: affiliations]
 
 > **DRAFT — FOR COLETTE REVIEW** — All content sections below are draft prose
-> grounded in landed evidence (PRs #39, #46, #34, #42; master 7c968d6). Colette
+> grounded in landed evidence (PRs #39, #46, #34, #42). Colette
 > owns all content in this skeleton (bd: m9p). Do not merge to master until
 > content review is complete.
 
@@ -116,7 +116,7 @@ The swarmachines testbed makes collective agent behaviors observable and auditab
 
 ## 5. Artifacts & Links
 
-- **Project code:** https://github.com/resonatingloop/swarmachines (origin/master 7c968d6)
+- **Project code:** https://github.com/resonatingloop/swarmachines
 - **Presentation recording:** [PLACEHOLDER]
 - **Slides:** [PLACEHOLDER]
 - **Project image:** [PLACEHOLDER]
