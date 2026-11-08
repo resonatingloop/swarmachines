@@ -32,6 +32,4 @@ Respond with valid JSON:
 - During disruption, some agents may become unreachable
 
 ## Provenance
-model-generated example material, not observed experimental evidence
-generated-model: glm-53-flash
-generated-at: 2026-11-08T01:43:11.801545+00:00
+team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence

@@ -46,9 +46,5 @@
     "recovery_turns_expected": "3-5",
     "coordination_challenge": "ring fragmentation requires alternate paths"
   },
-  "provenance": {
-    "generated_model": "glm-53-flash",
-    "generated_at": "2026-11-08T01:43:11.801545+00:00",
-    "note": "model-generated example material, not observed experimental evidence"
-  }
+  "provenance": "team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence"
 }
