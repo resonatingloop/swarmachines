@@ -1,40 +1,45 @@
 # swarmachines / status
 
 > continuity role: operational checkpoint
-> status: event-log seal implemented on branch swarmachines-i64-eventlog-seal (fabrication-detectable logs); formal protocol accepted; seed-42 pair recorded; report synthesis pending
-> last verified: 2026-11-08 (branch worktree at origin/master e42b23d + seal)
+> status: event-log seal merged to master (PR #46, fabrication-detectable logs); formal protocol accepted; seed-42 pair recorded; report synthesis pending
+> last verified: 2026-11-08 (origin/master 4ea45df)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
-## branch checkpoint (swarmachines-i64 — event-log seal)
+## event-log seal (swarmachines-i64 — merged via PR #46)
 
-**event-log seal (swarmachines-i64, this branch)**: every runner-appended
+**event-log seal (swarmachines-i64, merged 2026-11-08 as 4ea45df)**: every runner-appended
 record now carries a sha256 `chain` hash (canonical JSON, genesis bound to
 run_id — recomputable from the log alone), the log closes with a `run.seal`
 certification record (terminal chain + record count + alg, strict schema
 shape), appends after the seal are refused, and the offline analyzer
 verifies the seal when present: edit/insert/remove of any chained record is
 rejected categorically; legacy unsealed logs stay byte-compat and measure
-identically. openspec change `add-eventlog-seal`. suites on this branch:
-runtime 28/28 (4 new seal tests), analysis 17/17 (7 new), control_plane 74
-OK, viewer 62, e2e pipeline PASS, ruff check+format clean. sample-run.jsonl
-stays legacy (byte-compat fixture).
+identically. openspec change `add-eventlog-seal`. suites re-verified at
+master tip 4ea45df: runtime 28/28 (includes the e2e pipeline test; 4 new
+seal tests), analysis 17/17 (7 new), control_plane 74 OK, viewer 82 cjs +
+46 esm = 128 pass (`node --test`). repo-wide ruff at tip: 31 pre-existing
+scripts/ findings + 4 format-dirty scripts, all claimed by open PR #43.
+sample-run.jsonl stays legacy (byte-compat fixture).
 
 ## verified checkpoint
 
-**master tip**: `7acd2a7` — Merge pull request #38 from resonatingloop/t-006-freight-residue (fix: freight act-phase mislabel - legal no-ops logged as action.committed)
+**master tip**: `4ea45df` — Merge pull request #46 from resonatingloop/swarmachines-i64-eventlog-seal (feat(runtime): seal the EventLog against policy-level fabrication)
 
-**sanitization respin (2026-11-08)**: delegation receipts now persist the model name only when the provider reports the fixed `glm-53-flash` constant (otherwise `unknown`) and validate each usage token count independently within 0..10^9, estimating cost only from a complete valid pair. This is the owner-ruled redo of the db2bc17 sanitization on a channel-preserving base: the bounded response-diagnostics channel from pr #22 (fixed reason codes, allowlisted status, receipt usage fallback) is untouched and no channel was removed. The sanitized delegation harness sha256 is registered in the read-only projection's recognized producers next to the legacy hashes, so budget provenance stays known for new receipts while prior receipts still project. 160 offline tests pass across control_plane, runtime and viewer (74+24+62) with mocked sdks and zero provider calls; control_plane ruff check and format are clean. Authored on branch t-011-sanitization-respin for review; gates and merge stay with the merge hand.
+**sanitization respin (2026-11-08)**: delegation receipts now persist the model name only when the provider reports the fixed `glm-53-flash` constant (otherwise `unknown`) and validate each usage token count independently within 0..10^9, estimating cost only from a complete valid pair. This is the owner-ruled redo of the db2bc17 sanitization on a channel-preserving base: the bounded response-diagnostics channel from pr #22 (fixed reason codes, allowlisted status, receipt usage fallback) is untouched and no channel was removed. The sanitized delegation harness sha256 is registered in the read-only projection's recognized producers next to the legacy hashes, so budget provenance stays known for new receipts while prior receipts still project. 160 offline tests passed at its df73cd1 merge across control_plane, runtime and viewer (74+24+62) with mocked sdks and zero provider calls; control_plane ruff check and format are clean. Landed via PR #42 (2026-11-08 05:52Z).
 
 job-evidence slice: spec012 mapping approved; settled policy base `18218e706cf950c89161b6588166d14529f76726`. Versioned job instrumentation and an offline analyzer are implemented; 28 focused tests, legacy 24/24 runtime tests and 82 viewer tests pass. Noninterference against the pinned base and 386-record integration reconciliation pass; independent review pending. [operations](analysis/README.md). No formal experimental batch or provider calls.
 
-**merge ledger (2026-11-08 01:26Z to 05:07Z)**: six recent merges are listed below; this is not the complete merge history since c5899d8:
+**merge ledger (2026-11-08 01:26Z to 06:44Z)**: nine recent merges are listed below; this is not the complete merge history since c5899d8:
 - PR #28 (3491180): feat(data): real Adaption-generated data pack with full provenance (38 seed artifacts, per-run logs)
 - PR #39 (572612a): feat(spec006): seed-42 formal pair — mesh vs ring under peer-mute:8:c (frozen manifest)
 - PR #37 (12b819d): docs: prepare seed-42 candidate manifest and readiness gate
 - PR #30 (3cf231c): feat: Langfuse-compatible execution tracing layer
 - PR #36 (3834c9b): chore: mark runtime/freight_world.py executable (EXE001)
 - PR #38 (7acd2a7): fix: freight act-phase mislabel - legal no-ops logged as action.committed
+- PR #41 (e42b23d): docs: refresh STATUS.md checkpoint for tip 7acd2a7
+- PR #42 (df73cd1): T-011: channel-preserving model/usage sanitization (swarmachines-t011)
+- PR #46 (4ea45df): feat(runtime): seal the EventLog against policy-level fabrication (swarmachines-i64)
 
 **closed superseded work**:
 - PR #6: CLOSED — feat: freight-in-the-fog world integration (day-1 slice) — superseded by the merged freight-world wiring in PR #29 + subsequent fixes
@@ -90,4 +95,4 @@ colette drafts report prose from `docs/report/report-skeleton.md`. use the recor
 
 ## provenance
 
-this checkpoint regenerated fresh at master tip 7acd2a7. Supersedes closed PR #35 (prune-status-rot2) whose snapshot predated the six merges listed above. Zero model/API/provider calls — docs-only refresh.
+this checkpoint refreshed at master tip 4ea45df, extending the 7acd2a7 regeneration (PR #41) with merges #42 and #46. Supersedes closed PR #35 (prune-status-rot2) whose snapshot predated the merges listed above. Zero model/API/provider calls — docs-only refresh.
