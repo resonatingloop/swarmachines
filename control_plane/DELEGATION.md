@@ -137,3 +137,14 @@ preserves fixed reason codes, allowlisted status, and integer token counts;
 unknown statuses and invalid usage become unknown, never provider text.
 18 delegation tests plus 15 observer tests pass. independent review remains
 required before shared use.
+
+## explicit session policy extension
+
+[submission operations](SUBMISSION.md) adds named owner-authorized sessions.
+legacy three-column budget tables retain the original four-request/one-credit
+policy. new session tables additionally store bounded policy JSON and the manifest
+hash; acknowledgments/receipts echo both. no migration or reset of old queues is
+performed. a new session can reserve at most two credits over twenty requests;
+0.1 credits per claim remains fixed and is retained on failure. reopening reads
+the persisted policy. a different requested policy or manifest binding refuses.
+the original standalone invocation remains available for legacy operation.

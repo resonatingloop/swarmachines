@@ -10,6 +10,8 @@
 
 route-gossip-v1: accepted spec011 implemented on merged freight runtime `7103ac0`, with an explicit policy option. 18 focused tests, legacy 24/24 runtime tests and 82 viewer tests pass. capability fixtures change legal first hops through reports; legacy outputs match the base byte-for-byte. [operations and limitations](runtime/ROUTE_GOSSIP.md). independent review and formal experiment readiness remain pending.
 
+measurement readiness: [pinned source mapping](docs/measurement-readiness.md) records the pr #29 policy gate: received context is not read by the action policy. controlled fixtures at seeds 7/42/101 preserve all action events and final counts when context changes. mapping review remains pending; no formal runs or analyzer implementation authorized by this observation.
+
 merge ledger (2026-11-07 23:25z to 2026-11-08 00:52z): master tip is c5899d8
 (pr #24: read-only worker receipts projection; verifier clear 48/48 and sast
 clear). this window also merged pr #16 (331a65c: viewer evidence escaping
@@ -22,6 +24,18 @@ AGENTS.md protected-file owner approval, and draft pr #26 (ecc948d, spec010
 task-submission workflow) is held for owner review with no merge request and
 zero provider calls; the delegation slice below carries a post-merge sast redo
 tracked as task t-011.
+
+spec010 session planning: [spec010](specs/010-explicit-task-submission.md) drafts explicit
+prepare/inspect/submit and post-run capture within a persistent named paid session.
+implementation and session approval are separate gates; neither has started.
+explicit submission slice: owner accepted spec010 and raised the new session
+ceiling to 2 credits; the implementation supports up to 20 requests at 0.1
+credits reserved each, one worker and no automatic retries. pinned-source packet
+preparation, fingerprint-bound run, persistent session binding and separate capture
+are implemented. 65 offline tests and ruff pass. CLI offline and paid proofs
+completed; the new private session has 1/20 requests used, 0.1 credits reserved
+and 0.0003147 estimated credits. billing unobserved; first trial untouched.
+independent review remains pending. [operations](control_plane/SUBMISSION.md).
 
 receipt-board slice: owner accepted [spec009](specs/009-worker-receipt-board.md)
 on 2026-11-08. optional read-only worker projection implemented; snapshot v2
@@ -236,10 +250,13 @@ the proposal was unchanged by the bootstrap.
 
 ## next useful action
 
-review pr #24's receipt projection at its current head before merging. refresh
-private captures deliberately after task/receipt changes; existing HTML is frozen.
-no dispatch, retries or new provider budget are implied by the board. separate
-runtime integration and provider-sanitization work remain with their owners.
+independently review pr #26 at its final implementation head. the spec010
+submission workflow is implemented and tested; explicit tasks in the authorized
+read-only session may use its remaining allowance (1/20 used, 0.1 reserved,
+0.0003147 estimated); no automatic loop, task-purpose expansion or new budget
+is implied. preserve all prior trial records (receipt-board: four attempts,
+0.4 reserved, billing unobserved) and handle provider-sanitization work on its
+separate owner lane.
 
 ## re-entry notes
 

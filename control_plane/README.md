@@ -92,7 +92,7 @@ field / 8 MiB scan and a two-second query/iteration deadline bound the reader.
 cost is a dated known-usage subtotal, including known tokens on failed attempts;
 unknown usage is visible and actual billing stays unknown. budget reservations
 are shown separately. limits are recognized producer configuration (source hashes
-from commits 61b8ae1 and 8abecd4), not an account quota or proof of historical
+from commits 61b8ae1 and 8abecd4 plus the inspected spec010 policy extension), not an account quota or proof of historical
 configuration. an unknown producer or incomplete/inconsistent evidence makes
 limits and remaining allowance unknown. adding another producer fingerprint
 requires inspection of its actual limit/model configuration, not copying a
@@ -103,3 +103,8 @@ privacy canaries, matching receipts, accounting, size limits, rollback-journal
 no-write behavior and active-WAL refusal. the browser harness also exercises
 worker disclosure by keyboard, expanded 320px reflow and empty browser storage.
 never commit real queue data or generated private captures.
+
+explicit submission can attach a validated session id and manifest hash to its
+capture. new-session budget rows carry policy/binding fields; the reader checks
+these against acknowledgments and receipts before displaying their limits.
+legacy database shapes remain supported. see [submission operations](SUBMISSION.md).

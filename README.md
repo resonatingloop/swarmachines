@@ -10,6 +10,10 @@ a hackathon project taking shape around one question: what forms of relation
 make an agent collective more capable without flattening distinction,
 provenance, dissent, or recoverability?
 
+**task submission:** [prepare, inspect and submit](control_plane/SUBMISSION.md)
+wraps the existing worker with exact fingerprints, named session bounds and
+a separate receipt-board capture.
+
 **worker receipts:** the [switchboard capture](control_plane/README.md#worker-receipt-capture-snapshot-v2)
 can optionally include sanitized local attempts, usage coverage and reservations.
 all captures remain frozen and private.

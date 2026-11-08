@@ -12,6 +12,11 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
+if __package__:
+    from .limits import DEFAULT, validate_limits
+else:
+    from limits import DEFAULT, validate_limits
+
 MAX_JOBS = 1000
 MAX_FIELD = 96 * 1024
 MAX_SCAN = 8 * 1024 * 1024
@@ -19,6 +24,7 @@ MODEL = "glm-53-flash"
 # Reviewed producer source fingerprints: 61b8ae1 and 8abecd4. These identify
 # compatible configuration, not authenticity or immutable historical limits.
 PRODUCERS = {
+    "a860c8e65b1add160e8210f4f8fd53d85dff8e49860a1d92e740cb30cb09b2f0",  # spec010: persisted session policy
     "aac56334783a7c7f230dfec5a9c7955375073f9008fb9fdee2f81f4492eaaf62",
     "47553b9faf78c0de5b491376abc5248cc18e4542bc430334f7ac667de3465175",
 }
@@ -65,7 +71,7 @@ def sha(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def project(row):
+def project(row, policy=None, binding=None):
     """Validate matching evidence, returning only the approved projection.
 
     Args:
@@ -130,6 +136,10 @@ def project(row):
         "response_status": None,
     }
     known = ack.get("harness_sha256") in PRODUCERS
+    if policy is not None and (
+        ack.get("budget_policy") != policy or ack.get("session_sha256") != binding
+    ):
+        raise ValueError("ack policy mismatch")
     if row["state"] == "running":
         if row["receipt"] is not None:
             raise ValueError("running with receipt")
@@ -146,6 +156,11 @@ def project(row):
         or receipt.get("harness_sha256") != ack.get("harness_sha256")
     ):
         raise ValueError("receipt state mismatch")
+    if policy is not None and (
+        receipt.get("budget_policy") != policy
+        or receipt.get("session_sha256") != binding
+    ):
+        raise ValueError("receipt policy mismatch")
     result["finished_at"] = stamp(receipt.get("finished_at"))
     output = receipt.get("result")
     if row["state"] == "completed":
@@ -273,11 +288,27 @@ def collect_workers(directory=None):
             ("budget", "table"),
         }:
             raise ValueError("unexpected schema")
+        stored_policy = False
         for table, columns in COLUMNS.items():
-            if [
-                r["name"] for r in db.execute(f"PRAGMA table_info({table})")
-            ] != columns:
+            actual = [r["name"] for r in db.execute(f"PRAGMA table_info({table})")]
+            if table == "budget" and actual == columns + ["policy", "binding"]:
+                stored_policy = True
+            elif actual != columns:
                 raise ValueError("unexpected columns")
+        policy = dict(DEFAULT)
+        binding = None
+        if stored_policy:
+            raw_policy = db.execute(
+                "SELECT CASE WHEN length(CAST(policy AS BLOB))<=1024 THEN policy ELSE NULL END FROM budget WHERE id=1"
+            ).fetchone()
+            if raw_policy is None or raw_policy[0] is None:
+                raise ValueError("policy unavailable")
+            policy = validate_limits(json.loads(raw_policy[0]))
+            binding = db.execute(
+                "SELECT CASE WHEN length(binding)<=64 THEN binding ELSE NULL END FROM budget WHERE id=1"
+            ).fetchone()[0]
+            if binding != "" and not matched(binding, r"[a-f0-9]{64}"):
+                raise ValueError("invalid session binding")
         budget = db.execute(
             "SELECT id,requests,reserved_micro FROM budget LIMIT 2"
         ).fetchall()
@@ -316,7 +347,9 @@ def collect_workers(directory=None):
                 (meta["ordinal"],),
             ).fetchone()
             try:
-                attempt, compatible = project(row)
+                attempt, compatible = project(
+                    row, policy if stored_policy else None, binding
+                )
                 attempts.append(attempt)
                 known = known and compatible
             except (ValueError, TypeError, KeyError, RecursionError):
@@ -330,14 +363,23 @@ def collect_workers(directory=None):
                 a for a in attempts if counts[a["task_id"]] == ids[a["attempt_id"]] == 1
             ]
             view["diagnostics"].append("duplicate identities; excluded")
-        known = known and bool(attempts) and not truncated and not duplicate
+        known = (
+            known
+            and (bool(attempts) or stored_policy)
+            and not truncated
+            and not duplicate
+        )
         live = [a for a in attempts if a["mode"] == "adaption"]
         if not truncated and used != len(live):
             view["diagnostics"].append(
                 "budget request count differs from valid live rows"
             )
             known = False
-        if known and (reserved != used * 100000 or used > 4):
+        if known and (
+            reserved != used * policy["reservation_micro"]
+            or used > policy["request_limit"]
+            or reserved > policy["credit_limit_micro"]
+        ):
             view["diagnostics"].append(
                 "budget differs from recognized producer configuration"
             )
@@ -353,9 +395,15 @@ def collect_workers(directory=None):
             budget={
                 "requests_used": used,
                 "reserved_credits": format(Decimal(reserved) / 1000000, "f"),
-                "request_limit": 4 if known else None,
-                "reservation_ceiling": "1" if known else None,
-                "requests_remaining": max(0, 4 - used) if known else None,
+                "request_limit": policy["request_limit"] if known else None,
+                "reservation_ceiling": format(
+                    Decimal(policy["credit_limit_micro"]) / 1000000, "f"
+                )
+                if known
+                else None,
+                "requests_remaining": max(0, policy["request_limit"] - used)
+                if known
+                else None,
                 "limit_basis": "recognized producer configuration; not account quota"
                 if known
                 else "unknown",
