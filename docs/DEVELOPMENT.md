@@ -153,3 +153,16 @@ launcher, room card, current access evidence, and remaining connection steps.
 - the checkout began without commits and with an unrelated untracked `.env`.
   inspect git status before any version-control work. stage explicit intended
   files only when staging is requested; do not sweep up unrelated local files.
+
+## smoke outcome regression checks
+
+`python3 -m unittest runtime.test_smoke_outcomes -v` uses synthetic adapter/SDK
+modules and makes no provider calls. it covers each failed call position,
+multiple failures, complete success, and the missing-key path without an SDK.
+
+the optional live smoke command reports `error` and exits 1 when any caught
+provider call fails; a missing key remains `blocked` with exit 2. `calls_made`
+counts attempted adapter invocations, including failures, not underlying SDK
+requests or retries. call 1 still aborts on failure; later failures retain all
+result rows and expose the first error at top level for the CLI. provider
+configuration and retry policy are unchanged by this accounting fix.

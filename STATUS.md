@@ -8,6 +8,12 @@
 
 ## verified checkpoint
 
+smoke outcome correction: failures in calls 2–4 now produce aggregate `error`
+and CLI exit 1; failed call 1 counts its attempted invocation. five offline
+regression tests cover outcomes, counting, exit codes and SDK-free blocked
+behavior. no provider calls in this change. independent review pending;
+provider retry/configuration behavior remains unchanged.
+
 local delegation slice (2026-11-07): accepted spec008 and owner-approved trial
 limited to 1 credit / four requests / one worker / no automatic retries. pug
 accepted the v1 mapping. 33 tests (18 delegation + 15 observer), scoped ruff and
