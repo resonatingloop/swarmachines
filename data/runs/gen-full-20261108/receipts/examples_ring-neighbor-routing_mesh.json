@@ -1,0 +1,14 @@
+{
+  "schema_version": "v1",
+  "call_name": "examples_ring-neighbor-routing_mesh",
+  "timestamp": "2026-11-08T04:00:38.507725+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 526,
+  "output_tokens": 1662,
+  "total_tokens": 2188,
+  "item_path": "data/examples/ring-neighbor-routing.md",
+  "kind": "example",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T04:00:38.507725+00:00",
+  "run_id": "gen-full-20261108",
+  "note": "Receipt reconstructed from calls.jsonl run log (call 35)"
+}

@@ -1,0 +1,141 @@
+{
+  "scenario_id": "relay-loss-mesh",
+  "title": "Relay Loss in Mesh Topology",
+  "description": "This scenario explores relay loss dynamics within a mesh communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions.",
+  "seed": 42,
+  "agents": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ],
+  "comm_topology": "mesh",
+  "physical_topology": "graph",
+  "depots": [
+    "west",
+    "east",
+    "south",
+    "north"
+  ],
+  "routes": [
+    {
+      "name": "west-east",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "west-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-north",
+      "capacity": 1,
+      "status": "open"
+    },
+    {
+      "name": "south-north",
+      "capacity": 2,
+      "status": "open"
+    }
+  ],
+  "bridges": [
+    {
+      "name": "east-bridge",
+      "connects": [
+        "east",
+        "south"
+      ],
+      "status": "open"
+    },
+    {
+      "name": "west-bridge",
+      "connects": [
+        "west",
+        "north"
+      ],
+      "status": "open"
+    }
+  ],
+  "turns": 16,
+  "freight_jobs": [
+    {
+      "job_id": "j-001",
+      "freight": "med-kit",
+      "origin": "west",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 8
+    },
+    {
+      "job_id": "j-002",
+      "freight": "supplies",
+      "origin": "east",
+      "destination": "west",
+      "priority": "normal",
+      "turns_to_deliver": 12
+    },
+    {
+      "job_id": "j-003",
+      "freight": "equipment",
+      "origin": "south",
+      "destination": "east",
+      "priority": "normal",
+      "turns_to_deliver": 10
+    },
+    {
+      "job_id": "j-004",
+      "freight": "food",
+      "origin": "north",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 6
+    }
+  ],
+  "disturbance_schedule": {
+    "relay-loss": {
+      "muted_agent": "a",
+      "start_turn": 2,
+      "end_turn": 16,
+      "detection_method": "timeout",
+      "detection_turns": 2
+    }
+  },
+  "edge_cases_to_watch": [
+    "Partial Information Asymmetry: Agents b, c, and d know agent a is silent, but agents assigned to work with a may assume physical failure vs comms failure.",
+    "Information Cascades: A failure to pass status updates from agent a via mesh neighbors leads to outdated routing decisions for the remaining active agents.",
+    "Ghost Reservations: Agent a may have reserved route capacity before silence; remaining agents must decide whether to wait for a-to-clear or assume capacity is permanently blocked.",
+    "Redundant Path Utilization: Testing if agents switch to longer physical routes to compensate for the loss of 'a' as a coordination hub."
+  ],
+  "coordination_challenges": [
+    "Distributed Consensus: Reaching agreement on the state of the network without input from agent 'a'.",
+    "Dynamic Re-routing: Recalculating freight paths when the primary coordinator/relay is no longer broadcasting intent.",
+    "Deadlock Avoidance: Preventing two agents from entering a low-capacity route (e.g., east-north) due to lack of coordination messages from the muted agent."
+  ],
+  "suggested_agent_strategies": [
+    "Gossip Protocol: Agents should broadcast status updates to all neighbors to ensure information spreads despite node loss.",
+    "Proactive Buffer Management: Agents should reserve slightly more capacity than needed when a primary peer is silent to account for uncertainty.",
+    "Fallback to Local Autonomy: If communication timeouts occur, agents should transition from 'collaborative optimization' to 'local greedy optimization' to maintain throughput.",
+    "Heartbeat Verification: Implementation of rapid periodic pings to minimize the 'detection_turns' impact."
+  ],
+  "expected_outcomes": {
+    "deliveries_baseline": 3,
+    "recovery_turns_expected": "2-4",
+    "coordination_challenges": [
+      "Mesh connectivity preservation despite single-node silence",
+      "Information decay management during the timeout period"
+    ]
+  },
+  "success_criteria": [
+    "High-priority freight delivered within deadline",
+    "Agents adapt communication to topology constraints",
+    "Recovery from disruption within expected turns",
+    "Minimal capacity wastage due to 'ghost' reservations"
+  ],
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
+}

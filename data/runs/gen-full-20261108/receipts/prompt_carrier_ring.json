@@ -1,0 +1,14 @@
+{
+  "schema_version": "v1",
+  "call_name": "prompt_carrier_ring",
+  "timestamp": "2026-11-08T03:56:40.170463+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 1344,
+  "output_tokens": 673,
+  "total_tokens": 2017,
+  "item_path": "data/prompts/carrier_ring.md",
+  "kind": "prompt",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "capture_method": "live-api-call-with-full-logging",
+  "run_id": "gen-full-20261108"
+}

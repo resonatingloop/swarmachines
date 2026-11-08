@@ -1,0 +1,145 @@
+{
+  "scenario_id": "bridge-closure-mesh-v2",
+  "title": "Bridge Closure in Mesh Topology",
+  "description": "This scenario explores bridge closure dynamics within a mesh communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions.",
+  "seed": 42,
+  "agents": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ],
+  "comm_topology": "mesh",
+  "physical_topology": "graph",
+  "depots": [
+    "west",
+    "east",
+    "south",
+    "north"
+  ],
+  "routes": [
+    {
+      "name": "west-east",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "west-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-north",
+      "capacity": 1,
+      "status": "open"
+    },
+    {
+      "name": "south-north",
+      "capacity": 2,
+      "status": "open"
+    }
+  ],
+  "bridges": [
+    {
+      "name": "east-bridge",
+      "connects": [
+        "east",
+        "south"
+      ],
+      "status": "open"
+    },
+    {
+      "name": "west-bridge",
+      "connects": [
+        "west",
+        "north"
+      ],
+      "status": "open"
+    }
+  ],
+  "turns": 16,
+  "freight_jobs": [
+    {
+      "job_id": "j-001",
+      "freight": "med-kit",
+      "origin": "west",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 8
+    },
+    {
+      "job_id": "j-002",
+      "freight": "supplies",
+      "origin": "east",
+      "destination": "west",
+      "priority": "normal",
+      "turns_to_deliver": 12
+    },
+    {
+      "job_id": "j-003",
+      "freight": "equipment",
+      "origin": "south",
+      "destination": "east",
+      "priority": "normal",
+      "turns_to_deliver": 10
+    },
+    {
+      "job_id": "j-004",
+      "freight": "food",
+      "origin": "north",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 6
+    }
+  ],
+  "disturbance_schedule": {
+    "bridge-closure": {
+      "bridge": "east-bridge",
+      "closure_turn": 2,
+      "alternative_route": "east-north-south",
+      "delay_turns": 2
+    }
+  },
+  "edge_cases_to_watch": [
+    "Direct route becomes unavailable",
+    "Freight must be rerouted through longer path",
+    "Agents at east depot may become isolated",
+    "Capacity bottleneck at east-north route due to rerouting",
+    "Information asymmetry: Agent A knows bridge is closed, Agent D does not",
+    "Race condition: Multiple agents attempting to use the single-capacity east-north route simultaneously"
+  ],
+  "coordination_challenges": [
+    "Dynamic re-routing synchronization: Ensuring agents do not commit to the same restricted route simultaneously",
+    "Priority-based resource contention: Negotiating access to the limited capacity 'east-north' corridor",
+    "Information propagation latency: Maintaining a consistent global world-state across the mesh topology during physical disruptions",
+    "Congestion management: Preventing deadlock at the 'south' depot as redirected traffic converges"
+  ],
+  "agent_strategies": [
+    "Distributed Consensus: Agents use the mesh topology to broadcast route status updates to achieve a shared belief of the network state",
+    "Reservation-based Routing: Agents reserve capacity on the east-north route in advance to prevent collisions",
+    "Priority Preemption: Low-priority agents yield the single-capacity route to high-priority 'med-kit' or 'food' carriers",
+    "Predictive Rerouting: Using the disturbance schedule to proactively divert agents before they reach the closed bridge"
+  ],
+  "expected_outcomes": {
+    "deliveries_baseline": 3,
+    "recovery_turns_expected": "2-4",
+    "coordination_challenges": [
+      "Direct route becomes unavailable",
+      "Freight must be rerouted through longer path",
+      "Capacity bottleneck at east-north route",
+      "Information asymmetry"
+    ]
+  },
+  "success_criteria": [
+    "High-priority freight delivered within deadline",
+    "Agents adapt communication to topology constraints",
+    "Recovery from disruption within expected turns",
+    "Zero deadlocks encountered at single-capacity nodes"
+  ],
+  "provenance": "model-enhanced: gemma-4-26b-a4b-it @ 2026-11-08T04:00:00.000000+00:00"
+}

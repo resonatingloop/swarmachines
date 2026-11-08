@@ -1,0 +1,14 @@
+{
+  "schema_version": "v1",
+  "call_name": "examples_relay-loss-reroute_mesh",
+  "timestamp": "2026-11-08T03:59:45.218037+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 537,
+  "output_tokens": 1642,
+  "total_tokens": 2179,
+  "item_path": "data/examples/relay-loss-reroute.md",
+  "kind": "example",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:59:45.218037+00:00",
+  "run_id": "gen-full-20261108",
+  "note": "Receipt reconstructed from calls.jsonl run log (call 33)"
+}

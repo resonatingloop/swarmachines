@@ -1,0 +1,149 @@
+{
+  "scenario_id": "contested-deliveries-mesh-v2",
+  "title": "Contested Deliveries in Mesh Topology",
+  "description": "This scenario explores contested deliveries dynamics within a mesh communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions.",
+  "seed": 42,
+  "agents": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ],
+  "comm_topology": "mesh",
+  "physical_topology": "graph",
+  "depots": [
+    "west",
+    "east",
+    "south",
+    "north"
+  ],
+  "routes": [
+    {
+      "name": "west-east",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "west-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-north",
+      "capacity": 1,
+      "status": "open"
+    },
+    {
+      "name": "south-north",
+      "capacity": 2,
+      "status": "open"
+    }
+  ],
+  "bridges": [
+    {
+      "name": "east-bridge",
+      "connects": [
+        "east",
+        "south"
+      ],
+      "status": "open"
+    },
+    {
+      "name": "west-bridge",
+      "connects": [
+        "west",
+        "north"
+      ],
+      "status": "open"
+    }
+  ],
+  "turns": 16,
+  "freight_jobs": [
+    {
+      "job_id": "j-001",
+      "freight": "med-kit",
+      "origin": "west",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 8
+    },
+    {
+      "job_id": "j-002",
+      "freight": "supplies",
+      "origin": "east",
+      "destination": "west",
+      "priority": "normal",
+      "turns_to_deliver": 12
+    },
+    {
+      "job_id": "j-003",
+      "freight": "equipment",
+      "origin": "south",
+      "destination": "east",
+      "priority": "normal",
+      "turns_to_deliver": 10
+    },
+    {
+      "job_id": "j-004",
+      "freight": "food",
+      "origin": "north",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 6
+    }
+  ],
+  "disturbance_schedule": {
+    "contested-deliveries": {
+      "target_destination": "south",
+      "freight_count": 3,
+      "capacity_restriction": 1,
+      "priority_mix": [
+        "high",
+        "normal",
+        "low"
+      ],
+      "start_turn": 4,
+      "duration": 6
+    }
+  },
+  "edge_cases_to_watch": [
+    "Multiple freight items competing for same destination slot",
+    "Agents must coordinate to avoid congestion",
+    "Lower-priority deliveries may be significantly delayed",
+    "Message propagation delay in mesh during high-traffic congestion",
+    "Communication saturation when agents attempt simultaneous rerouting",
+    "Resource starvation for low-priority jobs at the South bottleneck"
+  ],
+  "coordination_challenges": [
+    "Synchronizing arrival times to prevent South depot overflow",
+    "Negotiating route precedence when capacity is reduced to 1",
+    "Information asymmetry: Agents discovering congestion at different turns",
+    "Dynamic rerouting decisions under tight turn-to-deliver constraints"
+  ],
+  "suggested_agent_strategies": [
+    "Priority-based queuing: High-priority agents claim capacity slots first",
+    "Staggered movement: Delaying non-critical movement to avoid bottleneck peaks",
+    "Consolidated routing: Using bridges to bypass congested central routes",
+    "Broadcast-based negotiation: Using mesh topology to alert all agents of capacity drops"
+  ],
+  "expected_outcomes": {
+    "deliveries_baseline": 3,
+    "recovery_turns_expected": "2-4",
+    "coordination_challenges": [
+      "Multiple freight items competing for same destination slot",
+      "Agents must coordinate to avoid congestion"
+    ]
+  },
+  "success_criteria": [
+    "High-priority freight delivered within deadline",
+    "Agents adapt communication to topology constraints",
+    "Recovery from disruption within expected turns",
+    "Minimization of agent idle time at congested nodes"
+  ],
+  "provenance": "model-enhanced: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
+}

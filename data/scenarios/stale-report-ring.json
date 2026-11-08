@@ -1,0 +1,167 @@
+{
+  "scenario_id": "stale-report-ring",
+  "title": "Stale Report in Ring Topology",
+  "description": "This scenario explores stale report dynamics within a ring communication topology. A bridge closure occurs, but the information propagates through the ring with a delay. Agents must navigate physical bottlenecks while receiving outdated status updates about the network topology.",
+  "seed": 42,
+  "agents": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ],
+  "comm_topology": "ring",
+  "physical_topology": "graph",
+  "depots": [
+    "west",
+    "east",
+    "south",
+    "north"
+  ],
+  "routes": [
+    {
+      "name": "west-east",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "west-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-north",
+      "capacity": 1,
+      "status": "open"
+    },
+    {
+      "name": "south-north",
+      "capacity": 2,
+      "status": "open"
+    }
+  ],
+  "bridges": [
+    {
+      "name": "east-bridge",
+      "connects": [
+        "east",
+        "south"
+      ],
+      "status": "open"
+    },
+    {
+      "name": "west-bridge",
+      "connects": [
+        "west",
+        "north"
+      ],
+      "status": "open"
+    }
+  ],
+  "turns": 16,
+  "freight_jobs": [
+    {
+      "job_id": "j-001",
+      "freight": "med-kit",
+      "origin": "west",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 8
+    },
+    {
+      "job_id": "j-002",
+      "freight": "supplies",
+      "origin": "east",
+      "destination": "west",
+      "priority": "normal",
+      "turns_to_deliver": 12
+    },
+    {
+      "job_id": "j-003",
+      "freight": "equipment",
+      "origin": "south",
+      "destination": "east",
+      "priority": "normal",
+      "turns_to_deliver": 10
+    },
+    {
+      "job_id": "j-004",
+      "freight": "food",
+      "origin": "north",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 6
+    }
+  ],
+  "disturbance_schedule": {
+    "stale-report": {
+      "event": "bridge closure",
+      "actual_turn": 2,
+      "report_delay_turns": 2,
+      "affected_route": "east-bridge"
+    }
+  },
+  "edge_cases_to_watch": [
+    "Agents may attempt to use bridge before learning of closure due to ring propagation delay",
+    "Freight may be stranded mid-route if agent moves to a node that becomes isolated",
+    "Rerouting decisions must account for delayed information from non-adjacent neighbors",
+    "Information oscillations: Agent A receives 'closed' from B, but Agent C still reports 'open' to Agent D",
+    "Congestion cascading: Agents rerouting from 'east-bridge' to 'east-north' may exceed the single-capacity limit"
+  ],
+  "coordination_challenges": [
+    "Temporal inconsistency: Agents acting on 'stale' vs 'fresh' data simultaneously",
+    "Single-path bottlenecking: High-priority rerouting causing congestion on lower-capacity routes (e.g., east-north)",
+    "Ring-latency: The time required for a 'bridge closed' message to reach the entire agent fleet",
+    "Consensus failure: Agents disagreeing on the current state of the east-bridge"
+  ],
+  "suggested_agent_strategies": [
+    "Verification Probing: Agents query multiple neighbors in the ring to validate a single report before rerouting",
+    "Conservative Buffering: Agents increase turn-budget estimates when traveling through high-risk bridge sectors",
+    "Priority Preemption: Low-priority agents yield capacity on limited-capacity routes (east-north) to high-priority agents",
+    "Timestamped Signaling: Agents include a 'data_age' metadata tag in communications to allow neighbors to weight the reliability of the report"
+  ],
+  "expected_outcomes": {
+    "deliveries_baseline": 3,
+    "recovery_turns_expected": "2-4",
+    "coordination_challenges": [
+      "Agents may attempt to use bridge before learning of closure",
+      "Freight may be stranded mid-route",
+      "Information oscillation due to ring topology"
+    ]
+  },
+  "success_criteria": [
+    "High-priority freight delivered within deadline",
+    "Agents adapt communication to topology constraints",
+    "Recovery from disruption within expected turns",
+    "Minimal congestion-related failures on capacity-1 routes"
+  ],
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "ring_order": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ],
+  "ring_neighbors": {
+    "a": [
+      "b",
+      "d"
+    ],
+    "b": [
+      "a",
+      "c"
+    ],
+    "c": [
+      "b",
+      "d"
+    ],
+    "d": [
+      "c",
+      "a"
+    ]
+  }
+}

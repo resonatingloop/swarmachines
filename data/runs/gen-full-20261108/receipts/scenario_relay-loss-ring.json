@@ -1,0 +1,13 @@
+{
+  "schema_version": "v1",
+  "call_name": "scenario_relay-loss_ring",
+  "timestamp": "2026-11-08T03:57:22.250768+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 1220,
+  "output_tokens": 1460,
+  "total_tokens": 2680,
+  "item_path": "data/scenarios/relay-loss-ring.json",
+  "kind": "scenario",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "run_id": "gen-full-20261108"
+}

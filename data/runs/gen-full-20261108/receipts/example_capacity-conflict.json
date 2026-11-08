@@ -1,0 +1,13 @@
+{
+  "schema_version": "v1",
+  "call_name": "example_capacity-conflict",
+  "timestamp": "2026-11-08T04:00:09.230738+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 528,
+  "output_tokens": 1333,
+  "total_tokens": 1861,
+  "item_path": "data/examples/capacity-conflict.md",
+  "kind": "example",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "run_id": "gen-full-20261108"
+}

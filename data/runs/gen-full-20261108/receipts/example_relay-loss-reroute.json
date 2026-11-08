@@ -1,0 +1,13 @@
+{
+  "schema_version": "v1",
+  "call_name": "example_relay-loss-reroute",
+  "timestamp": "2026-11-08T03:59:53.428534+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 536,
+  "output_tokens": 1587,
+  "total_tokens": 2123,
+  "item_path": "data/examples/relay-loss-reroute.md",
+  "kind": "example",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "run_id": "gen-full-20261108"
+}

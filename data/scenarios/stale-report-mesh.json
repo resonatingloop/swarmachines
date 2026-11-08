@@ -1,0 +1,144 @@
+{
+  "scenario_id": "stale-report-mesh",
+  "title": "Stale Report in Mesh Topology",
+  "description": "This scenario explores stale report dynamics within a mesh communication topology. A critical bridge failure occurs early, but information propagates through the mesh with a lag, creating a discrepancy between the physical state of the network and the agents' shared knowledge base. This tests the agents' ability to reconcile conflicting information and avoid 'ghost' routes.",
+  "seed": 42,
+  "agents": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ],
+  "comm_topology": "mesh",
+  "physical_topology": "graph",
+  "depots": [
+    "west",
+    "east",
+    "south",
+    "north"
+  ],
+  "routes": [
+    {
+      "name": "west-east",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "west-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-north",
+      "capacity": 1,
+      "status": "open"
+    },
+    {
+      "name": "south-north",
+      "capacity": 2,
+      "status": "open"
+    }
+  ],
+  "bridges": [
+    {
+      "name": "east-bridge",
+      "connects": [
+        "east",
+        "south"
+      ],
+      "status": "open"
+    },
+    {
+      "name": "west-bridge",
+      "connects": [
+        "west",
+        "north"
+      ],
+      "status": "open"
+    }
+  ],
+  "turns": 16,
+  "freight_jobs": [
+    {
+      "job_id": "j-001",
+      "freight": "med-kit",
+      "origin": "west",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 8
+    },
+    {
+      "job_id": "j-002",
+      "freight": "supplies",
+      "origin": "east",
+      "destination": "west",
+      "priority": "normal",
+      "turns_to_deliver": 12
+    },
+    {
+      "job_id": "j-003",
+      "freight": "equipment",
+      "origin": "south",
+      "destination": "east",
+      "priority": "normal",
+      "turns_to_deliver": 10
+    },
+    {
+      "job_id": "j-004",
+      "freight": "food",
+      "origin": "north",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 6
+    }
+  ],
+  "disturbance_schedule": {
+    "stale-report": {
+      "event": "bridge closure",
+      "actual_turn": 2,
+      "report_delay_turns": 2,
+      "affected_route": "east-bridge"
+    }
+  },
+  "edge_cases_to_watch": [
+    "Agents may attempt to use bridge before learning of closure",
+    "Freight may be stranded mid-route due to capacity bottlenecks on alternate paths",
+    "Rerouting decisions must account for delayed information",
+    "Information Echo: Agents may propagate the 'open' status of the bridge even after it has closed, due to mesh latency",
+    "Capacity Cascade: Rerouting all east-south traffic to the west-south-north path may cause congestion-induced delays",
+    "Conflicting Beliefs: Agent A believes the bridge is open while Agent B (having received the update) believes it is closed"
+  ],
+  "coordination_challenges": [
+    "Consensus Building: Reaching agreement on the current state of the network despite delayed updates",
+    "Resource Contention: Managing limited capacity on the 'south-north' and 'west-south' routes during the rerouting phase",
+    "Predictive Routing: Balancing the risk of taking a route that might be closed versus waiting for confirmation",
+    "Temporal Uncertainty: Deciding whether to wait for 'fresh' data or act on 'stale' but potentially valid data"
+  ],
+  "suggested_agent_strategies": [
+    "Probabilistic State Estimation: Agents maintain a confidence score for route statuses rather than binary open/closed states",
+    "Redundant Verification: Agents request multi-source confirmation of route status before committing high-priority freight",
+    "Buffer Management: Maintaining extra turns in the 'turns_to_deliver' budget to account for potential rerouting delays",
+    "Mesh-Aware Gossip: Prioritizing the transmission of 'negative news' (closures) over 'positive news' (openings) to minimize stale-state impact"
+  ],
+  "expected_outcomes": {
+    "deliveries_baseline": 3,
+    "recovery_turns_expected": "2-4",
+    "coordination_challenges": [
+      "Agents may attempt to use bridge before learning of closure",
+      "Freight may be stranded mid-route",
+      "Information Echoing in mesh"
+    ]
+  },
+  "success_criteria": [
+    "High-priority freight delivered within deadline",
+    "Agents adapt communication to topology constraints",
+    "Recovery from disruption within expected turns",
+    "Minimization of 'collision' attempts (agents entering a closed route)"
+  ],
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00"
+}

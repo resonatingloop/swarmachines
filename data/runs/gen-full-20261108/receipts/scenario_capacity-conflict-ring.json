@@ -1,0 +1,13 @@
+{
+  "schema_version": "v1",
+  "call_name": "scenario_capacity-conflict_ring",
+  "timestamp": "2026-11-08T03:58:08.127377+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 1211,
+  "output_tokens": 1456,
+  "total_tokens": 2667,
+  "item_path": "data/scenarios/capacity-conflict-ring.json",
+  "kind": "scenario",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "run_id": "gen-full-20261108"
+}

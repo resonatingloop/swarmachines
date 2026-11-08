@@ -1,0 +1,13 @@
+{
+  "schema_version": "v1",
+  "call_name": "scenario_bridge-closure_mesh",
+  "timestamp": "2026-11-08T03:58:45.082413+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 1078,
+  "output_tokens": 1297,
+  "total_tokens": 2375,
+  "item_path": "data/scenarios/bridge-closure-mesh.json",
+  "kind": "scenario",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "run_id": "gen-full-20261108"
+}

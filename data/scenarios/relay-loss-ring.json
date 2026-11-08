@@ -1,0 +1,166 @@
+{
+  "scenario_id": "relay-loss-ring",
+  "title": "Relay Loss in Ring Topology",
+  "description": "This scenario explores relay loss dynamics within a ring communication topology. The disturbance creates coordination challenges that test the agents' ability to adapt, communicate effectively, and maintain freight flow under adverse conditions.",
+  "seed": 42,
+  "agents": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ],
+  "comm_topology": "ring",
+  "physical_topology": "graph",
+  "depots": [
+    "west",
+    "east",
+    "south",
+    "north"
+  ],
+  "routes": [
+    {
+      "name": "west-east",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "west-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-north",
+      "capacity": 1,
+      "status": "open"
+    },
+    {
+      "name": "south-north",
+      "capacity": 2,
+      "status": "open"
+    }
+  ],
+  "bridges": [
+    {
+      "name": "east-bridge",
+      "connects": [
+        "east",
+        "south"
+      ],
+      "status": "open"
+    },
+    {
+      "name": "west-bridge",
+      "connects": [
+        "west",
+        "north"
+      ],
+      "status": "open"
+    }
+  ],
+  "turns": 16,
+  "freight_jobs": [
+    {
+      "job_id": "j-001",
+      "freight": "med-kit",
+      "origin": "west",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 8
+    },
+    {
+      "job_id": "j-002",
+      "freight": "supplies",
+      "origin": "east",
+      "destination": "west",
+      "priority": "normal",
+      "turns_to_deliver": 12
+    },
+    {
+      "job_id": "j-003",
+      "freight": "equipment",
+      "origin": "south",
+      "destination": "east",
+      "priority": "normal",
+      "turns_to_deliver": 10
+    },
+    {
+      "job_id": "j-004",
+      "freight": "food",
+      "origin": "north",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 6
+    }
+  ],
+  "disturbance_schedule": {
+    "relay-loss": {
+      "muted_agent": "a",
+      "start_turn": 2,
+      "end_turn": 16,
+      "detection_method": "timeout",
+      "detection_turns": 2
+    }
+  },
+  "edge_cases_to_watch": [
+    "Information Partitioning: Agent 'b' and 'd' can no longer communicate via agent 'a', forcing all multi-hop messages to traverse the longer path (b-c-d).",
+    "Congestion Cascades: The sudden shift in communication traffic from the direct path to the indirect path may delay critical coordination messages.",
+    "Deadlock via Silence: Agents may assume 'a' is incapacitated and stop assigning jobs to its location, causing freight stagnation at 'west' or 'north' depots.",
+    "Message Latency Jitter: Increased hop counts (from 1 to 3) causing timing mismatches in synchronized freight handoffs."
+  ],
+  "coordination_challenges": [
+    "Path-finding in Communication: Agents must recalculate the shortest communicative path for multi-agent consensus.",
+    "Consensus Fragmentation: Reaching a global agreement on job priority becomes difficult when a subset of agents is isolated.",
+    "Resource Re-allocation: Re-assigning agent 'a's physical tasks to agents 'b' or 'd' without direct coordination with 'a'."
+  ],
+  "suggested_agent_strategies": [
+    "Redundant Messaging: Send critical coordination packets to both neighbors to ensure packet arrival if one link is suspect.",
+    "Heartbeat Monitoring: Implement periodic 'alive' signals to distinguish between a broken link and a silent but active agent.",
+    "Adaptive Routing: If the 'a' link fails, immediately switch to a 'long-way-round' protocol for all inter-agent synchronization.",
+    "Proactive Buffer Management: Increase local inventory at depots near the muted agent to mitigate the risk of uncoordinated supply drops."
+  ],
+  "expected_outcomes": {
+    "deliveries_baseline": 3,
+    "recovery_turns_expected": "2-4",
+    "coordination_challenges": [
+      "Information Partitioning",
+      "Congestion Cascades",
+      "Consensus Fragmentation"
+    ]
+  },
+  "success_criteria": [
+    "High-priority freight delivered within deadline",
+    "Agents adapt communication to topology constraints",
+    "Recovery from disruption within expected turns",
+    "Successful implementation of fallback communication protocols"
+  ],
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "ring_order": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ],
+  "ring_neighbors": {
+    "a": [
+      "b",
+      "d"
+    ],
+    "b": [
+      "a",
+      "c"
+    ],
+    "c": [
+      "b",
+      "d"
+    ],
+    "d": [
+      "c",
+      "a"
+    ]
+  }
+}
