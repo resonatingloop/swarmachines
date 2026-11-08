@@ -640,7 +640,10 @@ class Agent:
                         turn=turn,
                         agent_id=self.agent_id,
                         event_type="action.committed",
-                        payload={"action_id": action_id, **(event_payload or {"result": "no-op"})},
+                        payload={
+                            "action_id": action_id,
+                            **(event_payload or {"result": "no-op"}),
+                        },
                     )
                     if self.policy == POLICY:
                         previous = {row["job_id"]: row["state"] for row in prior_jobs}

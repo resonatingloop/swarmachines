@@ -48,11 +48,6 @@ def main():
         "world.changed",
         "run.end",
     }
-    # Conditional requirements - only required when the scenario calls for them
-    conditional_required = {
-        "action.rejected",  # Only if validation fails
-        "disturbance.applied",  # Only if disturbance scheduled
-    }
     route_gossip = any(
         e["type"] == "run.config" and e["payload"].get("policy") == "route-gossip-v1"
         for e in events

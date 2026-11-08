@@ -1060,6 +1060,7 @@ def test_freight_supplies_conservation():
     # Track job states through world.changed events
     # Note: freight_id is embedded in the "what" field as "freight f-XXX moved"
     import re
+
     freight_id_pattern = re.compile(r"freight (f-\d+) moved")
 
     world_changes = [
@@ -1142,18 +1143,7 @@ def test_freight_capacity_check():
     # Verify capacity is mentioned in at least one rejection reason
     # (capacity rejections have reason "route at capacity")
     capacity_rejections = [
-        r
-        for r in rejected
-        if "capacity" in r["payload"].get("reason", "").lower()
-    ]
-
-    # Even if no capacity rejections in this seed, verify the mechanism exists
-    # by checking that rejected actions have meaningful reasons
-    validation_rejections = [
-        r
-        for r in rejected
-        if r["payload"].get("reason", "")
-        in ("route at capacity", "route is closed", "freight not at specified location")
+        r for r in rejected if "capacity" in r["payload"].get("reason", "").lower()
     ]
 
     # Capacity check is wired if routes have capacity (they do in freight_world.py)
@@ -1237,7 +1227,7 @@ def main():
                 print(f"  FAIL [{name}]: {msg}")
                 failed += 1
                 failures.append((name, msg))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - test harness catches all for reporting
             print(f"  ERROR [{name}]: {e}")
             failed += 1
             failures.append((name, str(e)))
