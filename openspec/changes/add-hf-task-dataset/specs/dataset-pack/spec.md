@@ -2,19 +2,23 @@
 
 ## ADDED Requirements
 
-### Requirement: five seeded task instances
+### Requirement: fifteen seeded task instances
 
-the pack SHALL contain exactly 5 task instances for the freight-in-the-fog
+the pack SHALL contain exactly 15 task instances for the freight-in-the-fog
 world, each defined by a versioned config carrying seed, graph, job set,
 agent roster, topology, and disturbance schedule, committed to the repo.
-no two instances SHALL share both seed and job set, and at least one
-instance SHALL use the mute-one-agent disturbance.
+the original five (seeds 42/137/299/413/571) SHALL be retained; the ten
+additional instances SHALL vary seed, job set, topology, and disturbance
+schedule, and mesh, ring, and hub-spoke topologies SHALL all be
+represented. no two instances SHALL share both seed and job set, and at
+least one instance SHALL use the mute-one-agent disturbance. the owner
+ruled on 2026-11-08 that all 15 ship as one drop — no partial release.
 
 #### Scenario: distinct instances replay deterministically
 
-- **WHEN** the 5 configs are loaded and each is replayed from its seed
-- **THEN** no two configs share both seed and job set, and each replay is
-  byte-identical to its first run
+- **WHEN** the 15 configs are loaded and each is replayed from its seed
+- **THEN** no two configs share both seed and job set, all three
+  topologies appear, and each replay is byte-identical to its first run
 
 ### Requirement: governed runs with full provenance
 

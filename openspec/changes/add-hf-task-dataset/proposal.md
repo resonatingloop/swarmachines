@@ -13,8 +13,8 @@ report a citable data release.
 
 the owner floated the scope in #pug-chat on report day (5 tasks, swarms go
 after them, huggingface-ready). this change builds the machinery offline and
-dry-runs it; executing the five real adaption runs is HELD until the report
-ships tonight unless the owner moves it up.
+dry-runs it; executing the real adaption runs is gated on the coordinator
+go after adversarial verification.
 
 ## what changes
 
@@ -24,7 +24,7 @@ ships tonight unless the owner moves it up.
 - runner glue: each instance executes through the governed task-submission
   workflow (prepare → submit → capture) — no ad-hoc api calls
 - per-run pack under `data/runs/<run_id>/`: `artifacts/`, `logs/calls.jsonl`
-  (full prompt + response per line), `receipts/`, `run.json`
+  (full prompt + response per line), `receipts/`, sealed event log, `run.json`
 - extractor runs after the run: artifacts are pulled from the persisted
   jsonl response fields (never written prompt-side), each labeled
   `model-generated` / `team-authored` / `reconstructed-from-log`
@@ -35,11 +35,21 @@ ships tonight unless the owner moves it up.
   provenance) plus `data/runs.jsonl` per-run summaries — no train/test
   split; this is a swarm dataset, not a training corpus
 - upload script reading credentials from the environment only; packaging
-  and audit are fully offline
+  and audit are fully offline; two targets: HuggingFace (full pack) and
+  Adaption datasets API (records + runs tables)
+
+## amendment (2026-11-08, owner ruling)
+
+scope expanded from 5 to 15 task instances (10 additional with varied
+seeds, job sets, topologies, disturbance schedules; mesh, ring, and
+hub-spoke all represented) and the release ships as ONE drop — the HF +
+Adaption upload happens only after all 15 governed runs clear the
+verifier's pack audit. the machinery verification (rounds 1-3) is
+unaffected: it validated the pipeline against the original 5-config
+contract.
 
 ## out of scope
 
-- executing the 5 real adaption runs (held until the report ships; tasks 10)
 - topology-paired runs (mesh vs ring per task) — stretch, follow-up change
 - new runtime features or world changes
 - any upload without owner-provided credentials in the environment
