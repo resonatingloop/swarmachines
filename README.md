@@ -34,6 +34,8 @@ and a two-day rhythm. the swarm runtime is not implemented.
 start with [the current checkpoint](STATUS.md) if returning after a break,
 or [the project brief](PROJECT_BRIEF.md) for the purpose and open choices.
 
+**message-sensitive scripted policy:** [route-gossip operations](runtime/ROUTE_GOSSIP.md) describe the explicit freight-only mode, decision provenance and capability proof. independent review remains pending; no formal coordination outcome is claimed.
+
 ## first successful use
 
 you need a modern browser. for the local http path below, also have python 3

@@ -8,6 +8,8 @@
 
 ## verified checkpoint
 
+route-gossip-v1: accepted spec011 implemented on merged freight runtime `7103ac0`, with an explicit policy option. 18 focused tests, legacy 24/24 runtime tests and 82 viewer tests pass. capability fixtures change legal first hops through reports; legacy outputs match the base byte-for-byte. [operations and limitations](runtime/ROUTE_GOSSIP.md). independent review and formal experiment readiness remain pending.
+
 merge ledger (2026-11-07 23:25z to 2026-11-08 00:52z): master tip is c5899d8
 (pr #24: read-only worker receipts projection; verifier clear 48/48 and sast
 clear). this window also merged pr #16 (331a65c: viewer evidence escaping

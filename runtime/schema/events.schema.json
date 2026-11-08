@@ -17,7 +17,7 @@
         "message.sent", "message.delivered", "message.seen", "message.acted_on",
         "action.proposed", "action.validated", "action.rejected", "action.committed",
         "world.changed", "disturbance.applied",
-        "run.end"
+        "run.end", "policy.decision", "policy.report"
       ]
     },
     "ts": { "type": "string", "format": "date-time", "description": "wall-clock at append time; logical time lives in turn/seq" },
@@ -54,6 +54,8 @@
         "kind": { "enum": ["relay-loss", "stale-report", "peer-mute"] },
         "detail": { "type": "object", "description": "for relay-loss: {agent, until}; for stale-report: {message_id, claimed_state, actual_state}; for peer-mute: {agent}" }
       } } } }
-    }
+    },
+    {"if": {"properties": {"type": {"const": "policy.decision"}}}, "then": {"properties": {"payload": {"type": "object", "required": ["policy", "freight_id", "path", "next_hop", "reason", "consumed_message_ids", "local_only_next_hop", "choice_changed", "decision_id", "observation_seq", "action_id", "opportunity"], "properties": {"policy": {"const": "route-gossip-v1"}, "freight_id": {"anyOf": [{"type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$"}, {"type": "null"}]}, "path": {"type": "array", "maxItems": 1025, "items": {"type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$"}}, "next_hop": {"anyOf": [{"type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$"}, {"type": "null"}]}, "reason": {"enum": ["route", "at_destination", "no_known_path", "no_visible_freight", "no_action_opportunity"]}, "consumed_message_ids": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$"}}, "local_only_next_hop": {"anyOf": [{"type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$"}, {"type": "null"}]}, "choice_changed": {"type": "boolean"}, "decision_id": {"type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$"}, "observation_seq": {"type": "integer", "minimum": 0}, "action_id": {"anyOf": [{"type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$"}, {"type": "null"}]}, "opportunity": {"type": "boolean"}}, "additionalProperties": false}}}},
+    {"if": {"properties": {"type": {"const": "policy.report"}}}, "then": {"properties": {"payload": {"type": "object", "required": ["message_id", "sender", "admitted", "reason", "observed_turn", "routes"], "properties": {"message_id": {"type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$"}, "sender": {"type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}$"}, "admitted": {"type": "boolean"}, "reason": {"type": ["string", "null"], "maxLength": 64}, "observed_turn": {"type": ["integer", "null"], "minimum": 1}, "routes": {"type": "object", "maxProperties": 32, "propertyNames": {"pattern": "^[a-zA-Z0-9_-]{1,64}->[a-zA-Z0-9_-]{1,64}$"}, "additionalProperties": {"enum": ["open", "closed"]}}}, "additionalProperties": false}}}}
   ]
 }
