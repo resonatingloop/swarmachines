@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Adaption call logger for scale data pack generation.
 
@@ -19,10 +18,8 @@ LOGGING CONTRACT (owner directive):
 """
 
 import json
-import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
 
 
 class AdaptionLogger:
@@ -58,15 +55,15 @@ class AdaptionLogger:
         self.call_count = 0
         
         # Run metadata
-        self.started_at = datetime.now(timezone.utc).isoformat()
-        self.model_id: Optional[str] = None
+        self.started_at = datetime.now(UTC).isoformat()
+        self.model_id: str | None = None
         self.total_tokens_in = 0
         self.total_tokens_out = 0
     
     def log_call(self, role: str, topology: str, artifact_rel_path: str, model: str,
                  prompt: str, response: str, tokens_in: int, tokens_out: int,
                  receipt_rel_path: str, provenance: str = "model-generated",
-                 kind: str = "artifact") -> Dict:
+                 kind: str = "artifact") -> dict:
         """
         Log a single API call.
         
@@ -89,7 +86,7 @@ class AdaptionLogger:
         self.call_count += 1
         
         entry = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "run": self.run_id,
             "call": self.call_count,
             "kind": kind,
@@ -132,7 +129,7 @@ class AdaptionLogger:
         
         return str(full_path)
     
-    def write_receipt(self, rel_path: str, receipt_data: Dict):
+    def write_receipt(self, rel_path: str, receipt_data: dict):
         """Write a receipt file to the receipts directory."""
         full_path = self.receipts_dir / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
@@ -152,7 +149,7 @@ class AdaptionLogger:
         Args:
             notes: Optional notes about the run
         """
-        finished_at = datetime.now(timezone.utc).isoformat()
+        finished_at = datetime.now(UTC).isoformat()
         
         # Build artifact index
         artifact_index = []
@@ -191,7 +188,6 @@ class AdaptionLogger:
         print(f"  Tokens: {self.total_tokens_in} in + {self.total_tokens_out} out = {self.total_tokens_in + self.total_tokens_out}")
         print(f"  Directory: {self.run_dir}")
         print(f"  JSONL: {self.jsonl_path}")
-        print(f"  Aggregated: {log_json_path}")
         print(f"  Manifest: {run_json_path}")
         
         return run_manifest
@@ -293,4 +289,4 @@ if __name__ == "__main__":
     
     logger.close("Demo run")
     
-    print(f"\nDemo complete. Check data/runs/demo-run-001/")
+    print("\nDemo complete. Check data/runs/demo-run-001/")
