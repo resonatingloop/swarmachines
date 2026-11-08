@@ -1,7 +1,7 @@
 """
 dataset_pack/configs.py — versioned task-instance configs for HF dataset pack
 
-Defines exactly 5 seeded task instances for the freight-in-the-fog world.
+Defines exactly 15 seeded task instances for the freight-in-the-fog world.
 Each config carries: seed, graph, job set, agent roster, topology, disturbance schedule.
 No two instances share both seed and job set.
 At least one instance uses the mute-one-agent (peer-mute) disturbance.
@@ -71,17 +71,43 @@ class TaskInstanceConfig:
             "agents_config": self.agent_roster,
             "disturbance_schedule": self.disturbance_schedule,
             "delivery_map": {"hub": self.hub} if self.hub else {},
+            "world_graph": self.graph,
+            "job_set": self.job_set,
             "use_freight_world": True,
             "policy": self.policy,
         }
 
 
+def _varied_job_set(index: int) -> list[dict[str, str]]:
+    """build one deterministic, distinct four-job roster for task 006 onward."""
+    locations = ("west", "east", "south", "relay-a")
+    freight_types = ("med-kit", "supplies", "equipment")
+    hop = 1 + (index % 2)
+    return [
+        {
+            "freight_id": f"f-{item + 1:03d}",
+            "origin": locations[(item + index) % len(locations)],
+            "destination": locations[(item + index + hop) % len(locations)],
+            "freight_type": freight_types[(item + index) % len(freight_types)],
+        }
+        for item in range(4)
+    ]
+
+
+def _graph_variant(base_graph: dict[str, Any], index: int) -> dict[str, Any]:
+    """return a deterministic graph variant without mutating the shared baseline."""
+    graph = json.loads(json.dumps(base_graph))
+    graph["variant"] = f"graph-{index + 6:03d}"
+    graph["routes"][index % len(graph["routes"])]["capacity"] = 2 + (index % 2)
+    return graph
+
+
 def get_task_configs() -> list[TaskInstanceConfig]:
     """
-    Return the 5 versioned task-instance configs for the dataset pack.
+    Return the 15 versioned task-instance configs for the dataset pack.
 
     Requirements:
-    - Exactly 5 configs
+    - Exactly 15 configs
     - No two share both seed AND job_set
     - At least one uses peer-mute disturbance
     - Vary topology across instances for comparison
@@ -239,7 +265,7 @@ def get_task_configs() -> list[TaskInstanceConfig]:
         ],
     ]
 
-    # Define 5 task instances with varied seeds, topologies, and disturbances
+    # Retain the original five task instances unchanged.
     configs = [
         TaskInstanceConfig(
             instance_id="task-001",
@@ -274,7 +300,7 @@ def get_task_configs() -> list[TaskInstanceConfig]:
             job_set=job_sets[2],
             agent_roster=["a", "b", "c", "d"],
             topology="hub-spoke",
-            hub="relay-a",
+            hub="a",
             disturbance_schedule={
                 "relay-loss": {"turn": 8, "agent": "b", "until": "run-end"},
             },
@@ -316,6 +342,65 @@ def get_task_configs() -> list[TaskInstanceConfig]:
         ),
     ]
 
+    extra_seeds = (683, 797, 911, 1021, 1151, 1277, 1429, 1559, 1693, 1871)
+    extra_topologies = (
+        "hub-spoke",
+        "mesh",
+        "bidirectional-ring",
+        "hub-spoke",
+        "mesh",
+        "bidirectional-ring",
+        "hub-spoke",
+        "mesh",
+        "bidirectional-ring",
+        "hub-spoke",
+    )
+    roster_variants = (
+        ["a", "b", "c", "d"],
+        ["b", "c", "d", "a"],
+        ["c", "d", "a", "b"],
+        ["d", "a", "b", "c"],
+    )
+
+    for index, (seed, topology) in enumerate(zip(extra_seeds, extra_topologies)):
+        roster = list(roster_variants[index % len(roster_variants)])
+        if index % 4 == 0:
+            disturbance = {"peer-mute": {"turn": 4 + index % 3, "agent": roster[-1]}}
+        elif index % 4 == 1:
+            disturbance = {
+                "relay-loss": {
+                    "turn": 6 + index % 3,
+                    "agent": roster[1],
+                    "until": "run-end",
+                }
+            }
+        elif index % 4 == 2:
+            disturbance = {
+                "stale-report": {
+                    "turn": 7 + index % 2,
+                    "message_id": f"m-{roster[0]}001",
+                    "claimed_state": "delivered",
+                    "actual_state": "undelivered",
+                }
+            }
+        else:
+            disturbance = {}
+
+        configs.append(
+            TaskInstanceConfig(
+                instance_id=f"task-{index + 6:03d}",
+                seed=seed,
+                graph=_graph_variant(base_graph, index),
+                job_set=_varied_job_set(index),
+                agent_roster=roster,
+                topology=topology,
+                hub=roster[0] if topology == "hub-spoke" else None,
+                disturbance_schedule=disturbance,
+                turns=16,
+                policy="route-gossip-v1",
+            )
+        )
+
     return configs
 
 
@@ -328,9 +413,16 @@ def validate_configs(configs: list[TaskInstanceConfig]) -> list[str]:
     """
     errors = []
 
-    # Check: exactly 5 configs
-    if len(configs) != 5:
-        errors.append(f"Expected exactly 5 configs, got {len(configs)}")
+    # Check: exactly 15 configs, retaining the original seed set.
+    if len(configs) != 15:
+        errors.append(f"Expected exactly 15 configs, got {len(configs)}")
+    original_seeds = [42, 137, 299, 413, 571]
+    if [cfg.seed for cfg in configs[:5]] != original_seeds:
+        errors.append("Original five seeds were not retained in order")
+
+    instance_ids = [cfg.instance_id for cfg in configs]
+    if len(set(instance_ids)) != len(instance_ids):
+        errors.append("Config instance_id values must be unique")
 
     # Check: no two share both seed AND job_set
     seed_job_pairs = set()
@@ -345,6 +437,11 @@ def validate_configs(configs: list[TaskInstanceConfig]) -> list[str]:
     has_peer_mute = any("peer-mute" in cfg.disturbance_schedule for cfg in configs)
     if not has_peer_mute:
         errors.append("At least one config must use peer-mute disturbance")
+
+    represented_topologies = {cfg.topology for cfg in configs}
+    required_topologies = {"mesh", "hub-spoke", "bidirectional-ring"}
+    if represented_topologies != required_topologies:
+        errors.append("Configs must represent mesh, hub-spoke, and bidirectional-ring")
 
     # Check: all required fields present
     for cfg in configs:
