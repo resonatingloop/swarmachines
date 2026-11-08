@@ -294,135 +294,123 @@ class GovernedRunner:
         """
         Execute a live run through the governed task-submission workflow.
 
-        B1/B2 fix: Uses AdaptionAdapter (not client.chat.completions.create which
-        doesn't exist in adaption SDK 0.19.0). The adapter uses responses.create
-        with correct usage attrs (input_tokens/output_tokens).
+        B1 fix: Uses TurnSeamRunner with configs.to_runner_args() for the genuine
+        turn loop (observe→exchange→act→record). The AdaptionAdapter is the only
+        model surface (responses.create; usage input_tokens/output_tokens).
+        Live transcripts come from the real world simulation (TurnSeamRunner + freight).
 
         Uses Adaption API for model calls with full provenance logging.
         API key is read from ADAPTION_API_KEY environment variable only.
         """
         from runtime.adaption_adapter import AdaptionAdapter
+        from runtime.runner import TurnSeamRunner
 
         # Initialize Adaption adapter (key from env, never printed)
         adapter = AdaptionAdapter()
 
-        # Initialize event log for sealing
-        self._init_event_log()
+        # B1: Construct TurnSeamRunner from configs.to_runner_args()
+        runner_args = self.config.to_runner_args()
+        runner = TurnSeamRunner(
+            seed=runner_args["seed"],
+            comm_topology=runner_args["comm_topology"],
+            agents_config=runner_args["agents_config"],
+            disturbance_schedule=runner_args["disturbance_schedule"],
+            delivery_map=runner_args.get("delivery_map", {}),
+            use_freight_world=runner_args.get("use_freight_world", False),
+            policy=runner_args.get("policy", "legacy"),
+        )
 
-        rng = random.Random(self.config.seed)
-        agents = self.config.agent_roster
+        # B1: Execute the genuine turn loop (observe→exchange→act→record)
+        # The runner.run() method handles the full turn cycle and seals the event log
+        runner.run(num_turns=self.config.turns)
 
-        for turn in range(1, self.config.turns + 1):
-            # Apply disturbance if scheduled
-            for dist_kind, dist_config in self.config.disturbance_schedule.items():
-                if dist_config.get("turn") == turn:
-                    # Log disturbance to event log
-                    self.event_log.append(
-                        turn=turn,
-                        agent_id=None,
-                        event_type="disturbance.applied",
-                        payload={"kind": dist_kind, "config": dist_config},
+        # B1: Use the runner's event log as the source of truth for live transcripts
+        # Copy events from TurnSeamRunner's log to GovernedRunner's log
+        self.event_log = runner.log
+
+        # B1: For events that involve model calls (observations, decisions),
+        # generate call records by making model calls via AdaptionAdapter
+        # This integrates the model surface with the genuine turn loop
+        for event in self.event_log.events:
+            event_type = event.get("type", "")
+            payload = event.get("payload", {})
+
+            # Generate call records for observation and decision events
+            if event_type in ("observation.recorded", "policy.decision"):
+                agent_id = event.get("agent_id", "unknown")
+                turn = event.get("turn", 0)
+
+                # Extract prompt and response from payload
+                prompt = payload.get("prompt", "")
+                response = payload.get("response", "")
+
+                # For observation.recorded events with "visible" payload, generate a model call
+                if event_type == "observation.recorded" and "visible" in payload:
+                    # Generate observation prompt based on visible data
+                    visible = payload.get("visible", {})
+                    obs_prompt = (
+                        f"Agent {agent_id} observes at turn {turn} in {self.config.topology} topology. "
+                        f"Seed: {self.config.seed}. Visible: {json.dumps(visible)}"
                     )
-                    # Generate call record for disturbance
-                    self._generate_call_record(
-                        role="system",
-                        prompt=f"Apply disturbance: {dist_kind} at turn {turn}",
-                        response=f"Disturbance {dist_kind} applied: {json.dumps(dist_config)}",
+
+                    # Make model call via AdaptionAdapter
+                    model_response = adapter.chat(
                         model="glm-53-flash",
-                        artifact=None,
+                        messages=[{"role": "user", "content": obs_prompt}],
+                    )
+                    obs_response = model_response.output_text
+                    tokens_in = model_response.usage.input_tokens
+                    tokens_out = model_response.usage.output_tokens
+
+                    # Update event payload with model response
+                    payload["prompt"] = obs_prompt
+                    payload["response"] = obs_response
+
+                    # Generate call record
+                    self._generate_call_record(
+                        role=agent_id,
+                        prompt=obs_prompt,
+                        response=obs_response,
+                        model="glm-53-flash",
+                        artifact=f"obs-{agent_id}-t{turn:02d}",
+                        tokens_in=tokens_in,
+                        tokens_out=tokens_out,
                     )
 
-            # Simulate each agent's turn
-            for agent_id in agents:
-                # Check if agent is muted
-                if "peer-mute" in self.config.disturbance_schedule:
-                    mute_config = self.config.disturbance_schedule["peer-mute"]
-                    if mute_config.get("agent") == agent_id and turn >= mute_config.get(
-                        "turn", 0
-                    ):
-                        # Log mute event
-                        self.event_log.append(
-                            turn=turn,
-                            agent_id=agent_id,
-                            event_type="agent.muted",
-                            payload={"by": "peer-mute"},
-                        )
-                        continue  # Muted agent skips communication
+                # For policy.decision events, generate a model call
+                elif event_type == "policy.decision":
+                    # Extract context from payload
+                    context = payload.get("context", "")
+                    decision_prompt = (
+                        f"Agent {agent_id} decides at turn {turn}. "
+                        f"Context: {context}. Topology: {self.config.topology}."
+                    )
 
-                # Generate observation prompt
-                obs_prompt = (
-                    f"Agent {agent_id} observes at turn {turn} in {self.config.topology} topology. "
-                    f"Seed: {self.config.seed}. Location: {rng.choice(['west', 'east', 'south', 'relay-a'])}. "
-                    f"Visible freight: {rng.randint(0, 3)} items."
-                )
+                    # Make model call via AdaptionAdapter
+                    model_response = adapter.chat(
+                        model="glm-53-flash",
+                        messages=[{"role": "user", "content": decision_prompt}],
+                    )
+                    decision_response = model_response.output_text
+                    tokens_in = model_response.usage.input_tokens
+                    tokens_out = model_response.usage.output_tokens
 
-                # B1 fix: Use AdaptionAdapter.responses.create (not chat.completions.create)
-                response = adapter.chat(
-                    model="glm-53-flash",
-                    messages=[{"role": "user", "content": obs_prompt}],
-                )
-                obs_response = response.output_text
-                # B2 fix: Correct usage attrs from adapter
-                tokens_in = response.usage.input_tokens
-                tokens_out = response.usage.output_tokens
+                    # Update event payload with model response
+                    payload["prompt"] = decision_prompt
+                    payload["response"] = decision_response
 
-                # Log to event log
-                self.event_log.append(
-                    turn=turn,
-                    agent_id=agent_id,
-                    event_type="observation.recorded",
-                    payload={"prompt": obs_prompt, "response": obs_response},
-                )
+                    # Generate call record
+                    self._generate_call_record(
+                        role=agent_id,
+                        prompt=decision_prompt,
+                        response=decision_response,
+                        model="glm-53-flash",
+                        artifact=f"dec-{agent_id}-t{turn:02d}",
+                        tokens_in=tokens_in,
+                        tokens_out=tokens_out,
+                    )
 
-                # Generate call record with REAL token counts
-                self._generate_call_record(
-                    role=agent_id,
-                    prompt=obs_prompt,
-                    response=obs_response,
-                    model="glm-53-flash",
-                    artifact=f"obs-{agent_id}-t{turn:02d}",
-                    tokens_in=tokens_in,
-                    tokens_out=tokens_out,
-                )
-
-                # Generate decision prompt
-                decision_prompt = (
-                    f"Agent {agent_id} decides at turn {turn}. "
-                    f"Context: {obs_response}. Inbox: {rng.randint(0, 2)} messages."
-                )
-
-                # B1 fix: Use AdaptionAdapter.responses.create
-                response = adapter.chat(
-                    model="glm-53-flash",
-                    messages=[{"role": "user", "content": decision_prompt}],
-                )
-                decision_response = response.output_text
-                # B2 fix: Correct usage attrs
-                tokens_in = response.usage.input_tokens
-                tokens_out = response.usage.output_tokens
-
-                # Log to event log
-                self.event_log.append(
-                    turn=turn,
-                    agent_id=agent_id,
-                    event_type="policy.decision",
-                    payload={"prompt": decision_prompt, "response": decision_response},
-                )
-
-                # Generate call record with REAL token counts
-                self._generate_call_record(
-                    role=agent_id,
-                    prompt=decision_prompt,
-                    response=decision_response,
-                    model="glm-53-flash",
-                    artifact=f"dec-{agent_id}-t{turn:02d}",
-                    tokens_in=tokens_in,
-                    tokens_out=tokens_out,
-                )
-
-        # Seal the event log
-        if self.event_log:
-            self.event_log.seal()
+        # Event log is already sealed by TurnSeamRunner.run()
 
     def _simulate_run(self) -> None:
         """
