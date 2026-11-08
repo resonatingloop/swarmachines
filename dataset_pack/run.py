@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import random
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -141,6 +142,52 @@ class RunMetadata:
             "calls_count": self.calls_count,
             "config_hash": self.config_hash,
         }
+
+
+def _model_call_payload(
+    record: CallRecord, source_seq: int, source_event_type: str
+) -> dict[str, Any]:
+    """build the sealed event payload paired with one persisted call record."""
+    return {
+        "source_event_seq": source_seq,
+        "source_event_type": source_event_type,
+        "call_id": record.call_id,
+        "model": record.model,
+        "prompt": record.prompt_full,
+        "response": record.response_full,
+        "tokens_in": record.tokens_in,
+        "tokens_out": record.tokens_out,
+        "receipt_ref": record.receipt_ref,
+        "provenance": record.provenance,
+    }
+
+
+class _ModelCaptureEventLog(EventLog):
+    """append model transcripts inside the turn loop and before sealing."""
+
+    def __init__(
+        self,
+        run_id: str,
+        base_ts: str,
+        capture: Callable[[int, str | None, str, dict], CallRecord | None],
+    ):
+        super().__init__(run_id, base_ts)
+        self._capture = capture
+
+    def append(
+        self, turn: int, agent_id: str | None, event_type: str, payload: dict
+    ) -> None:
+        super().append(turn, agent_id, event_type, payload)
+        source_seq = self.events[-1]["seq"]
+        record = self._capture(turn, agent_id, event_type, payload)
+        if record is None:
+            return
+        super().append(
+            turn,
+            agent_id,
+            "model.call",
+            _model_call_payload(record, source_seq, event_type),
+        )
 
 
 class GovernedRunner:
@@ -320,93 +367,85 @@ class GovernedRunner:
             policy=runner_args.get("policy", "legacy"),
         )
 
+        # Model calls happen at the event seam while the genuine turn loop is
+        # running. A dedicated model.call record is appended immediately after
+        # its source event, so the terminal seal commits the exact prompt and
+        # response without rewriting the source event's typed payload.
+        runner.log = _ModelCaptureEventLog(
+            runner.run_id,
+            runner.base_ts,
+            lambda turn, agent_id, event_type, payload: self._capture_live_event(
+                adapter, turn, agent_id, event_type, payload
+            ),
+        )
+
         # B1: Execute the genuine turn loop (observe→exchange→act→record)
         # The runner.run() method handles the full turn cycle and seals the event log
         runner.run(num_turns=self.config.turns)
 
-        # B1: Use the runner's event log as the source of truth for live transcripts
-        # Copy events from TurnSeamRunner's log to GovernedRunner's log
+        # Use the runner's sealed event log as the source of truth.
         self.event_log = runner.log
 
-        # B1: For events that involve model calls (observations, decisions),
-        # generate call records by making model calls via AdaptionAdapter
-        # This integrates the model surface with the genuine turn loop
-        for event in self.event_log.events:
-            event_type = event.get("type", "")
-            payload = event.get("payload", {})
+    def _capture_live_event(
+        self,
+        adapter: Any,
+        turn: int,
+        agent_id: str | None,
+        event_type: str,
+        payload: dict,
+    ) -> CallRecord | None:
+        """capture one model transcript before the runner seals its log."""
+        role = agent_id or "system"
 
-            # Generate call records for observation and decision events
-            if event_type in ("observation.recorded", "policy.decision"):
-                agent_id = event.get("agent_id", "unknown")
-                turn = event.get("turn", 0)
+        if event_type == "observation.recorded" and "visible" in payload:
+            prompt = (
+                f"Agent {role} observes at turn {turn} in {self.config.topology} topology. "
+                f"Seed: {self.config.seed}. Visible: {json.dumps(payload['visible'])}"
+            )
+            artifact = f"obs-{role}-t{turn:02d}"
+        elif event_type == "policy.decision":
+            prompt = (
+                f"Agent {role} decides at turn {turn}. "
+                f"Context: {payload.get('context', '')}. "
+                f"Topology: {self.config.topology}."
+            )
+            artifact = f"dec-{role}-t{turn:02d}"
+        else:
+            return None
 
-                # For observation.recorded events with "visible" payload, generate a model call
-                if event_type == "observation.recorded" and "visible" in payload:
-                    # Generate observation prompt based on visible data
-                    visible = payload.get("visible", {})
-                    obs_prompt = (
-                        f"Agent {agent_id} observes at turn {turn} in {self.config.topology} topology. "
-                        f"Seed: {self.config.seed}. Visible: {json.dumps(visible)}"
-                    )
+        model_response = adapter.chat(
+            model="glm-53-flash",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        response = model_response.output_text
+        return self._generate_call_record(
+            role=role,
+            prompt=prompt,
+            response=response,
+            model="glm-53-flash",
+            artifact=artifact,
+            tokens_in=model_response.usage.input_tokens,
+            tokens_out=model_response.usage.output_tokens,
+        )
 
-                    # Make model call via AdaptionAdapter
-                    model_response = adapter.chat(
-                        model="glm-53-flash",
-                        messages=[{"role": "user", "content": obs_prompt}],
-                    )
-                    obs_response = model_response.output_text
-                    tokens_in = model_response.usage.input_tokens
-                    tokens_out = model_response.usage.output_tokens
-
-                    # Update event payload with model response
-                    payload["prompt"] = obs_prompt
-                    payload["response"] = obs_response
-
-                    # Generate call record
-                    self._generate_call_record(
-                        role=agent_id,
-                        prompt=obs_prompt,
-                        response=obs_response,
-                        model="glm-53-flash",
-                        artifact=f"obs-{agent_id}-t{turn:02d}",
-                        tokens_in=tokens_in,
-                        tokens_out=tokens_out,
-                    )
-
-                # For policy.decision events, generate a model call
-                elif event_type == "policy.decision":
-                    # Extract context from payload
-                    context = payload.get("context", "")
-                    decision_prompt = (
-                        f"Agent {agent_id} decides at turn {turn}. "
-                        f"Context: {context}. Topology: {self.config.topology}."
-                    )
-
-                    # Make model call via AdaptionAdapter
-                    model_response = adapter.chat(
-                        model="glm-53-flash",
-                        messages=[{"role": "user", "content": decision_prompt}],
-                    )
-                    decision_response = model_response.output_text
-                    tokens_in = model_response.usage.input_tokens
-                    tokens_out = model_response.usage.output_tokens
-
-                    # Update event payload with model response
-                    payload["prompt"] = decision_prompt
-                    payload["response"] = decision_response
-
-                    # Generate call record
-                    self._generate_call_record(
-                        role=agent_id,
-                        prompt=decision_prompt,
-                        response=decision_response,
-                        model="glm-53-flash",
-                        artifact=f"dec-{agent_id}-t{turn:02d}",
-                        tokens_in=tokens_in,
-                        tokens_out=tokens_out,
-                    )
-
-        # Event log is already sealed by TurnSeamRunner.run()
+    def _append_dry_model_call(
+        self,
+        *,
+        turn: int,
+        agent_id: str | None,
+        source_event_type: str,
+        record: CallRecord,
+    ) -> None:
+        """pair a synthetic call with the source event immediately before it."""
+        if self.event_log is None or not self.event_log.events:
+            raise RuntimeError("model call requires a source event")
+        source_seq = self.event_log.events[-1]["seq"]
+        self.event_log.append(
+            turn,
+            agent_id,
+            "model.call",
+            _model_call_payload(record, source_seq, source_event_type),
+        )
 
     def _simulate_run(self) -> None:
         """
@@ -426,20 +465,32 @@ class GovernedRunner:
             # Apply disturbance if scheduled
             for dist_kind, dist_config in self.config.disturbance_schedule.items():
                 if dist_config.get("turn") == turn:
+                    disturbance_prompt = (
+                        f"Apply disturbance: {dist_kind} at turn {turn}"
+                    )
+                    disturbance_response = (
+                        f"Disturbance {dist_kind} applied: {json.dumps(dist_config)}"
+                    )
                     # Log disturbance to event log
                     self.event_log.append(
                         turn=turn,
                         agent_id=None,
                         event_type="disturbance.applied",
-                        payload={"kind": dist_kind, "config": dist_config},
+                        payload={"kind": dist_kind, "detail": dist_config},
                     )
                     # Log disturbance application
-                    self._generate_call_record(
+                    disturbance_record = self._generate_call_record(
                         role="system",
-                        prompt=f"Apply disturbance: {dist_kind} at turn {turn}",
-                        response=f"Disturbance {dist_kind} applied: {json.dumps(dist_config)}",
+                        prompt=disturbance_prompt,
+                        response=disturbance_response,
                         model="glm-53-flash",
                         artifact=None,
+                    )
+                    self._append_dry_model_call(
+                        turn=turn,
+                        agent_id=None,
+                        source_event_type="disturbance.applied",
+                        record=disturbance_record,
                     )
 
             # Simulate each agent's turn
@@ -450,23 +501,21 @@ class GovernedRunner:
                     if mute_config.get("agent") == agent_id and turn >= mute_config.get(
                         "turn", 0
                     ):
-                        # Log mute event
-                        self.event_log.append(
-                            turn=turn,
-                            agent_id=agent_id,
-                            event_type="agent.muted",
-                            payload={"by": "peer-mute"},
-                        )
+                        # The canonical disturbance.applied event above owns the
+                        # mute transition; there is no separate agent.muted type.
                         continue  # Muted agent skips communication
 
                 # Generate observation prompt
+                location = rng.choice(["west", "east", "south", "relay-a"])
+                visible_freight = rng.randint(0, 3)
                 obs_prompt = (
                     f"Agent {agent_id} observes at turn {turn} in {self.config.topology} topology. "
-                    f"Seed: {self.config.seed}. Location: {rng.choice(['west', 'east', 'south', 'relay-a'])}. "
-                    f"Visible freight: {rng.randint(0, 3)} items."
+                    f"Seed: {self.config.seed}. Location: {location}. "
+                    f"Visible freight: {visible_freight} items."
                 )
+                queue = rng.randint(0, 3)
                 obs_response = (
-                    f"Observation for {agent_id}: queue={rng.randint(0, 3)}, "
+                    f"Observation for {agent_id}: queue={queue}, "
                     f"requests=[{{'freight': 'med-kit', 'dest': 'south'}}], "
                     f"known_closures=[], roads_in_view=['east-bridge']"
                 )
@@ -475,36 +524,72 @@ class GovernedRunner:
                     turn=turn,
                     agent_id=agent_id,
                     event_type="observation.recorded",
-                    payload={"prompt": obs_prompt, "response": obs_response},
+                    payload={
+                        "visible": {
+                            "current_location": location,
+                            "visible_freight_count": visible_freight,
+                            "queue": queue,
+                        }
+                    },
                 )
-                self._generate_call_record(
+                observation_seq = self.event_log.events[-1]["seq"]
+                observation_record = self._generate_call_record(
                     role=agent_id,
                     prompt=obs_prompt,
                     response=obs_response,
                     artifact=f"obs-{agent_id}-t{turn:02d}",
                 )
+                self._append_dry_model_call(
+                    turn=turn,
+                    agent_id=agent_id,
+                    source_event_type="observation.recorded",
+                    record=observation_record,
+                )
 
                 # Generate decision prompt
+                inbox_count = rng.randint(0, 2)
                 decision_prompt = (
                     f"Agent {agent_id} decides at turn {turn}. "
-                    f"Context: {obs_response}. Inbox: {rng.randint(0, 2)} messages."
+                    f"Context: {obs_response}. Inbox: {inbox_count} messages."
                 )
+                freight_id = f"f-00{rng.randint(1, 4)}"
+                route_from = rng.choice(["west", "east", "south"])
+                route_to = rng.choice(["west", "east", "south"])
                 decision_response = (
-                    f"Decision for {agent_id}: route_freight(f-00{rng.randint(1, 4)}, "
-                    f"via='{rng.choice(['west', 'east', 'south'])}->{rng.choice(['west', 'east', 'south'])}')"
+                    f"Decision for {agent_id}: route_freight({freight_id}, "
+                    f"via='{route_from}->{route_to}')"
                 )
                 # Log decision to event log
                 self.event_log.append(
                     turn=turn,
                     agent_id=agent_id,
                     event_type="policy.decision",
-                    payload={"prompt": decision_prompt, "response": decision_response},
+                    payload={
+                        "policy": "route-gossip-v1",
+                        "freight_id": freight_id,
+                        "path": [route_from, route_to],
+                        "next_hop": route_to,
+                        "reason": "route",
+                        "consumed_message_ids": [],
+                        "local_only_next_hop": route_to,
+                        "choice_changed": False,
+                        "decision_id": f"decision-{agent_id}-{turn}",
+                        "observation_seq": observation_seq,
+                        "action_id": f"act-{agent_id}{turn:02d}",
+                        "opportunity": True,
+                    },
                 )
-                self._generate_call_record(
+                decision_record = self._generate_call_record(
                     role=agent_id,
                     prompt=decision_prompt,
                     response=decision_response,
                     artifact=f"dec-{agent_id}-t{turn:02d}",
+                )
+                self._append_dry_model_call(
+                    turn=turn,
+                    agent_id=agent_id,
+                    source_event_type="policy.decision",
+                    record=decision_record,
                 )
 
         # Seal the event log

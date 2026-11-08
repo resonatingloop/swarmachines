@@ -17,11 +17,45 @@ Provenance requirements:
 from __future__ import annotations
 
 import json
+import os
+import re
 import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+_CREDENTIAL_MARKERS = (
+    "ADAPTION_API_KEY",
+    "adaption_api_key",
+    "sk-adaption",
+    "adaption-key",
+)
+_CREDENTIAL_SHAPE = re.compile(
+    r"(?<![A-Za-z0-9])(?:sk-|hf_|adk_)[A-Za-z0-9][A-Za-z0-9_-]{7,}"
+)
+
+
+def find_potential_credentials(directory: Path) -> list[str]:
+    """return pack files containing credential markers or key-shaped values."""
+    env_credential = os.environ.get("ADAPTION_API_KEY", "")
+    found: list[str] = []
+
+    for file_path in directory.rglob("*"):
+        if not file_path.is_file():
+            continue
+        try:
+            content = file_path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, PermissionError):
+            continue
+
+        marker_found = any(marker in content for marker in _CREDENTIAL_MARKERS)
+        shaped_value_found = _CREDENTIAL_SHAPE.search(content) is not None
+        env_value_found = bool(env_credential) and env_credential in content
+        if marker_found or shaped_value_found or env_value_found:
+            found.append(str(file_path))
+
+    return found
 
 
 @dataclass
@@ -201,37 +235,7 @@ class DatasetPackager:
         Returns:
             List of files containing potential API key patterns.
         """
-        import os
-
-        api_key_patterns = [
-            "ADAPTION_API_KEY",
-            "adaption_api_key",
-            "sk-adaption",
-            "adaption-key",
-            # Additional key shapes per security scan widening
-            "adk_",
-            "hf_",
-            "sk-",
-        ]
-
-        # Add the actual credential value from environment if present
-        env_credential = os.environ.get("ADAPTION_API_KEY")
-        if env_credential:
-            api_key_patterns.append(env_credential)
-
-        found = []
-        for file_path in directory.rglob("*"):
-            if file_path.is_file():
-                try:
-                    content = file_path.read_text(encoding="utf-8")
-                    for pattern in api_key_patterns:
-                        if pattern in content:
-                            found.append(str(file_path))
-                            break
-                except (UnicodeDecodeError, PermissionError):
-                    continue
-
-        return found
+        return find_potential_credentials(directory)
 
     def reconcile_manifest(self) -> dict[str, Any]:
         """

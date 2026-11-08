@@ -19,6 +19,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from dataset_pack.package import find_potential_credentials
+
 
 def test_wrong_side_guard(pack_dir: str) -> dict[str, Any]:
     """
@@ -288,67 +290,16 @@ def test_no_key_in_pack(pack_dir: str) -> dict[str, Any]:
     Returns:
         Dict with test results.
     """
-    import os
-
     pack_path = Path(pack_dir)
-
-    # B8: Scan for actual credential VALUE from env (never print it)
-    api_key_value = os.environ.get("ADAPTION_API_KEY", "")
-
-    api_key_patterns = [
-        "ADAPTION_API_KEY",
-        "adaption_api_key",
-        "sk-adaption",
-        "adaption-key",
-        "sk-",  # Common API key prefix
-        "hf_",  # Hugging Face prefix
-        "adk_",  # Adaption prefix
-        "adaption",  # Provider name in suspicious contexts
-    ]
-
-    found = []
-    for file_path in pack_path.rglob("*"):
-        if file_path.is_file():
-            try:
-                content = file_path.read_text(encoding="utf-8")
-
-                # Check for actual credential value (B8)
-                if (
-                    api_key_value
-                    and len(api_key_value) > 10
-                    and api_key_value in content
-                ):
-                    found.append(f"{file_path}:contains_actual_api_key_value")
-                    continue
-
-                # Check for common prefixes - must be at word boundary (not substring of other words)
-                import re
-
-                for pattern in api_key_patterns:
-                    # Word boundary check: pattern must be at start or preceded by non-alphanumeric
-                    if pattern in ("sk-", "hf_", "adk_"):
-                        # These are almost always credential leaks - check word boundary
-                        if re.search(rf"(^|[^a-zA-Z0-9]){re.escape(pattern)}", content):
-                            found.append(f"{file_path}:contains_{pattern}")
-                            break
-                    elif pattern == "adaption":
-                        # Check if it's in a suspicious context (not just docs)
-                        if "key" in content.lower() and re.search(
-                            rf"(^|[^a-zA-Z0-9]){re.escape(pattern)}", content
-                        ):
-                            found.append(f"{file_path}:contains_{pattern}_with_key")
-                            break
-                    else:
-                        # Other patterns - simple substring match
-                        if pattern in content:
-                            found.append(f"{file_path}:contains_{pattern}")
-                            break
-            except (UnicodeDecodeError, PermissionError):
-                continue
+    found = find_potential_credentials(pack_path)
 
     return {
         "test": "no-key-in-pack",
-        "patterns_checked": api_key_patterns + ["actual_api_key_value"],
+        "patterns_checked": [
+            "credential_markers",
+            "credential_shapes",
+            "actual_api_key_value",
+        ],
         "files_with_key": found,
         "passed": len(found) == 0,
     }
