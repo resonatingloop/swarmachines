@@ -274,16 +274,14 @@ class CommunicationTopology:
         """
         # Check peer-mute disturbance: muted agent cannot send or receive messages
         # but can still perform local actions (observe, act)
-        if "peer-mute" in disturbances:
-            mute = disturbances["peer-mute"]
-            if mute.get("active") and mute.get("agent") in (from_agent, to_agent):
-                return False, "agent communication muted"
+        mute = disturbances.get("peer-mute", {})
+        if mute.get("active") and mute.get("agent") in (from_agent, to_agent):
+            return False, "agent communication muted"
 
         # Check relay-loss disturbance
-        if "relay-loss" in disturbances:
-            loss = disturbances["relay-loss"]
-            if loss.get("active") and loss.get("agent") in (from_agent, to_agent):
-                return False, "agent unreachable"
+        loss = disturbances.get("relay-loss", {})
+        if loss.get("active") and loss.get("agent") in (from_agent, to_agent):
+            return False, "agent unreachable"
 
         if self.topology == "mesh":
             # All agents can communicate with all others (unless disturbed)
