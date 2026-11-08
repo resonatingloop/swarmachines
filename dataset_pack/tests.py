@@ -178,6 +178,7 @@ def test_manifest_equals_disk(pack_dir: str, manifest_path: str) -> dict[str, An
         "calls": 0,
         "artifacts": 0,
         "receipts": 0,
+        "events": 0,  # Mutation 5 fix: include events in actual_counts
     }
 
     for run_dir in pack_path.glob("run-*"):
@@ -200,6 +201,12 @@ def test_manifest_equals_disk(pack_dir: str, manifest_path: str) -> dict[str, An
         receipts_dir = run_dir / "receipts"
         if receipts_dir.exists():
             actual_counts["receipts"] += len(list(receipts_dir.glob("*.json")))
+
+        # Count events from sealed event log (Mutation 5 fix)
+        events_path = run_dir / "logs" / "events.jsonl"
+        if events_path.exists():
+            with open(events_path, "r", encoding="utf-8") as f:
+                actual_counts["events"] += sum(1 for line in f if line.strip())
 
     mismatches = []
     for key, expected_value in expected_counts.items():
@@ -354,6 +361,10 @@ def test_verbatim_transcript_diff(pack_dir: str) -> dict[str, Any]:
     Diffs paired prompt/response against the source sealed event log
     and calls.jsonl to verify no truncation or paraphrasing.
 
+    Mutation C fix: The verbatim guard now genuinely fires by:
+    1. Checking records.jsonl from the pack_dir's parent (standard layout)
+    2. Actually using the matching_records result in the guard
+
     Args:
         pack_dir: Directory containing the packaged dataset
 
@@ -383,15 +394,24 @@ def test_verbatim_transcript_diff(pack_dir: str) -> dict[str, Any]:
                     if line:
                         events.append(json.loads(line))
 
-        # Load records.jsonl if exists
-        records_path = pack_path / "data" / "records.jsonl"
+        # Mutation C fix: Load records.jsonl from standard pack layout
+        # Try multiple possible locations
+        records_paths_to_try = [
+            pack_path.parent
+            / "data"
+            / "records.jsonl",  # Standard: pack_dir is data/runs
+            pack_path / "data" / "records.jsonl",  # Alternative: pack_dir is root
+            Path(pack_dir).parent.parent / "data" / "records.jsonl",  # Deep nested
+        ]
         records = []
-        if records_path.exists():
-            with open(records_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        records.append(json.loads(line))
+        for rpath in records_paths_to_try:
+            if rpath.exists():
+                with open(rpath, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            records.append(json.loads(line))
+                break
 
         # Filter records for this run
         run_id = run_dir.name
@@ -464,8 +484,9 @@ def test_verbatim_transcript_diff(pack_dir: str) -> dict[str, Any]:
 
             records_checked += 1
 
-        # Verify records match calls.jsonl content
-        for record in run_records[:10]:  # Sample first 10
+        # Mutation C fix: Genuinely verify records match calls.jsonl content
+        # This guard was previously computing matching_records but discarding it
+        for record in run_records:
             content = record.get("content", "")
             # Find corresponding call
             found_in_calls = False
@@ -475,12 +496,13 @@ def test_verbatim_transcript_diff(pack_dir: str) -> dict[str, Any]:
                 ):
                     found_in_calls = True
                     break
+            # Mutation C: This guard now actually fires and reports mismatches
             if not found_in_calls and len(content) > 20:
                 mismatches.append(
                     {
                         "run_id": run_id,
                         "record_turn": record.get("turn"),
-                        "error": "record content not found in calls.jsonl",
+                        "error": "record content not found in calls.jsonl (mutation-C)",
                     }
                 )
 

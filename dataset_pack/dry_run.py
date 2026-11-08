@@ -16,6 +16,7 @@ import json
 import tempfile
 from pathlib import Path
 
+from dataset_pack.audit import run_full_audit
 from dataset_pack.extract import extract_artifacts
 from dataset_pack.package import DatasetPackager
 from dataset_pack.tests import run_all_tests
@@ -91,6 +92,26 @@ def create_fixture_run(run_dir: Path) -> dict:
     calls_path = logs_dir / "calls.jsonl"
     with open(calls_path, "w", encoding="utf-8") as f:
         f.writelines(json.dumps(call, separators=(",", ":")) + "\n" for call in calls)
+
+    # Create sealed event log (events.jsonl) - source of truth for turn + event_type
+    events = []
+    for i, call in enumerate(calls):
+        event = {
+            "ts": call["ts"],
+            "run_id": call["run_id"],
+            "turn": i,  # 0-indexed turn
+            "type": "observation.recorded",
+            "agent_id": call["role"],
+            "payload": {
+                "prompt": call["prompt_full"],
+                "response": call["response_full"],
+            },
+        }
+        events.append(event)
+
+    events_path = logs_dir / "events.jsonl"
+    with open(events_path, "w", encoding="utf-8") as f:
+        f.writelines(json.dumps(event, separators=(",", ":")) + "\n" for event in events)
 
     # Create mock receipts
     for call in calls:
@@ -206,9 +227,25 @@ def run_dry_run() -> dict:
             package_result["records_path"],
         )
 
+        # Audit gate (defect 6 fix): Run six-step audit on the produced pack
+        print("\n--- Running six-step audit gate ---")
+        audit_result = run_full_audit(
+            pack_runs_dir,
+            package_result["manifest_path"],
+        )
+        print(f"Audit Verdict: {audit_result['verdict']}")
+        print(
+            f"Steps Passed: {audit_result['passed_steps']}/{audit_result['total_steps']}"
+        )
+        for step in audit_result["steps"]:
+            status = "✓" if step["passed"] else "✗"
+            print(f"  {status} {step['step']}: {step.get('error_count', 0)} errors")
+
         # Combine results
         all_passed = (
-            test_results_fixture["all_passed"] and test_results_pack["all_passed"]
+            test_results_fixture["all_passed"]
+            and test_results_pack["all_passed"]
+            and audit_result["gate_passed"]
         )
 
         print(

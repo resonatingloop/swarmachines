@@ -21,9 +21,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, ClassVar
 
-from freight_world import FreightWorld
-from job_evidence import roster
-from route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select
+from .freight_world import FreightWorld
+from .job_evidence import roster
+from .route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select
 
 try:  # package mode: runtime/ is importable as a package
     from .tracer import RunStatus, TraceConfig, Tracer, create_tracer  # type: ignore

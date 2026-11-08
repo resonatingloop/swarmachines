@@ -172,7 +172,7 @@ class AdaptionUploader:
         """
         Upload the packaged dataset to Adaption.
 
-        Uploads:
+        B5 fix: Uploads BOTH tables:
         - data/records.jsonl (event records table)
         - data/runs.jsonl (run summaries table)
 
@@ -189,10 +189,10 @@ class AdaptionUploader:
             if not file_path.exists():
                 raise RuntimeError(f"Required file missing: {filename}")
 
-        # Create dataset with file upload instructions
-        # Adaption API: create dataset, get presigned URL, upload file
+        uploaded_datasets = []
+
+        # Upload records.jsonl
         try:
-            # Create dataset for records.jsonl
             create_response = self.client.datasets.create(
                 source={
                     "type": "file",
@@ -219,23 +219,69 @@ class AdaptionUploader:
             # Poll for completion
             status_result = self._poll_dataset_status(dataset_id)
 
-            return {
-                "uploaded": True,
-                "target": "adaption",
-                "dataset_id": dataset_id,
-                "dataset_name": f"{self.dataset_name}-records",
-                "status": status_result["status"],
-                "row_count": status_result.get("row_count"),
-                "files_uploaded": ["data/records.jsonl"],
-                "dry_run": False,
-            }
+            uploaded_datasets.append(
+                {
+                    "dataset_id": dataset_id,
+                    "dataset_name": f"{self.dataset_name}-records",
+                    "status": status_result["status"],
+                    "row_count": status_result.get("row_count"),
+                }
+            )
 
-        except APIStatusError as e:
+        except (APIStatusError, APIConnectionError) as e:
             raise RuntimeError(
-                f"Adaption API error: {e.status_code} - {e.response.text[:200] if hasattr(e, 'response') else e}"
+                f"Adaption API error uploading records: {e.status_code if hasattr(e, 'status_code') else e}"
             ) from e
-        except APIConnectionError as e:
-            raise RuntimeError(f"Adaption API connection error: {e}") from e
+
+        # Upload runs.jsonl (B5 fix)
+        try:
+            create_response = self.client.datasets.create(
+                source={
+                    "type": "file",
+                    "name": f"{self.dataset_name}-runs",
+                    "file_format": "jsonl",
+                }
+            )
+
+            dataset_id = create_response.dataset_id
+            upload_instructions = getattr(create_response, "upload_instructions", None)
+
+            if not upload_instructions:
+                raise RuntimeError(
+                    "No upload_instructions returned from dataset creation"
+                )
+
+            # Upload runs.jsonl to presigned URL
+            self._upload_file_to_presigned_url(
+                url=upload_instructions.url,
+                file_path=self.pack_dir / "data" / "runs.jsonl",
+                method=upload_instructions.method,
+            )
+
+            # Poll for completion
+            status_result = self._poll_dataset_status(dataset_id)
+
+            uploaded_datasets.append(
+                {
+                    "dataset_id": dataset_id,
+                    "dataset_name": f"{self.dataset_name}-runs",
+                    "status": status_result["status"],
+                    "row_count": status_result.get("row_count"),
+                }
+            )
+
+        except (APIStatusError, APIConnectionError) as e:
+            raise RuntimeError(
+                f"Adaption API error uploading runs: {e.status_code if hasattr(e, 'status_code') else e}"
+            ) from e
+
+        return {
+            "uploaded": True,
+            "target": "adaption",
+            "datasets": uploaded_datasets,
+            "files_uploaded": ["data/records.jsonl", "data/runs.jsonl"],
+            "dry_run": False,
+        }
 
     def _dry_run_upload(self) -> dict[str, Any]:
         """
@@ -422,6 +468,8 @@ class HFUploader:
         - data/runs.jsonl (run summaries table)
         - data/runs/ (all run directories with raw layer)
 
+        Defect 10 fix: Check and propagate real return codes from hf upload-file/upload-folder.
+
         Returns:
             Dict with upload results.
         """
@@ -440,8 +488,8 @@ class HFUploader:
             if not file_path.exists():
                 raise RuntimeError(f"Required file missing: {filename}")
 
-        # Upload README.md first (dataset card)
-        self._run_hf_command(
+        # Upload README.md first (dataset card) - Defect 10 fix: check return code
+        result = self._run_hf_command(
             [
                 "upload-file",
                 self.repo_id,
@@ -451,9 +499,11 @@ class HFUploader:
                 "dataset",
             ]
         )
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to upload README.md: {result.stderr.strip()}")
 
-        # Upload MANIFEST.md
-        self._run_hf_command(
+        # Upload MANIFEST.md - Defect 10 fix: check return code
+        result = self._run_hf_command(
             [
                 "upload-file",
                 self.repo_id,
@@ -463,9 +513,11 @@ class HFUploader:
                 "dataset",
             ]
         )
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to upload MANIFEST.md: {result.stderr.strip()}")
 
-        # Upload data/records.jsonl (B5: spec-conformant, no train/test split)
-        self._run_hf_command(
+        # Upload data/records.jsonl (B5: spec-conformant, no train/test split) - Defect 10 fix
+        result = self._run_hf_command(
             [
                 "upload-file",
                 self.repo_id,
@@ -475,9 +527,13 @@ class HFUploader:
                 "dataset",
             ]
         )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to upload records.jsonl: {result.stderr.strip()}"
+            )
 
-        # Upload data/runs.jsonl
-        self._run_hf_command(
+        # Upload data/runs.jsonl - Defect 10 fix
+        result = self._run_hf_command(
             [
                 "upload-file",
                 self.repo_id,
@@ -487,11 +543,13 @@ class HFUploader:
                 "dataset",
             ]
         )
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to upload runs.jsonl: {result.stderr.strip()}")
 
-        # Upload data/runs/ directory (raw per-run layer)
+        # Upload data/runs/ directory (raw per-run layer) - Defect 10 fix
         runs_dir = self.pack_dir / "data" / "runs"
         if runs_dir.exists():
-            self._run_hf_command(
+            result = self._run_hf_command(
                 [
                     "upload-folder",
                     self.repo_id,
@@ -501,6 +559,8 @@ class HFUploader:
                     "dataset",
                 ]
             )
+            if result.returncode != 0:
+                raise RuntimeError(f"Failed to upload runs/: {result.stderr.strip()}")
 
         return {
             "uploaded": True,

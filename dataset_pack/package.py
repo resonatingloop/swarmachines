@@ -528,6 +528,7 @@ One summary record per task-run:
 ### Run directories
 
 Each run is stored under `data/runs/<run_id>/` with:
+- `logs/events.jsonl`: Sealed event log (source of truth for turn + event_type)
 - `logs/calls.jsonl`: Full call records (prompt + response, never truncated)
 - `receipts/`: Individual receipt files with token counts
 - `artifacts/`: Extracted artifacts with provenance labels
@@ -563,8 +564,10 @@ If you use this dataset, please cite the associated hackathon report.
         """
         Build event records from the sealed event log (source of truth).
 
-        B11: Derive turn + event_type from the run's sealed event log,
+        B11 fix: Derive turn + event_type from the run's sealed event log,
         not from artifact string parsing or response substring guessing.
+        Every record carries non-empty agent_id (use the acting agent or an
+        explicit 'system' actor with its own label).
 
         Returns:
             List of EventRecord objects.
@@ -633,7 +636,9 @@ If you use this dataset, please cite the associated hackathon report.
                     )  # From sealed event log
 
                     role = call.get("role", "unknown")
-                    agent_id = role if role != "system" else None
+                    # B11 fix: Every record must carry non-empty agent_id
+                    # Use the acting agent or an explicit 'system' actor
+                    agent_id = role if role != "system" else "system"
                     agent_role = role
 
                     record = EventRecord(
@@ -642,7 +647,7 @@ If you use this dataset, please cite the associated hackathon report.
                         seed=seed,
                         topology=topology,
                         turn=turn,  # B11: from sealed event log
-                        agent_id=agent_id,
+                        agent_id=agent_id,  # B11: non-empty agent_id
                         agent_role=agent_role,
                         event_type=event_type,  # B11: from sealed event log
                         content=response,
