@@ -31,6 +31,7 @@ from runtime.runner import EventLog
 
 from .budget import CreditBudget
 from .configs import TaskInstanceConfig
+from .langfuse_wiring import trace_failure, trace_generation
 
 
 @dataclass
@@ -193,7 +194,23 @@ class _ModelCaptureEventLog(EventLog):
     ) -> None:
         super().append(turn, agent_id, event_type, payload)
         source_seq = self.events[-1]["seq"]
-        record = self._capture(turn, agent_id, event_type, payload)
+        try:
+            record = self._capture(turn, agent_id, event_type, payload)
+        except Exception as cap_err:
+            # or6 contract: a failed model call must reach the SEALED log,
+            # not just call_records — the source event is already sealed,
+            # so pair it with a model.call.failed carrying the error.
+            super().append(
+                turn,
+                agent_id,
+                "model.call.failed",
+                {
+                    "source_event_seq": source_seq,
+                    "source_event_type": event_type,
+                    "error": f"{type(cap_err).__name__}: {cap_err}",
+                },
+            )
+            raise
         if record is None:
             return
         super().append(
@@ -201,6 +218,29 @@ class _ModelCaptureEventLog(EventLog):
             agent_id,
             "model.call",
             _model_call_payload(record, source_seq, event_type),
+        )
+
+    def append_failed_call(
+        self,
+        turn: int,
+        agent_id: str | None,
+        source_event_type: str,
+        failure_payload: dict,
+    ) -> None:
+        """Seal a model.call.failed event for a call that raised after capture.
+
+        Args:
+            turn: Turn number.
+            agent_id: Agent id, if known.
+            source_event_type: The event type that triggered the call.
+            failure_payload: Diagnostics (status, incomplete_reason,
+                reasoning_tokens, error text) to seal.
+        """
+        super().append(
+            turn,
+            agent_id,
+            "model.call.failed",
+            {"source_event_type": source_event_type, **failure_payload},
         )
 
 
@@ -480,6 +520,32 @@ class GovernedRunner:
                     incomplete_reason=model_response.incomplete_reason,
                     reasoning_tokens=model_response.usage.reasoning_tokens,
                 )
+                # or6 contract: Langfuse failure trace (lifecycle/error
+                # events visible in the trace stream).
+                trace_failure(
+                    model="glm-53-flash",
+                    prompt=prompt,
+                    error=f"{type(ve).__name__}: {ve}",
+                    usage=model_response.usage,
+                    status=model_response.status or "unknown",
+                    incomplete_reason=model_response.incomplete_reason,
+                    latency_ms=model_response.latency_ms,
+                )
+                # or6 contract: the failure must ALSO reach the sealed log
+                # with its diagnostics, not only call_records/jsonl.
+                if isinstance(self.event_log, _ModelCaptureEventLog):
+                    self.event_log.append_failed_call(
+                        turn=getattr(self, "_current_turn", 0),
+                        agent_id=role,
+                        source_event_type=event_type,
+                        failure_payload={
+                            "call_id": f"call-{self.call_counter:04d}",
+                            "status": model_response.status or "unknown",
+                            "incomplete_reason": model_response.incomplete_reason,
+                            "reasoning_tokens": model_response.usage.reasoning_tokens,
+                            "error": f"{type(ve).__name__}: {ve}",
+                        },
+                    )
                 raise
         except Exception:
             self.budget.fail(reservation)
@@ -499,6 +565,18 @@ class GovernedRunner:
             self.budget.fail(reservation)
             raise
         response = model_response.output_text
+        # or6 contract: Langfuse generation wiring (explicit flush; offline
+        # degradation is recorded, never blocks the run).
+        trace_generation(
+            model="glm-53-flash",
+            prompt=prompt,
+            output_text=response,
+            usage=model_response.usage,
+            status=model_response.status or "unknown",
+            incomplete_reason=model_response.incomplete_reason,
+            latency_ms=model_response.latency_ms,
+            metadata={"run_id": self.run_id},
+        )
         return self._generate_call_record(
             role=role,
             prompt=prompt,

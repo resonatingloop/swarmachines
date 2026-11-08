@@ -146,14 +146,27 @@ class TestCallRecordPersistence(unittest.TestCase):
         """Fields land on the record and serialize to the jsonl line."""
         import json
         import sys as _sys
+
         _sys.path.insert(0, str(Path(__file__).parent.parent))
         from dataset_pack.run import CallRecord
+
         r = CallRecord(
-            ts="t", run_id="r", call_id="c1", role="alpha", topology="ring",
-            artifact=None, model="glm-53-flash", prompt_full="p",
-            response_full="visible answer", tokens_in=72, tokens_out=256,
-            receipt_ref="receipt-1", credits_estimated="0.0001",
-            status="completed", incomplete_reason=None, reasoning_tokens=180,
+            ts="t",
+            run_id="r",
+            call_id="c1",
+            role="alpha",
+            topology="ring",
+            artifact=None,
+            model="glm-53-flash",
+            prompt_full="p",
+            response_full="visible answer",
+            tokens_in=72,
+            tokens_out=256,
+            receipt_ref="receipt-1",
+            credits_estimated="0.0001",
+            status="completed",
+            incomplete_reason=None,
+            reasoning_tokens=180,
         )
         line = json.loads(r.to_jsonl_line())
         self.assertEqual(line["status"], "completed")
@@ -164,21 +177,257 @@ class TestCallRecordPersistence(unittest.TestCase):
         """A validation-failed call records its diagnostics, not silence."""
         import json
         import sys as _sys
+
         _sys.path.insert(0, str(Path(__file__).parent.parent))
         from dataset_pack.run import CallRecord
+
         r = CallRecord(
-            ts="t", run_id="r", call_id="c2", role="alpha", topology="ring",
-            artifact=None, model="glm-53-flash", prompt_full="p",
+            ts="t",
+            run_id="r",
+            call_id="c2",
+            role="alpha",
+            topology="ring",
+            artifact=None,
+            model="glm-53-flash",
+            prompt_full="p",
             response_full="VALIDATION-FAILED: incomplete model response: status='incomplete'",
-            tokens_in=72, tokens_out=256, receipt_ref="receipt-2",
-            credits_estimated="0", status="incomplete",
-            incomplete_reason="max_output_tokens", reasoning_tokens=256,
+            tokens_in=72,
+            tokens_out=256,
+            receipt_ref="receipt-2",
+            credits_estimated="0",
+            status="incomplete",
+            incomplete_reason="max_output_tokens",
+            reasoning_tokens=256,
         )
         line = json.loads(r.to_jsonl_line())
         self.assertEqual(line["status"], "incomplete")
         self.assertEqual(line["incomplete_reason"], "max_output_tokens")
         self.assertIn("VALIDATION-FAILED", line["response_full"])
         self.assertEqual(line["reasoning_tokens"], 256)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class TestSealedFailureEvents(unittest.TestCase):
+    """Failed calls reach the SEALED event log, with readback coverage."""
+
+    def _capture_log(self, capture):
+        """Build a _ModelCaptureEventLog with a failing/capture fn."""
+        import sys as _sys
+
+        _sys.path.insert(0, str(Path(__file__).parent.parent))
+        from dataset_pack.run import _ModelCaptureEventLog
+
+        log = _ModelCaptureEventLog("run-x", "2026-11-08T00:00:00Z", capture)
+        return log
+
+    def test_failed_capture_seals_model_call_failed(self):
+        """A raising capture appends model.call.failed before re-raising."""
+
+        def failing_capture(turn, agent_id, event_type, payload):
+            raise RuntimeError("IncompleteResponseError: status='incomplete'")
+
+        log = self._capture_log(failing_capture)
+        with self.assertRaises(RuntimeError):
+            log.append(1, "alpha", "agent.observe", {"v": 1})
+        types = [e["type"] for e in log.events]
+        self.assertIn("model.call.failed", types)
+        failed = next(e for e in log.events if e["type"] == "model.call.failed")
+        self.assertIn("source_event_seq", failed["payload"])
+        self.assertIn("IncompleteResponseError", failed["payload"]["error"])
+
+    def test_append_failed_call_seals_diagnostics(self):
+        """Direct failure sealing carries the full diagnostic payload."""
+        log = self._capture_log(lambda *a: None)
+        log.append_failed_call(
+            turn=3,
+            agent_id="alpha",
+            source_event_type="agent.observe",
+            failure_payload={
+                "call_id": "call-0007",
+                "status": "incomplete",
+                "incomplete_reason": "max_output_tokens",
+                "reasoning_tokens": 256,
+                "error": "IncompleteResponseError",
+            },
+        )
+        failed = [e for e in log.events if e["type"] == "model.call.failed"]
+        self.assertEqual(len(failed), 1)
+        pl = failed[0]["payload"]
+        self.assertEqual(pl["reasoning_tokens"], 256)
+        self.assertEqual(pl["incomplete_reason"], "max_output_tokens")
+        self.assertEqual(pl["call_id"], "call-0007")
+
+    def test_healthy_capture_still_pairs_model_call(self):
+        """No regression: successful captures pair model.call as before."""
+
+        from dataset_pack.run import CallRecord
+
+        rec_holder = {}
+
+        def ok_capture(turn, agent_id, event_type, payload):
+            rec_holder["r"] = CallRecord(
+                ts="t",
+                run_id="run-x",
+                call_id="c1",
+                role="alpha",
+                topology="ring",
+                artifact=None,
+                model="glm-53-flash",
+                prompt_full="p",
+                response_full="ok",
+                tokens_in=1,
+                tokens_out=1,
+                receipt_ref="r1",
+            )
+            return rec_holder["r"]
+
+        log = self._capture_log(ok_capture)
+        log.append(1, "alpha", "agent.observe", {"v": 1})
+        types = [e["type"] for e in log.events]
+        self.assertIn("model.call", types)
+        self.assertNotIn("model.call.failed", types)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class TestLangfuseWiring(unittest.TestCase):
+    """Synthetic lifecycle/error/interruption proof for the Langfuse wiring."""
+
+    def _wiring(self):
+        import sys as _sys
+
+        _sys.path.insert(0, str(Path(__file__).parent.parent))
+        import dataset_pack.langfuse_wiring as lw
+
+        return lw
+
+    def test_offline_degradation_never_raises(self):
+        """No keys => disabled with a recorded reason, calls return False."""
+        lw = self._wiring()
+        lw._LANGFUSE_CLIENT = None
+        lw._LANGFUSE_STATE = {"enabled": False, "reason": "not initialized"}
+        import os
+
+        saved = {
+            k: os.environ.pop(k, None)
+            for k in ("LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY")
+        }
+        try:
+            state = lw.langfuse_state()
+            self.assertFalse(state["enabled"])
+            self.assertIn("offline mode", state["reason"])
+            ok = lw.trace_generation("m", "p", "o", None, "completed", None, 1.0)
+            self.assertFalse(ok)
+        finally:
+            for k, v in saved.items():
+                if v is not None:
+                    os.environ[k] = v
+
+    def test_lifecycle_success_trace_and_flush(self):
+        """Configured client: create_generation + flush, metadata rides."""
+        lw = self._wiring()
+        calls = []
+
+        class FakeClient:
+            def create_generation(self, **kw):
+                calls.append(kw)
+
+            def flush(self):
+                calls.append("flush")
+
+        lw._LANGFUSE_CLIENT = FakeClient()
+        lw._LANGFUSE_STATE = {"enabled": True, "reason": "test"}
+        try:
+            ok = lw.trace_generation(
+                "glm-53-flash",
+                "prompt",
+                "answer",
+                usage=None,
+                status="completed",
+                incomplete_reason=None,
+                latency_ms=12.5,
+                metadata={"run_id": "r1"},
+            )
+            self.assertTrue(ok)
+            gen = calls[0]
+            self.assertEqual(gen["model"], "glm-53-flash")
+            self.assertEqual(gen["metadata"]["run_id"], "r1")
+            self.assertEqual(gen["metadata"]["status"], "completed")
+            self.assertEqual(calls[-1], "flush")
+        finally:
+            lw._LANGFUSE_CLIENT = None
+
+    def test_error_path_records_failure_trace(self):
+        """trace_failure marks failed=True and carries the error as output."""
+        lw = self._wiring()
+        calls = []
+
+        class FakeClient:
+            def create_generation(self, **kw):
+                calls.append(kw)
+
+            def flush(self):
+                pass
+
+        lw._LANGFUSE_CLIENT = FakeClient()
+        lw._LANGFUSE_STATE = {"enabled": True, "reason": "test"}
+        try:
+            ok = lw.trace_failure(
+                "glm-53-flash",
+                "prompt",
+                "IncompleteResponseError: boom",
+                usage=None,
+                status="incomplete",
+                incomplete_reason="max_output_tokens",
+                latency_ms=5.0,
+            )
+            self.assertTrue(ok)
+            gen = calls[0]
+            self.assertTrue(gen["metadata"]["failed"])
+            self.assertIn("IncompleteResponseError", gen["output"])
+            self.assertEqual(gen["metadata"]["incomplete_reason"], "max_output_tokens")
+        finally:
+            lw._LANGFUSE_CLIENT = None
+
+    def test_interruption_degrades_without_blocking(self):
+        """A raising client records the reason and returns False, no raise."""
+        lw = self._wiring()
+
+        class BadClient:
+            def create_generation(self, **kw):
+                raise ConnectionError("langfuse down")
+
+            def flush(self):
+                pass
+
+        lw._LANGFUSE_CLIENT = BadClient()
+        lw._LANGFUSE_STATE = {"enabled": True, "reason": "test"}
+        try:
+            ok = lw.trace_generation("m", "p", "o", None, "completed", None, 1.0)
+            self.assertFalse(ok)
+            self.assertIn("trace failed", lw.langfuse_state()["reason"])
+        finally:
+            lw._LANGFUSE_CLIENT = None
+
+    def test_shutdown_flushes_and_closes(self):
+        """shutdown_langfuse flushes once and marks the state closed."""
+        lw = self._wiring()
+        flushed = []
+
+        class FakeClient:
+            def flush(self):
+                flushed.append(1)
+
+        lw._LANGFUSE_CLIENT = FakeClient()
+        lw._LANGFUSE_STATE = {"enabled": True, "reason": "test"}
+        lw.shutdown_langfuse()
+        self.assertEqual(flushed, [1])
+        self.assertIn("shutdown complete", lw.langfuse_state()["reason"])
 
 
 if __name__ == "__main__":

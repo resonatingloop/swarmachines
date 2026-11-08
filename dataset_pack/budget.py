@@ -28,9 +28,10 @@ class CreditBudget:
     WRAPPER_TOKEN_ALLOWANCE = 4096
     # or6 evidence (2026-11-08 probe): glm-53-flash spent the entire 256-token
     # budget on reasoning before any visible text (reasoning_tokens == 256,
-    # status "incomplete"). 1024 leaves room for reasoning + a bounded answer;
-    # full-matrix cost stays trivial: 512 calls x 1024 x 0.50/M ~= 0.26 credits.
-    MAX_OUTPUT_TOKENS = 1024
+    # status "incomplete"). Governing contract (cc1, 2026-11-08): 4096
+    # visible-response ceiling. Full-matrix cost stays small:
+    # 512 calls x 4096 x 0.50/M ~= 1.05 credits.
+    MAX_OUTPUT_TOKENS = 4096
 
     def __init__(self, ceiling_credits: str, max_calls: int):
         ceiling = Decimal(ceiling_credits)
