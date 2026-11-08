@@ -29,6 +29,14 @@ total_output_tokens = 0
 MODEL_ID = "team-authored"
 GENERATION_TIMESTAMP = datetime.now(timezone.utc).isoformat()
 
+def write_new_file(path, content):
+    """Write a generated artifact only when its destination is absent."""
+    if os.path.exists(path):
+        raise FileExistsError(
+            f"Refusing to overwrite existing generated artifact: {path}"
+        )
+    Path(path).write_text(content)
+
 def track_response(response):
     """Track API call metrics."""
     global call_count, total_input_tokens, total_output_tokens
@@ -94,8 +102,7 @@ team-authored seed material prepared without API access (0 calls); NOT model-gen
 """
             
             filename = f"data/prompts/{role_name}_{topo}.md"
-            with open(filename, "w") as f:
-                f.write(prompt_template)
+            write_new_file(filename, prompt_template)
             
             prompts_generated.append(filename)
             print(f"  Written: {filename}")
@@ -197,8 +204,7 @@ def generate_scenarios(adapter):
     
     for scenario in scenarios:
         filename = f"data/scenarios/{scenario['scenario_id']}.json"
-        with open(filename, "w") as f:
-            json.dump(scenario, f, indent=2)
+        write_new_file(filename, json.dumps(scenario, indent=2) + "\n")
         scenarios_written.append(filename)
         print(f"  Written: {filename}")
     
@@ -307,8 +313,7 @@ This exchange demonstrates:
 """
     
     filename = "data/examples/reroute-coordination.md"
-    with open(filename, "w") as f:
-        f.write(example)
+    write_new_file(filename, example)
     
     print(f"  Written: {filename}")
     return filename
