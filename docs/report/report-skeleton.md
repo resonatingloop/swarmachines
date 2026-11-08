@@ -15,7 +15,7 @@
 
 ## Abstract
 
-**DRAFT**
+**DRAFT** — 164 words by standard whitespace count (target 150-250).
 
 Collective agent behaviors—coordination, role specialization, fracture, and repair—emerge at the multi-agent level and evade single-model safety tests. We present swarmachines, a reproducible testbed for studying agent collectives under disruption, with a tamper-evident turn-seam event log that records every action at the world boundary. The testbed supports scripted, zero-model-call episodes across communication topologies (fully-connected mesh, bidirectional ring) with applied disturbances (peer muting, relay loss). We report a formal topology comparison: seed-42 episodes under peer-mute:8:c (agent c muted from turn 8) show identical job completion across topologies (4/4 deliveries in both mesh and ring), with the topology signal appearing in event volume (mesh: 414 events; ring: 386 events) and message traffic patterns. The event log is cryptographically sealed with a per-event SHA-256 chain and terminal certification, enabling offline verification that no record was inserted, edited, or removed post-hoc. All runs are deterministic and replayable from the log alone. The testbed is designed for oversight research: it makes collective behaviors observable, auditable, and comparable across experimental conditions.
 
@@ -42,15 +42,15 @@ This paper contributes a reproducible testbed where every event is logged at the
 
 ### 2.1 Turn-seam event log
 
-The event log is the honesty guarantee of the testbed. At each turn seam—the boundary between agent deliberation and world mutation—the runner records every action in a structured schema: `turn`, `agent`, `phase` (observe/exchange/act), `action`, `outcome`, and a per-event `seq` number. Each event carries a `hash` field: a SHA-256 chain hash computed from the canonical JSON of the event content and the previous event's hash, with the genesis hash bound to the run ID. This design makes the log tamper-evident: any insertion, deletion, or modification of a chained record breaks the hash chain and is detected by the offline analyzer.
+The event log is the honesty guarantee of the testbed. At each turn seam—the boundary between agent deliberation and world mutation—the runner records every action in a structured schema: `turn`, `agent`, `phase` (observe/exchange/act), `action`, `outcome`, and a per-event `seq` number. Each event carries a `chain` field: a SHA-256 chain hash computed from the canonical JSON of the event content and the previous event's chain value, with the genesis hash bound to the run ID. This design makes the log tamper-evident: any insertion, deletion, or modification of a chained record breaks the hash chain and is detected by the offline analyzer. The reported seed-42 episodes were frozen at `0f84075`, before the sealing layer (PR #46) — they are legacy-unsealed and carry no chain fields.
 
-The terminal `run.seal` record certifies the run's completion state: it records the final event seq, the last hash, and the termination condition. The analyzer verifies the seal when present: edit/insert/remove of any chained record is rejected categorically; legacy unsealed logs remain byte-compatible and measure identically. This design ensures that the evidence pipeline cannot be poisoned by post-hoc tampering.
+The terminal `run.seal` record certifies the run's completion state: it records the final event seq, the last chain value, and the termination condition. The analyzer verifies the seal when present: edit/insert/remove of any chained record is rejected categorically; legacy unsealed logs remain byte-compatible and measure identically. This design ensures that the evidence pipeline cannot be poisoned by post-hoc tampering.
 
 *Implementation: PR #46 (5eaa9be) — feat(runtime): seal the EventLog against policy-level fabrication; 569 lines changed across 9 files; suites: runtime 28/28, analysis 17/17, control_plane 74 OK, viewer 82 cjs + 46 esm = 128, e2e PASS.*
 
 ### 2.2 Scripted runner, zero model calls
 
-The first deliverable is deterministic and model-free: reproducibility before intelligence. The runner operates in scripted mode by default, with no model calls. A seed parameter initializes the RNG stream, which is separated from any model-call RNG (when models are added in future work). The turn cap (`--turns`) bounds episode length. "Replay-deterministic" means that two runs with the same seed, topology, disturbance, and world state produce byte-identical logs—verified by hash comparison.
+The first deliverable is deterministic and model-free: reproducibility before intelligence. The runner operates in scripted mode by default, with no model calls. A seed parameter initializes the RNG stream, which is separated from any model-call RNG (when models are added in future work). The turn cap (`--turns`) bounds episode length. "Replay-deterministic" means that two runs with the same seed, topology, disturbance, and world state produce byte-identical logs—verified by chain comparison.
 
 The zero-model guarantee is enforced by design: the scripted policy (`route-gossip-v1`) makes decisions based on local state and received messages, not model outputs. This enables rapid iteration, reproducible debugging, and clean attribution of effects to topology and disturbance rather than model variance.
 
@@ -97,7 +97,7 @@ The event log seal was verified against four attack vectors: (1) edit a chained 
 
 Two runs with seed 42, topology mesh, peer-mute:8:c, and freight world produce byte-identical logs. The SHA-256 of the mesh episode is `432dbf9f7704e7f580589ddf16bc0284c4a4aadeef793cf4a24958bacf00c613`; the ring episode is `53a843e40267da13a3157f93de1a7dc15960ee9e59af9c9768a181a94c362bc6`. Replay from the log alone reconstructs the exact world state at each turn.
 
-*Evidence: PR #39 (572612a) — FROZEN-MANIFEST.md; PR #32 (2b7d668) — e2e pipeline v2 PASS (determinism check included).*
+*Evidence: PR #39 (572612a) — FROZEN-MANIFEST.md; PR #32 (2b7d668) — e2e pipeline test (T-018) PASS (determinism check included).*
 
 ### 3.4 Honest-inconclusive result
 
@@ -143,6 +143,7 @@ The swarmachines testbed makes collective agent behaviors observable and auditab
 - **Topology/disturbance coverage:** Only one disturbance (peer-mute:8:c) and two topologies (mesh, ring) were run at submission time. Relay loss and stale report disturbances are implemented but not reported here.
 - **Log integrity:** The schema is validated and determinism-checked, but the seal is not adversarially hardened against a malicious writer with code access. It detects post-hoc tampering with the log file, not runtime subversion.
 - **Measurement boundary:** `recovery_interval_turns` is a horizon placeholder, not a measured recovery metric. The accepted future metric is intervention-to-first-completion delay, which requires additional instrumentation.
+- **No no-mute control condition:** Recorded episodes run with peer-mute applied from turn 8 in both topologies; a disturbance-free baseline is not part of the recorded set, so causal claims about peer-mute are out of scope (spec006) and the reported comparison is topology-vs-topology under the same disturbance.
 
 ### A.2 Dual-Use / Ethical Considerations
 
