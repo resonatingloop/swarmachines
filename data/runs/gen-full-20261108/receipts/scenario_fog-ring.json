@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_fog_ring",
-  "timestamp": "2026-11-08T03:44:01.262828+00:00",
+  "timestamp": "2026-11-08T03:46:43.739260+00:00",
   "model": "gemma-4-26b-a4b-it",
   "input_tokens": 481,
-  "output_tokens": 694,
-  "total_tokens": 1175,
+  "output_tokens": 764,
+  "total_tokens": 1245,
   "item_path": "data/scenarios/fog-ring.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:43:40.800174+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:46:25.919311+00:00",
   "run_id": "gen-full-20261108"
 }

@@ -1,0 +1,13 @@
+{
+  "schema_version": "v1",
+  "call_name": "example_stale-info-recovery",
+  "timestamp": "2026-11-08T03:46:04.626361+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 90,
+  "output_tokens": 1102,
+  "total_tokens": 1192,
+  "item_path": "data/examples/stale-info-recovery.md",
+  "kind": "example",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:43:40.800174+00:00",
+  "run_id": "gen-full-20261108"
+}
