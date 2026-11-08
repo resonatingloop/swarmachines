@@ -1,4 +1,4 @@
-{"run_id":"demo-001","seq":0,"turn":0,"agent_id":null,"type":"run.config","ts":"2026-11-07T14:30:00Z","payload":{"seed":7,"comm_topology":"mesh","delivery_config_sha":"placeholder-computed-at-run","disturbance_schedule":{"relay-loss":{"turn":2,"agent":"a"}},"agents":["a","b","c","d"],"note":"illustrative sample; hand-authored, not produced by the runner yet"}}
+{"run_id": "demo-001", "seq": 0, "turn": 0, "agent_id": null, "type": "run.config", "ts": "2026-11-07T14:30:00Z", "payload": {"seed": 7, "comm_topology": "mesh", "delivery_config_sha": "placeholder-computed-at-run", "disturbance_schedule": {"relay-loss": {"turn": 2, "agent": "a"}}, "agents": ["a", "b", "c", "d"]}}
 {"run_id":"demo-001","seq":1,"turn":0,"agent_id":null,"type":"world.init","ts":"2026-11-07T14:30:01Z","payload":{"depots":["west","east","south"],"hubs":["relay-a"],"routes":[{"from":"west","to":"east","status":"open"},{"from":"east","to":"south","status":"open","bridge":"east-bridge"},{"from":"west","to":"south","status":"open"}]}}
 {"run_id":"demo-001","seq":2,"turn":1,"agent_id":null,"type":"turn.begin","ts":"2026-11-07T14:30:02Z","payload":{"phase_order":["observe","exchange","act","record"]}}
 {"run_id":"demo-001","seq":3,"turn":1,"agent_id":"c","type":"observation.recorded","ts":"2026-11-07T14:30:03Z","payload":{"visible":{"queue":2,"requests":[{"freight":"med-kit","dest":"south"}],"known_closures":[],"roads_in_view":["east-bridge"]}}}
@@ -20,4 +20,4 @@
 {"run_id":"demo-001","seq":19,"turn":3,"agent_id":null,"type":"turn.begin","ts":"2026-11-07T14:30:19Z","payload":{}}
 {"run_id":"demo-001","seq":20,"turn":3,"agent_id":"b","type":"message.seen","ts":"2026-11-07T14:30:19Z","payload":{"message_id":"m-003","in_context_at_turn":3,"note":"repair begins: b,c,d coordinate directly, relay absent - specimen c seed"}}
 {"run_id":"demo-001","seq":21,"turn":3,"agent_id":"d","type":"action.committed","ts":"2026-11-07T14:30:20Z","payload":{"action_id":"act-003","result":"freight rerouted west->south; deliveries resume"}}
-{"run_id":"demo-001","seq":22,"turn":3,"agent_id":null,"type":"run.end","ts":"2026-11-07T14:30:21Z","payload":{"deliveries_completed":1,"deliveries_stuck":1,"recovery_interval_turns":2}}
+{"run_id": "demo-001", "seq": 22, "turn": 3, "agent_id": null, "type": "run.end", "ts": "2026-11-07T14:30:21Z", "payload": {"recovery_interval_turns": 2}}
