@@ -29,7 +29,11 @@ sample-run.jsonl stays legacy (byte-compat fixture).
 
 **sanitization respin (2026-11-08)**: delegation receipts now persist the model name only when the provider reports the fixed `glm-53-flash` constant (otherwise `unknown`) and validate each usage token count independently within 0..10^9, estimating cost only from a complete valid pair. This is the owner-ruled redo of the db2bc17 sanitization on a channel-preserving base: the bounded response-diagnostics channel from pr #22 (fixed reason codes, allowlisted status, receipt usage fallback) is untouched and no channel was removed. The sanitized delegation harness sha256 is registered in the read-only projection's recognized producers next to the legacy hashes, so budget provenance stays known for new receipts while prior receipts still project. 160 offline tests passed at its df73cd1 merge across control_plane, runtime and viewer (74+24+62) with mocked sdks and zero provider calls; control_plane ruff check and format are clean. Landed via PR #42 (2026-11-08 05:52Z).
 
-job-evidence slice: spec012 mapping approved; settled policy base `18218e706cf950c89161b6588166d14529f76726`. Versioned job instrumentation and an offline analyzer are implemented; 28 focused tests, legacy 24/24 runtime tests and 82 viewer tests pass. Noninterference against the pinned base and 386-record integration reconciliation pass; independent review pending. [operations](analysis/README.md). No formal experimental batch or provider calls.
+job-evidence slice: spec012 mapping approved; settled policy base `18218e706cf950c89161b6588166d14529f76726`. Versioned job instrumentation and an offline analyzer are implemented; 28 focused tests, legacy 24/24 runtime tests and 82 viewer tests pass. Noninterference against the pinned base and a 386-record
+integration reconciliation pass (fixture `spec006-seed42-ring-mutec-t8`:
+all records parse, 4/4 delivered jobs reconciled; recorded in pr #34);
+independent review pending. [operations](analysis/README.md). No formal
+experimental batch or provider calls.
 
 **merge ledger (recent window ending 08:45Z)**: the recent merges below are an attested window, not a live count or current-tip claim; this is not the complete merge history since c5899d8:
 - PR #50 (4e63cee): docs: refresh STATUS.md checkpoint for post-#49 master tip
