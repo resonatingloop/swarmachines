@@ -34,8 +34,10 @@ does not independently retrieve the git object.
 acknowledgment is persisted before worker execution. it contains ids, worker,
 mode, packet hash, implementation source hash and time. the terminal receipt
 adds `outcome`, completion time, result, sha256 over the exact UTF-8 result text,
-provider-reported token usage (unknown if missing), local attempt count,
-sanitized error type and bounded response diagnostics, and a clear advisory-authority label.
+bounded provider token usage validated per key (unknown when invalid or
+missing), a model label recorded only when it matches the fixed model constant,
+local attempt count, sanitized error type and bounded response diagnostics, and
+a clear advisory-authority label.
 `schema_valid` covers the locally constructed envelope/text type, not the
 correctness of a model finding. estimated credits are separate from observed
 credits; no fabricated provider spend field.
@@ -63,7 +65,9 @@ credits nonrefunded on errors or missing usage, with an additional 1-credit
 reservation ceiling. these are local trial controls, not an account-wide or
 cross-directory quota. deleting/copying state would defeat that coordination.
 
-fixed hosted model: `glm-53-flash`. input packet ≤24,000 UTF-8 bytes; fixed
+fixed hosted model: `glm-53-flash`. the receipt records the model name only
+when the provider reports exactly this constant; any other reported value is
+stored as `unknown`. input packet ≤24,000 UTF-8 bytes; fixed
 instructions add under 1,000 bytes; output ≤2048 tokens. at the 2026-11-07
 published uncached rates (0.15 input / 0.50 output credits per million tokens),
 even a conservative 25,000-input-token bound costs under 0.005 credits per

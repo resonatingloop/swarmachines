@@ -28,6 +28,44 @@ RESERVATION_MICRO = 100_000  # 0.1 credits, retained even after failure.
 MAX_PACKET_BYTES = 24_000
 MAX_OUTPUT_TOKENS = 2048
 MAX_RESULT_BYTES = 64_000
+MAX_USAGE_TOKENS = 10**9  # Upper bound for persisted usage token counts.
+
+
+def _sanitize_model(response_model: object) -> str:
+    """Record only the fixed MODEL constant from a provider-reported name.
+
+    Args:
+        response_model: The model name exactly as the provider response
+            reported it, of any runtime type.
+
+    Returns:
+        The MODEL constant when the reported name equals it exactly, else
+        "unknown"; provider-controlled strings never reach a receipt.
+
+    Example:
+        `_sanitize_model(MODEL)` returns `MODEL`; any other value returns
+        `"unknown"`.
+    """
+    if response_model == MODEL:
+        return MODEL
+    return "unknown"
+
+
+def _coerce_usage_token(value: object) -> int | None:
+    """Coerce one provider-reported token count to a bounded integer.
+
+    Args:
+        value: One provider-reported usage token count of any runtime type.
+
+    Returns:
+        The value unchanged when it is an int within 0..MAX_USAGE_TOKENS,
+        else None; non-integer and out-of-bound values never persist.
+    """
+    if type(value) is not int or not 0 <= value <= MAX_USAGE_TOKENS:
+        return None
+    return value
+
+
 INSTRUCTIONS = (
     "You are a read-only code investigator. Analyze only the supplied source. "
     "Return concise findings, source evidence, uncertainty, and a proposed next step. "
@@ -454,17 +492,16 @@ def adaption_worker(packet):
         raise ProviderResponseError("invalid_output_text", diagnostics)
     usage = getattr(response, "usage", None)
     tokens = {
-        key: getattr(usage, key, None) for key in ("input_tokens", "output_tokens")
+        key: _coerce_usage_token(getattr(usage, key, None))
+        for key in ("input_tokens", "output_tokens")
     }
-    if any(type(n) is not int or n < 0 for n in tokens.values()):
-        tokens = {"input_tokens": None, "output_tokens": None}
     cost = (
         (tokens["input_tokens"] * 0.15 + tokens["output_tokens"] * 0.50) / 1_000_000
-        if tokens["input_tokens"] is not None
+        if tokens["input_tokens"] is not None and tokens["output_tokens"] is not None
         else None
     )
     return {
-        "model": response.model,
+        "model": _sanitize_model(response.model),
         "text": text,
         "usage": tokens,
         "estimated_credits": cost,

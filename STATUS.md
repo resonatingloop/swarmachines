@@ -10,6 +10,10 @@
 
 **master tip**: `7acd2a7` — Merge pull request #38 from resonatingloop/t-006-freight-residue (fix: freight act-phase mislabel - legal no-ops logged as action.committed)
 
+**sanitization respin (2026-11-08)**: delegation receipts now persist the model name only when the provider reports the fixed `glm-53-flash` constant (otherwise `unknown`) and validate each usage token count independently within 0..10^9, estimating cost only from a complete valid pair. This is the owner-ruled redo of the db2bc17 sanitization on a channel-preserving base: the bounded response-diagnostics channel from pr #22 (fixed reason codes, allowlisted status, receipt usage fallback) is untouched and no channel was removed. The sanitized delegation harness sha256 is registered in the read-only projection's recognized producers next to the legacy hashes, so budget provenance stays known for new receipts while prior receipts still project. 160 offline tests pass across control_plane, runtime and viewer (74+24+62) with mocked sdks and zero provider calls; control_plane ruff check and format are clean. Authored on branch t-011-sanitization-respin for review; gates and merge stay with the merge hand.
+
+job-evidence slice: spec012 mapping approved; settled policy base `18218e706cf950c89161b6588166d14529f76726`. Versioned job instrumentation and an offline analyzer are implemented; 28 focused tests, legacy 24/24 runtime tests and 82 viewer tests pass. Noninterference against the pinned base and 386-record integration reconciliation pass; independent review pending. [operations](analysis/README.md). No formal experimental batch or provider calls.
+
 **merge ledger (2026-11-08 01:26Z to 05:07Z)**: six recent merges are listed below; this is not the complete merge history since c5899d8:
 - PR #28 (3491180): feat(data): real Adaption-generated data pack with full provenance (38 seed artifacts, per-run logs)
 - PR #39 (572612a): feat(spec006): seed-42 formal pair — mesh vs ring under peer-mute:8:c (frozen manifest)

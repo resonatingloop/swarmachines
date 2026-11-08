@@ -96,6 +96,19 @@ class WorkerProjectionTests(unittest.TestCase):
         # The still-open writer can continue using its existing connection.
         self.q.db.execute("UPDATE budget SET reserved_micro=reserved_micro WHERE id=1")
 
+    def test_sanitized_harness_is_a_recognized_producer(self):
+        """The sanitized delegation harness hash must stay registered.
+
+        Editing delegation.py changes the persisted harness_sha256; without
+        registration the board would demote every new receipt to unknown
+        budget provenance.
+        """
+        receipt = self.add(1)
+        self.assertIn(receipt["harness_sha256"], w.PRODUCERS)
+        view = w.collect_workers(self.path)
+        self.assertEqual(view["budget"]["request_limit"], 4)
+        self.assertEqual(view["budget"]["requests_used"], 1)
+
     def test_not_supplied_missing_empty_and_symlink(self):
         self.assertEqual(w.collect_workers()["status"], "not supplied")
         missing = self.path / "absent"
