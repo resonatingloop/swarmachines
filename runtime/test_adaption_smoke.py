@@ -25,9 +25,12 @@ def run_smoke_test() -> dict:
     """
     Run smoke test with <=4 model calls.
 
-    Returns dict with metrics from each call.
+    Returns:
+        dict: Metrics and aggregate status. ``calls_made`` counts attempted
+        adapter invocations, including failures, not SDK-internal requests.
     """
     results = []
+    calls_made = 0
 
     # Check API key is available BEFORE importing SDK
     if not os.environ.get("ADAPTION_API_KEY"):
@@ -47,6 +50,7 @@ def run_smoke_test() -> dict:
 
     # Call 1: Small model connectivity check
     try:
+        calls_made += 1
         r1 = adapter.simple_prompt(
             model="gemma-4-26b-a4b-it",
             prompt="Reply with exactly one word: hello",
@@ -70,11 +74,12 @@ def run_smoke_test() -> dict:
             "status": "error",
             "call": 1,
             "error": f"AdaptionError: {type(e).__name__}",
-            "calls_made": len(results),
+            "calls_made": calls_made,
         }
 
     # Call 2: Primary chat model (glm-53-flash)
     try:
+        calls_made += 1
         r2 = adapter.simple_prompt(
             model="glm-53-flash",
             prompt="What is 2+2? Answer with just the number.",
@@ -104,6 +109,7 @@ def run_smoke_test() -> dict:
 
     # Call 3: Repeat small model for consistency check
     try:
+        calls_made += 1
         r3 = adapter.simple_prompt(
             model="gemma-4-26b-a4b-it",
             prompt="Say 'test' exactly once.",
@@ -133,6 +139,7 @@ def run_smoke_test() -> dict:
 
     # Call 4: Final validation
     try:
+        calls_made += 1
         r4 = adapter.simple_prompt(
             model="gemma-4-26b-a4b-it",
             prompt="Output: OK",
@@ -160,11 +167,15 @@ def run_smoke_test() -> dict:
             }
         )
 
-    return {
-        "status": "success",
-        "calls_made": len(results),
+    failures = [row for row in results if "error" in row]
+    outcome = {
+        "status": "error" if failures else "success",
+        "calls_made": calls_made,
         "results": results,
     }
+    if failures:
+        outcome.update(call=failures[0]["call"], error=failures[0]["error"])
+    return outcome
 
 
 if __name__ == "__main__":
