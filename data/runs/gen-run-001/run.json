@@ -1,0 +1,16 @@
+{
+  "run_id": "gen-run-001",
+  "session": "pre-workflow",
+  "model": "gemma-4-26b-a4b-it",
+  "started": "2026-11-08T03:14:00+00:00",
+  "finished": "2026-11-08T03:15:00+00:00",
+  "totals": {
+    "calls": 20,
+    "tokens_in": 3862,
+    "tokens_out": 7330,
+    "total_tokens": 11192
+  },
+  "artifacts": [],
+  "notes": "Pre-workflow generation pass. Per-call logs NOT captured. Tally reconstructed from gen-run.log. Artifacts exist in data/prompts/, data/scenarios/, data/examples/ but are not duplicated here \u2014 see MANIFEST.md for mapping.",
+  "reconstructed": true
+}
