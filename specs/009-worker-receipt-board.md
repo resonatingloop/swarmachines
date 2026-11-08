@@ -1,6 +1,6 @@
 # switchboard / worker receipts in view
 
-status: draft
+status: accepted
 
 owner: colette · proposed implementation: asterion
 
@@ -9,7 +9,7 @@ owner: colette · proposed implementation: asterion
 - change: add a read-only local worker-attempt panel to the existing frozen switchboard.
 - before: the board shows ledger claims and github facts; private worker receipts and trial reservations require separate inspection.
 - after: a new capture shows assignments, recorded outcomes, bounded usage and local budget accounting together, with unknowns and provenance visible.
-- authority: owner requested this saved spec. implementation is not approved. this spec authorizes no provider request, new trial budget, task dispatch or source-state mutation.
+- authority: owner requested this saved spec. owner accepted this bounded implementation on 2026-11-08. this spec authorizes no provider request, new trial budget, task dispatch or source-state mutation.
 
 ## current ground
 
@@ -43,7 +43,7 @@ follow-up landing or rewrite the queue to fit this spec.
    usage is unknown and account billing was not observed.
 
 accepting this spec accepts those recommendations. no unresolved product choice
-is required before acceptance; implementation and independent review remain gates.
+is required before acceptance; independent review remains a release gate.
 
 ## in scope / out of scope
 
@@ -166,7 +166,7 @@ lower bounds; the database budget row is still presented separately if valid.
 
 planned checks: `python3 -m unittest control_plane.test_observer control_plane.test_delegation control_plane.test_worker_projection -v`, scoped ruff, existing
 `node control_plane/browser-check.mjs CAPTURE/index.html` extended for the worker
-panel, and atlas freshness. the new test module and reader are proposed, not built.
+panel, and atlas freshness. the implementation provides the named reader tests; checks remain required for changes.
 
 ## change shape
 
@@ -178,7 +178,7 @@ panel, and atlas freshness. the new test module and reader are proposed, not bui
 | identifiers, secrets or privacy | yes | strict projection allowlist | hostile canaries in HTML and JSON |
 | lifecycle or terminal states | no | existing persisted queue states | no mutation or inferred transitions |
 | setup, operation or recovery | yes | explicit optional source flag | missing/locked/old-schema tests |
-| normative contract or decision | yes | this draft projection contract | owner acceptance before implementation |
+| normative contract or decision | yes | this accepted projection contract | owner acceptance recorded; independent review before merge |
 | cross-repository dependency | no | same repo, separate local queue input | no teammate host/transport changes |
 
 ## risks and review surface

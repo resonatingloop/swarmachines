@@ -66,3 +66,40 @@ proxy, not proof of actual 200% browser zoom or screen-reader operation.
 
 remove the generated capture to roll back local observation state. removing
 `control_plane/` removes this slice without changing any dispatcher or ledger.
+
+## worker receipt capture (snapshot v2)
+
+optionally pass `--worker-state-dir /private/trial-state` to the same observer
+command. output remains a new owner-private directory. omission preserves the
+ledger/github view and labels worker evidence “not supplied.” the renderer
+accepts v1 snapshots; new captures use v2 with a separate `workers` section.
+
+worker evidence is read with a separate read-only/query-only SQLite connection,
+never the writable queue constructor. only owned private rollback-journal
+sources without symlink ancestors or active journal sidecars are supported.
+WAL, locked, missing or unexpected-schema sources become unavailable; no repair,
+checkpoint, migration or alternate writable connection is attempted. this is a
+cooperating-local-process boundary, not protection against a hostile owner
+replacing files during inspection. an unavailable worker source keeps other
+sources visible and returns exit 2. truncated worker evidence also returns 2.
+
+captures allowlist ids, matching hashes, recorded states, timestamps, source
+revision, fixed model/status labels and bounded numeric usage. they omit source
+text, objectives, model answers, credentials, claim tokens and private paths.
+invalid rows remain categorical diagnostics. 1,000 rows / 96 KiB per encoded
+field / 8 MiB scan and a two-second query/iteration deadline bound the reader.
+
+cost is a dated known-usage subtotal, including known tokens on failed attempts;
+unknown usage is visible and actual billing stays unknown. budget reservations
+are shown separately. limits are recognized producer configuration (source hashes
+from commits 61b8ae1 and 8abecd4), not an account quota or proof of historical
+configuration. an unknown producer or incomplete/inconsistent evidence makes
+limits and remaining allowance unknown. adding another producer fingerprint
+requires inspection of its actual limit/model configuration, not copying a
+hash from an untrusted receipt.
+
+`python3 -m unittest control_plane.test_worker_projection -v` exercises fictional
+privacy canaries, matching receipts, accounting, size limits, rollback-journal
+no-write behavior and active-WAL refusal. the browser harness also exercises
+worker disclosure by keyboard, expanded 320px reflow and empty browser storage.
+never commit real queue data or generated private captures.

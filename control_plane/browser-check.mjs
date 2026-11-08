@@ -68,6 +68,22 @@ try {
   await send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
   await send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
   assert.equal(await evaluate('document.querySelector("details").open'), false, 'keyboard toggles diagnostics');
+  assert(await evaluate('!!document.querySelector("#workers")'), 'worker panel present');
+  assert(await evaluate('document.querySelector("#workers").textContent.includes("running is not a heartbeat")'));
+  assert.equal(await evaluate('localStorage.length + sessionStorage.length'), 0, 'no browser storage writes');
+  if (await evaluate('!!document.querySelector(".worker-attempt")')) {
+    await evaluate('document.querySelector(".worker-attempt summary").focus()');
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
+    assert.equal(await evaluate('document.querySelector(".worker-attempt").open'), true, 'keyboard opens receipt');
+    for (const width of [1440, 320]) {
+      await send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: false });
+      await evaluate('document.querySelector("#workers").scrollIntoView()');
+      assert(await evaluate('document.documentElement.scrollWidth <= innerWidth'), 'expanded receipt reflow');
+      const screenshot = await send('Page.captureScreenshot', { format: 'png' });
+      await fs.writeFile(path.join(path.dirname(path.resolve(target)), `workers-${width}.png`), Buffer.from(screenshot.data, 'base64'));
+    }
+  }
   assert.equal(errors.length, 0, 'no browser errors');
   assert(requests.every(url => url.startsWith('file:')), 'no external requests');
   console.log('browser checks passed: script-free, four lanes, provenance warning, 1440/720/320 reflow, keyboard, no external requests');
