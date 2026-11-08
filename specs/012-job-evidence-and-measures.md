@@ -9,11 +9,11 @@ owner: colette · implementation: asterion · measure mapping review: caduceus
 - change: make the accepted completion and post-intervention measures computable from an episode with explicit job evidence.
 - before: initial jobs exist only in runtime state; completion records identify freight rather than an explicit released-job roster; the recovery field is a horizon placeholder.
 - after: a bounded offline analyzer reconciles a released-job roster, completion transitions and final job states, returning values with exact supporting sequence ids or explicit unavailable reasons.
-- authority: colette accepted this slice and cleared implementation in the coding session on 2026-11-08. caduceus's field-mapping review and the settled runtime base remain implementation gates. no formal experiment or paid call is authorized.
+- authority: colette accepted this slice and cleared implementation in the coding session on 2026-11-08. caduceus's field mapping is approved, as relayed by colette on 2026-11-08; the settled runtime base is pinned below. no formal experiment or paid call is authorized.
 
 ## current ground and dependencies
 
-master inspected: `3a95bb0`. [measurement mapping](../docs/measurement-readiness.md) is merged. message-sensitive policy pr #33 is under independent review; tracing and e2e work belong to pug's lanes. implementation starts from the reviewed integrated policy head, with one runner writer agreed. do not patch those branches concurrently or create another runner.
+settled policy base: `18218e706cf950c89161b6588166d14529f76726` (merged pr #33). [measurement mapping](../docs/measurement-readiness.md) is merged. the route-gossip implementation is merged; tracing and e2e work belong to pug's lanes. implementation starts from the reviewed integrated policy head, with one runner writer agreed. do not patch those branches concurrently or create another runner.
 
 [spec006](006-formal-experiment-handoff.md) already accepts unique delivered/released jobs and intervention-to-first-completion delay. this spec supplies their evidence contract, not new outcomes. the current world initializes all jobs before turn 1 and has no delayed-release scheduler; preserve that world.
 

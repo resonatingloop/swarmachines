@@ -9,7 +9,7 @@
   <meta name="generator" content="repository-continuity-change-atlas/1">
   <meta name="atlas-source" content="specs/012-job-evidence-and-measures.md">
   <meta name="atlas-source-id" content="233c1e6e2bd3a0992604cb1b40f37b7b56dda472dce4dfff49db2ffb7ab6cb5f">
-  <meta name="atlas-source-sha256" content="1e9806b0bb4f8aad03361a6388167e788785b17e78ade9c8313cb78742d464fd">
+  <meta name="atlas-source-sha256" content="0c6bf8ed934d9822ae8e2fe2f7a5f4e74f40408833140154c8b651e3e9198f10">
   <title>job evidence / count what happened · change atlas</title>
   <style>
     :root {
@@ -844,7 +844,7 @@
             </div>
             <div>
               <dt>source sha-256</dt>
-              <dd>1e9806b0bb4f8aad03361a6388167e788785b17e78ade9c8313cb78742d464fd</dd>
+              <dd>0c6bf8ed934d9822ae8e2fe2f7a5f4e74f40408833140154c8b651e3e9198f10</dd>
             </div>
             <div>
               <dt>renderer</dt>
@@ -852,7 +852,7 @@
             </div>
           </dl>
         </div>
-        <p class="authority-note"><strong>authority:</strong> colette accepted this slice and cleared implementation in the coding session on 2026-11-08. caduceus&#x27;s field-mapping review and the settled runtime base remain implementation gates. no formal experiment or paid call is authorized.. this page is generated and advisory.</p>
+        <p class="authority-note"><strong>authority:</strong> colette accepted this slice and cleared implementation in the coding session on 2026-11-08. caduceus&#x27;s field mapping is approved, as relayed by colette on 2026-11-08; the settled runtime base is pinned below. no formal experiment or paid call is authorized.. this page is generated and advisory.</p>
       </aside>
     </header>
 
@@ -966,7 +966,7 @@
           <p>nothing is summarized away. open the substrate whenever the projection feels too smooth.</p>
         </div>
         <details>
-          <summary><span>open full spec</span><code>1e9806b0bb4f</code></summary>
+          <summary><span>open full spec</span><code>0c6bf8ed934d</code></summary>
           <pre class="source-chamber"><code># job evidence / count what happened
 
 status: accepted
@@ -978,11 +978,11 @@ owner: colette · implementation: asterion · measure mapping review: caduceus
 - change: make the accepted completion and post-intervention measures computable from an episode with explicit job evidence.
 - before: initial jobs exist only in runtime state; completion records identify freight rather than an explicit released-job roster; the recovery field is a horizon placeholder.
 - after: a bounded offline analyzer reconciles a released-job roster, completion transitions and final job states, returning values with exact supporting sequence ids or explicit unavailable reasons.
-- authority: colette accepted this slice and cleared implementation in the coding session on 2026-11-08. caduceus's field-mapping review and the settled runtime base remain implementation gates. no formal experiment or paid call is authorized.
+- authority: colette accepted this slice and cleared implementation in the coding session on 2026-11-08. caduceus's field mapping is approved, as relayed by colette on 2026-11-08; the settled runtime base is pinned below. no formal experiment or paid call is authorized.
 
 ## current ground and dependencies
 
-master inspected: `3a95bb0`. [measurement mapping](../docs/measurement-readiness.md) is merged. message-sensitive policy pr #33 is under independent review; tracing and e2e work belong to pug's lanes. implementation starts from the reviewed integrated policy head, with one runner writer agreed. do not patch those branches concurrently or create another runner.
+settled policy base: `18218e706cf950c89161b6588166d14529f76726` (merged pr #33). [measurement mapping](../docs/measurement-readiness.md) is merged. the route-gossip implementation is merged; tracing and e2e work belong to pug's lanes. implementation starts from the reviewed integrated policy head, with one runner writer agreed. do not patch those branches concurrently or create another runner.
 
 [spec006](006-formal-experiment-handoff.md) already accepts unique delivered/released jobs and intervention-to-first-completion delay. this spec supplies their evidence contract, not new outcomes. the current world initializes all jobs before turn 1 and has no delayed-release scheduler; preserve that world.
 
@@ -1058,7 +1058,7 @@ the current runtime may offer little need for peer information even after policy
 
     <footer>
       <p class="footer-mark">repository continuity / change atlas</p>
-      <p>generated from specs/012-job-evidence-and-measures.md · 1e9806b0bb4f · no independent authority</p>
+      <p>generated from specs/012-job-evidence-and-measures.md · 0c6bf8ed934d · no independent authority</p>
     </footer>
   </div>
 </body>
