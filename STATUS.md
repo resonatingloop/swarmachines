@@ -2,7 +2,7 @@
 
 > continuity role: operational checkpoint
 > status: formal protocol accepted; integrated runtime readiness pending
-> last verified: 2026-11-08 (master tip 3a95bb0 via pr #31: docs-only measurement mapping; runtime suite 24/24 and control_plane 65/65 re-run at this tip)
+> last verified: 2026-11-08 (master tip 12b819d via pr #37: pilot-42 readiness manifest; runtime 24/24, control_plane 65/65 and analysis 10/10 — suites re-run at 0f84075, runtime/control_plane/analysis byte-identical since)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
@@ -14,19 +14,25 @@ route-gossip-v1: accepted spec011 implemented on merged freight runtime `7103ac0
 
 measurement readiness: [pinned source mapping](docs/measurement-readiness.md) records the pr #29 policy gate: received context is not read by the action policy. controlled fixtures at seeds 7/42/101 preserve all action events and final counts when context changes. mapping review remains pending; no formal runs or analyzer implementation authorized by this observation.
 
-merge ledger (2026-11-07 23:25z to 2026-11-08 02:43z): master tip is 3a95bb0
-(pr #31: docs-only measurement-readiness mapping). this window also merged
-pr #16 (331a65c: viewer evidence escaping chain, suite 127/127), pr #20
-(0d0aee8: control-plane observer board), pr #21 (46d84a5: prior checkpoint
-refresh), pr #22 (523ee5d: bounded local delegation and investigator trial),
-pr #23 (984448a: smoke outcome/accounting fix), pr #24 (c5899d8: read-only
-worker receipts projection), pr #25 (6bbcf4d: trial-narrative correction),
-pr #29 (7103ac0: freight-world wiring day-1 slice) and pr #26 (e3b7fa8:
-spec010 task-submission workflow, owner-authorized with the independent
-verifier and code-quality review recorded as explicit post-merge
-fix-forward). open work: pr #6 (freight-world integration) remains open,
-last updated 2026-11-07 23:57z; the delegation slice below carries a
-post-merge sast redo tracked as task t-011.
+merge ledger (2026-11-07 23:25z to 2026-11-08 04:35z): master tip is 12b819d
+(pr #37: pilot-42 candidate manifest and readiness gate docs). this window
+also merged pr #16 (331a65c: viewer evidence escaping chain, suite 127/127),
+pr #20 (0d0aee8: control-plane observer board), pr #21 (46d84a5: prior
+checkpoint refresh), pr #22 (523ee5d: bounded local delegation and
+investigator trial), pr #23 (984448a: smoke outcome/accounting fix),
+pr #24 (c5899d8: read-only worker receipts projection), pr #25 (6bbcf4d:
+trial-narrative correction), pr #29 (7103ac0: freight-world wiring day-1
+slice), pr #26 (e3b7fa8: spec010 task-submission workflow), pr #31 (3a95bb0:
+measurement-readiness mapping), pr #32 (2b7d668: t-018 e2e pipeline test),
+pr #33 (18218e7: freight policy reads delivered route reports), pr #34
+(0f84075: job evidence and offline episode measures), pr #36 (3834c9b:
+freight_world.py exec-bit metadata), pr #39 (572612a: spec006 seed-42 formal
+pair plus the t-005 adaption data pack, 128 files) and pr #37 (12b819d:
+pilot-42 readiness gate). open work: pr #6 (freight-world integration,
+unmoved since 2026-11-07 23:57z), pr #30 (langfuse-compatible execution
+tracing) and pr #38 (freight act-phase mislabel fix) are open at this check;
+the delegation slice below carries a post-merge sast redo tracked as task
+t-011 (respin worktree active at tip).
 
 spec010 session planning: [spec010](specs/010-explicit-task-submission.md) drafts explicit
 prepare/inspect/submit and post-run capture within a persistent named paid session.
@@ -263,7 +269,9 @@ read-only session may use its remaining allowance (1/20 used, 0.1 reserved,
 0.0003147 estimated); no automatic loop, task-purpose expansion or new budget
 is implied. preserve all prior trial records (receipt-board: four attempts,
 0.4 reserved, billing unobserved) and handle provider-sanitization work on its
-separate owner lane.
+separate owner lane. open prs #30 (langfuse-compatible execution tracing) and
+#38 (freight act-phase mislabel fix) also await independent review at their
+current heads.
 
 ## re-entry notes
 
