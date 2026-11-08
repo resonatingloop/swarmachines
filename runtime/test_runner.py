@@ -5,6 +5,7 @@ Validates all acceptance criteria from add-turn-seam-event-log.
 """
 
 import ast
+import copy
 import json
 import subprocess
 import sys
@@ -292,12 +293,18 @@ def test_topology_independence_with_ring():
             "message.acted_on",
             "run.config",
             "disturbance.applied",
+            "run.seal",
         }
         return [e for e in events if e["type"] not in excluded_types]
 
     def normalize_event(e: dict) -> dict:
-        """Remove logging artifacts (seq, ts) for semantic comparison."""
-        return {k: v for k, v in e.items() if k not in ("seq", "ts")}
+        """Remove logging artifacts (seq, ts, chain) for semantic comparison.
+
+        chain is positional metadata like seq/ts: it binds each record to its
+        predecessor in this log's interleaving, so two topologies legitimately
+        produce different chains for identical event content.
+        """
+        return {k: v for k, v in e.items() if k not in ("seq", "ts", "chain")}
 
     def event_key(e: dict) -> tuple:
         """Sort key for deterministic ordering: (turn, agent_id, type, payload_hash)."""
@@ -362,12 +369,18 @@ def test_topology_independence():
             "message.acted_on",
             "run.config",
             "disturbance.applied",
+            "run.seal",
         }
         return [e for e in events if e["type"] not in excluded_types]
 
     def normalize_event(e: dict) -> dict:
-        """Remove logging artifacts (seq, ts) for semantic comparison."""
-        return {k: v for k, v in e.items() if k not in ("seq", "ts")}
+        """Remove logging artifacts (seq, ts, chain) for semantic comparison.
+
+        chain is positional metadata like seq/ts: it binds each record to its
+        predecessor in this log's interleaving, so two topologies legitimately
+        produce different chains for identical event content.
+        """
+        return {k: v for k, v in e.items() if k not in ("seq", "ts", "chain")}
 
     def event_key(e: dict) -> tuple:
         """Sort key for deterministic ordering: (turn, agent_id, type, payload_hash)."""
@@ -1219,6 +1232,161 @@ def test_freight_determinism():
     return True, "OK: byte-identical episodes (deterministic)"
 
 
+def _recompute_chain(records):
+    """Independent seal-contract oracle: recompute the chain from log content alone."""
+    import hashlib
+
+    genesis = hashlib.sha256(
+        ("swarmachines/eventlog-seal-v1|" + records[0]["run_id"]).encode()
+    ).hexdigest()
+    prev = genesis
+    for record in records:
+        stripped = {k: v for k, v in record.items() if k != "chain"}
+        canonical = json.dumps(stripped, sort_keys=True, separators=(",", ":"))
+        prev = hashlib.sha256((prev + "|" + canonical).encode()).hexdigest()
+        if record.get("chain") is not None and record["chain"] != prev:
+            return False, f"chain mismatch at seq {record['seq']}"
+    return True, prev
+
+
+def test_sealed_log_shape():
+    """Test: runner output ends with a strict run.seal certification record."""
+    print("Test: sealed log shape...")
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    run_runner(["--seed", "42", "--turns", "2"], output)
+    records = [json.loads(line) for line in Path(output).read_text().splitlines()]
+    Path(output).unlink()
+    seal = records[-1]
+    if seal["type"] != "run.seal":
+        return False, f"last record is {seal['type']}, not run.seal"
+    if set(seal["payload"]) != {"chain", "events", "alg"}:
+        return False, f"seal payload keys {sorted(seal['payload'])}"
+    if seal["payload"]["alg"] != "eventlog-seal-v1":
+        return False, f"unexpected alg {seal['payload']['alg']}"
+    if seal["payload"]["events"] != len(records) - 1:
+        return False, "seal count disagrees with record count"
+    if "chain" in seal:
+        return False, "seal record itself must not be chained"
+    if len({r["chain"] for r in records[:-1]}) != len(records) - 1:
+        return False, "chain values not unique per record"
+    return True, "OK: run.seal present, strict shape, count consistent"
+
+
+def test_chain_recomputable_from_log():
+    """Test: chain hashes recompute from the log content alone."""
+    print("Test: chain recomputable...")
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    run_runner(["--seed", "7", "--turns", "3"], output)
+    records = [json.loads(line) for line in Path(output).read_text().splitlines()]
+    Path(output).unlink()
+    ok, detail = _recompute_chain(records[:-1])
+    if not ok:
+        return False, detail
+    if detail != records[-1]["payload"]["chain"]:
+        return False, "terminal hash does not match seal payload"
+    return True, "OK: full chain recomputes and matches the seal"
+
+
+def test_seal_blocks_append():
+    """Test: appending after seal() raises."""
+    print("Test: append after seal raises...")
+    from runner import EventLog
+
+    log = EventLog("run-x", "2026-01-01T00:00:00Z")
+    log.append(0, None, "world.init", {})
+    log.seal()
+    try:
+        log.append(1, "a", "observation.recorded", {})
+        return False, "append after seal did not raise"
+    except ValueError as e:
+        if "log_sealed" not in str(e):
+            return False, f"wrong error: {e}"
+    try:
+        log.seal()
+        return False, "double seal did not raise"
+    except ValueError as e:
+        if "log_sealed" not in str(e):
+            return False, f"wrong double-seal error: {e}"
+    return True, "OK: post-seal appends and double seal refused"
+
+
+def test_verify_seal_patterns():
+    """Test: tamper, insert, truncate, partial chain are all detected."""
+    print("Test: verify_seal fabrication patterns...")
+    from runner import verify_seal
+
+    with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+        output = f.name
+    run_runner(["--seed", "3", "--turns", "2"], output)
+    records = [json.loads(line) for line in Path(output).read_text().splitlines()]
+    Path(output).unlink()
+    if verify_seal(records) is not None:
+        return False, "honest sealed log rejected"
+
+    # Legacy unsealed log passes
+    legacy = [{k: v for k, v in r.items() if k != "chain"} for r in records[:-1]]
+    if verify_seal(legacy) is not None:
+        return False, "legacy unsealed log rejected"
+
+    # Edit one payload byte mid-log
+    tampered = copy.deepcopy(records)
+    tampered[2]["payload"]["detail"] = "fabricated"
+    try:
+        verify_seal(tampered)
+        return False, "tampered log accepted"
+    except ValueError as e:
+        if "chain_mismatch" not in str(e):
+            return False, f"tamper gave {e}"
+
+    # Insert a fabricated record between chained neighbors
+    inserted = copy.deepcopy(records)
+    fake = copy.deepcopy(inserted[2])
+    fake["seq"] = fake["seq"]  # reuses a plausible-looking record
+    fake["payload"] = {"fabricated": True}
+    inserted.insert(3, fake)
+    try:
+        verify_seal(inserted)
+        return False, "inserted record accepted"
+    except ValueError as e:
+        if "chain_mismatch" not in str(e):
+            return False, f"insert gave {e}"
+
+    # Remove a chained record
+    truncated = [r for r in copy.deepcopy(records) if r["seq"] != 2]
+    try:
+        verify_seal(truncated)
+        return False, "truncated log accepted"
+    except ValueError as e:
+        if "chain_mismatch" not in str(e) and "seal_count_mismatch" not in str(e):
+            return False, f"truncate gave {e}"
+
+    # Partial chain: strip chain from one middle record
+    partial = copy.deepcopy(records)
+    del partial[1]["chain"]
+    try:
+        verify_seal(partial)
+        return False, "partial chain accepted"
+    except ValueError as e:
+        if "partial_chain" not in str(e):
+            return False, f"partial gave {e}"
+
+    # Chain present but seal removed
+    unsealed = records[:-1]
+    try:
+        verify_seal(unsealed)
+        return False, "unsealed chained log accepted"
+    except ValueError as e:
+        if "missing_seal" not in str(e):
+            return False, f"missing-seal gave {e}"
+
+    return (
+        True,
+        "OK: honest+legacy pass; tamper/insert/truncate/partial/missing rejected",
+    )
+
+
 def main():
     """Run all tests."""
     print("=" * 60)
@@ -1250,6 +1418,10 @@ def main():
         ("freight_supplies_conservation", test_freight_supplies_conservation),
         ("freight_capacity_check", test_freight_capacity_check),
         ("freight_determinism", test_freight_determinism),
+        ("sealed_log_shape", test_sealed_log_shape),
+        ("chain_recomputable", test_chain_recomputable_from_log),
+        ("seal_blocks_append", test_seal_blocks_append),
+        ("verify_seal_patterns", test_verify_seal_patterns),
     ]
 
     passed = 0

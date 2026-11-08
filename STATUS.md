@@ -1,10 +1,24 @@
 # swarmachines / status
 
 > continuity role: operational checkpoint
-> status: formal protocol accepted; seed-42 pair recorded; report synthesis pending
-> last verified: 2026-11-08 (master tip 7acd2a7)
+> status: event-log seal implemented on branch swarmachines-i64-eventlog-seal (fabrication-detectable logs); formal protocol accepted; seed-42 pair recorded; report synthesis pending
+> last verified: 2026-11-08 (branch worktree at origin/master e42b23d + seal)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
+
+## branch checkpoint (swarmachines-i64 — event-log seal)
+
+**event-log seal (swarmachines-i64, this branch)**: every runner-appended
+record now carries a sha256 `chain` hash (canonical JSON, genesis bound to
+run_id — recomputable from the log alone), the log closes with a `run.seal`
+certification record (terminal chain + record count + alg, strict schema
+shape), appends after the seal are refused, and the offline analyzer
+verifies the seal when present: edit/insert/remove of any chained record is
+rejected categorically; legacy unsealed logs stay byte-compat and measure
+identically. openspec change `add-eventlog-seal`. suites on this branch:
+runtime 28/28 (4 new seal tests), analysis 17/17 (7 new), control_plane 74
+OK, viewer 62, e2e pipeline PASS, ruff check+format clean. sample-run.jsonl
+stays legacy (byte-compat fixture).
 
 ## verified checkpoint
 

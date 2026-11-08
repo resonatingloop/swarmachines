@@ -39,6 +39,70 @@ def unavailable(reason):
     return {"status": "unavailable", "value": None, "reason": reason}
 
 
+_SEAL_GENESIS_PREFIX = "swarmachines/eventlog-seal-v1|"
+_SEAL_ALG = "eventlog-seal-v1"
+
+
+def _canonical_record(record):
+    """Canonical JSON of a record minus its chain field, per the seal contract."""
+    stripped = {key: value for key, value in record.items() if key != "chain"}
+    return json.dumps(stripped, sort_keys=True, separators=(",", ":"))
+
+
+def _verify_seal(records):
+    """Verify the optional event-log seal and return the measured records.
+
+    A log with no chain fields and no run.seal record is legacy and passes
+    through unchanged. A log that carries any chain field must be sealed:
+    every record before the seal carries a valid chain, the recomputed
+    terminal hash and record count match the seal payload, and the seal is
+    the final record. The seal record itself is certification, not evidence,
+    and is excluded from the returned list.
+
+    Args:
+        records: Parsed event records in log order, seal included if present.
+
+    Returns:
+        The episode records to measure (seal stripped when present).
+
+    Raises:
+        EvidenceError: With a categorical reason on any fabrication pattern.
+    """
+    sealed = bool(records) and records[-1].get("type") == "run.seal"
+    if not sealed:
+        require(not any("chain" in record for record in records), "missing_seal")
+        return records
+    seal = records[-1]
+    require("chain" not in seal, "seal_shape")
+    body = records[:-1]
+    require(bool(body), "partial_chain")
+    require(
+        all("chain" in record for record in body),
+        "partial_chain",
+    )
+    payload = seal["payload"]
+    require(payload.get("alg") == _SEAL_ALG, "seal_shape")
+    prev = hashlib.sha256(
+        (_SEAL_GENESIS_PREFIX + records[0]["run_id"]).encode("utf-8")
+    ).hexdigest()
+    for record in body:
+        claimed = record["chain"]
+        require(
+            isinstance(claimed, str)
+            and len(claimed) == 64
+            and all(c in "0123456789abcdef" for c in claimed),
+            "chain_format",
+        )
+        expected = hashlib.sha256(
+            (prev + "|" + _canonical_record(record)).encode("utf-8")
+        ).hexdigest()
+        require(claimed == expected, "chain_mismatch")
+        prev = claimed
+    require(payload.get("chain") == prev, "seal_mismatch")
+    require(payload.get("events") == len(body), "seal_count_mismatch")
+    return body
+
+
 def _load(raw):
     require(len(raw) <= MAX_BYTES, "input_limit")
     text = raw.decode("utf-8", errors="strict")
@@ -60,6 +124,7 @@ def _load(raw):
         events.append(event)
         require(len(events) <= MAX_EVENTS, "event_limit")
     require(bool(events), "empty_episode")
+    events = _verify_seal(events)
     run_id = events[0]["run_id"]
     previous_seq, previous_turn = -1, -1
     ended = False
