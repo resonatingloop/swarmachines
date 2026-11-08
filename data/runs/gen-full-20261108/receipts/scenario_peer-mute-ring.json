@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_peer-mute_ring",
-  "timestamp": "2026-11-08T03:50:03.017821+00:00",
+  "timestamp": "2026-11-08T03:57:37.739056+00:00",
   "model": "gemma-4-26b-a4b-it",
-  "input_tokens": 485,
-  "output_tokens": 754,
-  "total_tokens": 1239,
+  "input_tokens": 1238,
+  "output_tokens": 1596,
+  "total_tokens": 2834,
   "item_path": "data/scenarios/peer-mute-ring.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "run_id": "gen-full-20261108"
 }

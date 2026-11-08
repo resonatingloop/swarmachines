@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_stale-report_ring",
-  "timestamp": "2026-11-08T03:50:12.561388+00:00",
+  "timestamp": "2026-11-08T03:57:52.783164+00:00",
   "model": "gemma-4-26b-a4b-it",
-  "input_tokens": 488,
-  "output_tokens": 654,
-  "total_tokens": 1142,
+  "input_tokens": 1211,
+  "output_tokens": 1459,
+  "total_tokens": 2670,
   "item_path": "data/scenarios/stale-report-ring.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "run_id": "gen-full-20261108"
 }

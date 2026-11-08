@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_peer-mute_mesh",
-  "timestamp": "2026-11-08T03:49:58.419820+00:00",
+  "timestamp": "2026-11-08T03:57:29.617253+00:00",
   "model": "gemma-4-26b-a4b-it",
-  "input_tokens": 454,
-  "output_tokens": 726,
-  "total_tokens": 1180,
+  "input_tokens": 1120,
+  "output_tokens": 1391,
+  "total_tokens": 2511,
   "item_path": "data/scenarios/peer-mute-mesh.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "run_id": "gen-full-20261108"
 }

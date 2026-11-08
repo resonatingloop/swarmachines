@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_fog_mesh",
-  "timestamp": "2026-11-08T03:49:39.893362+00:00",
+  "timestamp": "2026-11-08T03:56:59.682112+00:00",
   "model": "gemma-4-26b-a4b-it",
-  "input_tokens": 450,
-  "output_tokens": 800,
-  "total_tokens": 1250,
+  "input_tokens": 1090,
+  "output_tokens": 1388,
+  "total_tokens": 2478,
   "item_path": "data/scenarios/fog-mesh.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "run_id": "gen-full-20261108"
 }

@@ -1,6 +1,7 @@
 {
   "scenario_id": "peer-mute-ring",
-  "description": "Peer Mute in ring topology",
+  "title": "Peer Mute in Ring Topology",
+  "description": "This scenario explores peer mute dynamics within a ring communication topology.\nThe disturbance creates coordination challenges that test the agents' ability to adapt,\ncommunicate effectively, and maintain freight flow under adverse conditions.",
   "seed": 42,
   "agents": [
     "a",
@@ -10,6 +11,57 @@
   ],
   "comm_topology": "ring",
   "physical_topology": "graph",
+  "depots": [
+    "west",
+    "east",
+    "south",
+    "north"
+  ],
+  "routes": [
+    {
+      "name": "west-east",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "west-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-south",
+      "capacity": 2,
+      "status": "open"
+    },
+    {
+      "name": "east-north",
+      "capacity": 1,
+      "status": "open"
+    },
+    {
+      "name": "south-north",
+      "capacity": 2,
+      "status": "open"
+    }
+  ],
+  "bridges": [
+    {
+      "name": "east-bridge",
+      "connects": [
+        "east",
+        "south"
+      ],
+      "status": "open"
+    },
+    {
+      "name": "west-bridge",
+      "connects": [
+        "west",
+        "north"
+      ],
+      "status": "open"
+    }
+  ],
   "turns": 16,
   "freight_jobs": [
     {
@@ -17,39 +69,87 @@
       "freight": "med-kit",
       "origin": "west",
       "destination": "south",
-      "priority": "high"
+      "priority": "high",
+      "turns_to_deliver": 8
     },
     {
       "job_id": "j-002",
       "freight": "supplies",
       "origin": "east",
       "destination": "west",
-      "priority": "normal"
+      "priority": "normal",
+      "turns_to_deliver": 12
     },
     {
       "job_id": "j-003",
       "freight": "equipment",
       "origin": "south",
       "destination": "east",
-      "priority": "normal"
+      "priority": "normal",
+      "turns_to_deliver": 10
+    },
+    {
+      "job_id": "j-004",
+      "freight": "food",
+      "origin": "north",
+      "destination": "south",
+      "priority": "high",
+      "turns_to_deliver": 6
     }
   ],
   "disturbance_schedule": {
     "peer-mute": {
       "muted_agent": "b",
       "start_turn": 3,
-      "detection_turn": 4
+      "detection_turn": 4,
+      "mute_type": "selective",
+      "targets": [
+        "a",
+        "c"
+      ]
     }
   },
+  "edge_cases_to_watch": [
+    "Muted agent can still observe and act, but cannot communicate",
+    "Other agents may not realize b is muted vs. simply silent",
+    "Information from b's location becomes unavailable"
+  ],
   "expected_outcomes": {
     "deliveries_baseline": 3,
-    "recovery_turns_expected": "2-4"
+    "recovery_turns_expected": "2-4",
+    "coordination_challenges": [
+      "Muted agent can still observe and act, but cannot communicate",
+      "Other agents may not realize b is muted vs. simply silent"
+    ]
   },
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
+  "success_criteria": [
+    "High-priority freight delivered within deadline",
+    "Agents adapt communication to topology constraints",
+    "Recovery from disruption within expected turns"
+  ],
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "ring_order": [
     "a",
     "b",
     "c",
     "d"
-  ]
+  ],
+  "ring_neighbors": {
+    "a": [
+      "b",
+      "d"
+    ],
+    "b": [
+      "a",
+      "c"
+    ],
+    "c": [
+      "b",
+      "d"
+    ],
+    "d": [
+      "c",
+      "a"
+    ]
+  }
 }

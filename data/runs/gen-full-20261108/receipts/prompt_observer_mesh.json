@@ -1,14 +1,14 @@
 {
   "schema_version": "v1",
   "call_name": "prompt_observer_mesh",
-  "timestamp": "2026-11-08T03:49:30.354061+00:00",
+  "timestamp": "2026-11-08T03:56:44.744444+00:00",
   "model": "gemma-4-26b-a4b-it",
-  "input_tokens": 353,
-  "output_tokens": 155,
-  "total_tokens": 508,
+  "input_tokens": 1322,
+  "output_tokens": 253,
+  "total_tokens": 1575,
   "item_path": "data/prompts/observer_mesh.md",
   "kind": "prompt",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "capture_method": "live-api-call-with-full-logging",
   "run_id": "gen-full-20261108"
 }

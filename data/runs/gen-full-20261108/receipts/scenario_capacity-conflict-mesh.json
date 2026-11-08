@@ -1,13 +1,13 @@
 {
   "schema_version": "v1",
   "call_name": "scenario_capacity-conflict_mesh",
-  "timestamp": "2026-11-08T03:50:17.086607+00:00",
+  "timestamp": "2026-11-08T03:58:00.026894+00:00",
   "model": "gemma-4-26b-a4b-it",
-  "input_tokens": 444,
-  "output_tokens": 756,
-  "total_tokens": 1200,
+  "input_tokens": 1093,
+  "output_tokens": 1364,
+  "total_tokens": 2457,
   "item_path": "data/scenarios/capacity-conflict-mesh.json",
   "kind": "scenario",
-  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:49:25.946601+00:00",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "run_id": "gen-full-20261108"
 }
