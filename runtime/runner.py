@@ -634,12 +634,13 @@ class Agent:
                 success, commit_reason, event_payload = freight_world.apply_action(
                     action, self.agent_id
                 )
-                if success and event_payload:
+                if success:
+                    # Legal action committed - may be a no-op (event_payload=None) or state change
                     log.append(
                         turn=turn,
                         agent_id=self.agent_id,
                         event_type="action.committed",
-                        payload={"action_id": action_id, **event_payload},
+                        payload={"action_id": action_id, **(event_payload or {"result": "no-op"})},
                     )
                     if self.policy == POLICY:
                         previous = {row["job_id"]: row["state"] for row in prior_jobs}
@@ -659,19 +660,20 @@ class Agent:
                                         "action_id": action_id,
                                     },
                                 )
-                    # Emit world.changed event
-                    log.append(
-                        turn=turn,
-                        agent_id=self.agent_id,
-                        event_type="world.changed",
-                        payload={
-                            "what": f"freight {action.get('freight_id', 'unknown')} moved",
-                            "effect": event_payload.get("result", "freight routed"),
-                            "visibility": "all agents",
-                        },
-                    )
+                    # Emit world.changed event only when state actually changed
+                    if event_payload:
+                        log.append(
+                            turn=turn,
+                            agent_id=self.agent_id,
+                            event_type="world.changed",
+                            payload={
+                                "what": f"freight {action.get('freight_id', 'unknown')} moved",
+                                "effect": event_payload.get("result", "freight routed"),
+                                "visibility": "all agents",
+                            },
+                        )
                 else:
-                    # Action failed at apply stage
+                    # Apply-stage failure - action rejected with real reason
                     log.append(
                         turn=turn,
                         agent_id=self.agent_id,
