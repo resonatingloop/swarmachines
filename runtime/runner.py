@@ -16,11 +16,13 @@ import json
 import random
 import re
 import sys
+from copy import deepcopy
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import ClassVar
 
 from freight_world import FreightWorld
+from route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select
 
 
 class EventLog:
@@ -314,8 +316,14 @@ class DisturbanceScheduler:
 class Agent:
     """A simulated agent with observation, exchange, act phases."""
 
-    def __init__(self, agent_id: str, base_seed: int, agent_index: int):
+    def __init__(
+        self, agent_id: str, base_seed: int, agent_index: int, policy: str = "legacy"
+    ):
         self.agent_id = agent_id
+        self.policy = policy
+        self.observation = None
+        self.observation_seq = None
+        self.inbox = []
         # Separate RNG streams for topology-independent non-comm events
         # Each stream is seeded uniquely per agent to ensure determinism
         # exchange_send_rng and exchange_acted_rng are split to prevent entanglement:
@@ -356,6 +364,10 @@ class Agent:
                 if self.observe_rng.random() > 0.3
                 else [],
             }
+        if self.policy == POLICY:
+            self.observation = deepcopy(visible)
+            self.observation_seq = log.seq
+            self.inbox = []  # only reports delivered after this turn's observation
         log.append(
             turn=turn,
             agent_id=self.agent_id,
@@ -386,6 +398,8 @@ class Agent:
             if self.exchange_send_rng.random() > 0.6:
                 message_id = self._next_message_id()
                 body = {"type": "report", "content": f"status from {self.agent_id}"}
+                if self.policy == POLICY:
+                    body = make_report(self.observation, self.agent_id)
                 body_ref = message_store.store(
                     message_id, self.agent_id, other.agent_id, body
                 )
@@ -430,7 +444,9 @@ class Agent:
 
                     # Emit message.acted_on immediately after seen (deterministic based on exchange_acted_rng)
                     # Uses separate stream from send decision to prevent RNG entanglement
-                    if self.exchange_acted_rng.random() > 0.5:
+                    if self.policy == POLICY:
+                        other.receive_report(body, self.agent_id, message_id, turn, log)
+                    elif self.exchange_acted_rng.random() > 0.5:
                         lifecycle.mark_acted_on(message_id, turn)
                         log.append(
                             turn=turn,
@@ -455,6 +471,77 @@ class Agent:
                         },
                     )
 
+    def receive_report(self, body, sender, message_id, turn, log):
+        """Admit a report only when called by successful message delivery.
+
+        Args:
+            body: Bounded report body from the message store.
+            sender: Transport-owned sender identity.
+            message_id: Delivered message identity.
+            turn: Current logical turn.
+            log: Episode event sink.
+        """
+        report, reason = admit_report(
+            body, sender=sender, message_id=message_id, turn=turn
+        )
+        if report is not None and (
+            self.observation is None or self.observation["turn"] != turn
+        ):
+            report, reason = None, "no_current_observation"
+        if report is not None and (
+            len(self.inbox) >= MAX_REPORTS
+            or any(r.message_id == message_id for r in self.inbox)
+        ):
+            report, reason = None, "inbox_limit_or_duplicate"
+        if report is not None:
+            self.inbox.append(report)
+        log.append(
+            turn,
+            self.agent_id,
+            "policy.report",
+            {
+                "message_id": message_id,
+                "sender": sender,
+                "admitted": report is not None,
+                "reason": reason,
+                "observed_turn": report.turn if report else None,
+                "routes": dict(report.routes) if report else {},
+            },
+        )
+
+    def _act_gossip(self, turn, log, freight_world):
+        """Select from local evidence; pass only the resulting action to the world."""
+        if self.observation is None or self.observation["turn"] != turn:
+            raise ValueError("missing current policy observation")
+        opportunity = self.act_rng.random() > 0.5
+        decision = select(self.observation, tuple(self.inbox))
+        if not opportunity:
+            decision.update(
+                path=[],
+                next_hop=None,
+                local_only_next_hop=None,
+                choice_changed=False,
+                consumed_message_ids=[],
+                reason="no_action_opportunity",
+            )
+        action_id = f"act-{self.agent_id}{turn:02d}" if decision["next_hop"] else None
+        decision.update(
+            decision_id=f"decision-{self.agent_id}-{turn}",
+            observation_seq=self.observation_seq,
+            action_id=action_id,
+            opportunity=opportunity,
+        )
+        log.append(turn, self.agent_id, "policy.decision", decision)
+        if action_id is None:
+            return
+        action = {
+            "action_id": action_id,
+            "kind": "route_freight",
+            "freight_id": decision["freight_id"],
+            "via": f"{self.observation['current_location']}->{decision['next_hop']}",
+        }
+        self._commit_proposal(action, turn, log, freight_world)
+
     def act(
         self,
         turn: int,
@@ -463,6 +550,9 @@ class Agent:
         freight_world: FreightWorld | None = None,
     ) -> None:
         """Act phase: propose and commit actions."""
+        if self.policy == POLICY:
+            self._act_gossip(turn, log, freight_world)
+            return
         if self.act_rng.random() > 0.5:
             action_id = f"act-{self.agent_id}{turn:02d}"
 
@@ -508,79 +598,84 @@ class Agent:
                     "via": "west->south",
                 }
 
-            log.append(
-                turn=turn,
-                agent_id=self.agent_id,
-                event_type="action.proposed",
-                payload=action,
-            )
-            self.actions_proposed.append(action)
+            self._commit_proposal(action, turn, log, freight_world)
 
-            # Validate against freight world if available
+    def _commit_proposal(self, action, turn, log, freight_world):
+        """Validate and apply a proposal through the existing world boundary."""
+        action_id = action["action_id"]
+        log.append(
+            turn=turn,
+            agent_id=self.agent_id,
+            event_type="action.proposed",
+            payload=action,
+        )
+        self.actions_proposed.append(action)
+
+        # Validate against freight world if available
+        if freight_world is not None:
+            legal, reason = freight_world.validate_action(action)
+        else:
+            # Fallback to stochastic validation
+            legal = self.act_rng.random() > 0.2
+            reason = "route validation failed" if not legal else ""
+
+        log.append(
+            turn=turn,
+            agent_id=self.agent_id,
+            event_type="action.validated",
+            payload={"action_id": action_id, "legal": legal},
+        )
+
+        if legal:
+            # Commit action and update freight world
             if freight_world is not None:
-                legal, reason = freight_world.validate_action(action)
-            else:
-                # Fallback to stochastic validation
-                legal = self.act_rng.random() > 0.2
-                reason = "route validation failed" if not legal else ""
-
-            log.append(
-                turn=turn,
-                agent_id=self.agent_id,
-                event_type="action.validated",
-                payload={"action_id": action_id, "legal": legal},
-            )
-
-            if legal:
-                # Commit action and update freight world
-                if freight_world is not None:
-                    success, commit_reason, event_payload = freight_world.apply_action(
-                        action, self.agent_id
-                    )
-                    if success and event_payload:
-                        log.append(
-                            turn=turn,
-                            agent_id=self.agent_id,
-                            event_type="action.committed",
-                            payload={"action_id": action_id, **event_payload},
-                        )
-                        # Emit world.changed event
-                        log.append(
-                            turn=turn,
-                            agent_id=self.agent_id,
-                            event_type="world.changed",
-                            payload={
-                                "what": f"freight {action.get('freight_id', 'unknown')} moved",
-                                "effect": event_payload.get("result", "freight routed"),
-                                "visibility": "all agents",
-                            },
-                        )
-                    else:
-                        # Action failed at apply stage
-                        log.append(
-                            turn=turn,
-                            agent_id=self.agent_id,
-                            event_type="action.rejected",
-                            payload={
-                                "action_id": action_id,
-                                "reason": commit_reason or "apply failed",
-                            },
-                        )
-                else:
+                success, commit_reason, event_payload = freight_world.apply_action(
+                    action, self.agent_id
+                )
+                if success and event_payload:
                     log.append(
                         turn=turn,
                         agent_id=self.agent_id,
                         event_type="action.committed",
-                        payload={"action_id": action_id, "result": "freight queued"},
+                        payload={"action_id": action_id, **event_payload},
+                    )
+                    # Emit world.changed event
+                    log.append(
+                        turn=turn,
+                        agent_id=self.agent_id,
+                        event_type="world.changed",
+                        payload={
+                            "what": f"freight {action.get('freight_id', 'unknown')} moved",
+                            "effect": event_payload.get("result", "freight routed"),
+                            "visibility": "all agents",
+                        },
+                    )
+                else:
+                    # Action failed at apply stage
+                    log.append(
+                        turn=turn,
+                        agent_id=self.agent_id,
+                        event_type="action.rejected",
+                        payload={
+                            "action_id": action_id,
+                            "reason": commit_reason or "apply failed",
+                        },
                     )
             else:
-                # Reject
                 log.append(
                     turn=turn,
                     agent_id=self.agent_id,
-                    event_type="action.rejected",
-                    payload={"action_id": action_id, "reason": reason},
+                    event_type="action.committed",
+                    payload={"action_id": action_id, "result": "freight queued"},
                 )
+        else:
+            # Reject
+            log.append(
+                turn=turn,
+                agent_id=self.agent_id,
+                event_type="action.rejected",
+                payload={"action_id": action_id, "reason": reason},
+            )
 
 
 class TurnSeamRunner:
@@ -599,7 +694,22 @@ class TurnSeamRunner:
         disturbance_schedule: dict,
         delivery_map: dict | None = None,
         use_freight_world: bool = False,
+        policy: str = "legacy",
     ):
+        if policy not in ("legacy", POLICY) or (
+            policy == POLICY and not use_freight_world
+        ):
+            raise ValueError("route-gossip-v1 requires freight world")
+        if policy == POLICY and (
+            not 1 <= len(agents_config) <= MAX_REPORTS
+            or len(set(agents_config)) != len(agents_config)
+            or any(
+                not isinstance(aid, str) or not re.fullmatch(r"[a-zA-Z0-9-]{1,40}", aid)
+                for aid in agents_config
+            )
+        ):
+            raise ValueError("route gossip requires unique bounded agent identities")
+        self.policy = policy
         self.seed = seed
         self.rng = random.Random(seed)
         # Deterministic run_id based on seed
@@ -607,7 +717,9 @@ class TurnSeamRunner:
         # Fixed base timestamp for determinism
         self.base_ts = "2026-11-07T14:30:00Z"
 
-        self.agents = [Agent(aid, seed, i) for i, aid in enumerate(agents_config)]
+        self.agents = [
+            Agent(aid, seed, i, policy) for i, aid in enumerate(agents_config)
+        ]
         self.agent_ids = agents_config
 
         self.topology = CommunicationTopology(
@@ -651,6 +763,11 @@ class TurnSeamRunner:
                 "delivery_config_sha": delivery_config_sha,
                 "disturbance_schedule": self.disturbance_scheduler.schedule,
                 "agents": self.agent_ids,
+                **(
+                    {"policy": POLICY, "world": "freight"}
+                    if self.policy == POLICY
+                    else {}
+                ),
             },
         )
 
@@ -872,7 +989,15 @@ def main():
         help="Enable execution tracing (requires LANGFUSE_* env vars or uses fake exporter for tests)",
     )
 
+    parser.add_argument(
+        "--policy",
+        choices=["legacy", POLICY],
+        default="legacy",
+        help="explicit scripted action policy; route gossip requires freight",
+    )
     args = parser.parse_args()
+    if args.policy == POLICY and args.world != "freight":
+        parser.error("route-gossip-v1 requires --world freight")
 
     # Validate agent ids (alphanumeric + hyphen only)
     agents = [a.strip() for a in args.agents.split(",")]
@@ -928,6 +1053,7 @@ def main():
         disturbance_schedule=disturbance_schedule,
         delivery_map=delivery_map if delivery_map else None,
         use_freight_world=args.world == "freight",
+        policy=args.policy,
     )
 
     output = runner.run(args.turns)

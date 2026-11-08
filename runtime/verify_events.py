@@ -47,6 +47,30 @@ def main():
         "disturbance.applied",
         "run.end",
     }
+    route_gossip = any(
+        e["type"] == "run.config" and e["payload"].get("policy") == "route-gossip-v1"
+        for e in events
+    )
+    if route_gossip:
+        # Waiting, no traffic, and no rejection can all be valid policy outcomes.
+        # Influence markers are deliberately absent in this mode.
+        required = {
+            "run.config",
+            "world.init",
+            "turn.begin",
+            "observation.recorded",
+            "policy.decision",
+            "run.end",
+        }
+        source_count = sum(
+            bool(line.strip()) for line in event_path.read_text().splitlines()
+        )
+        if len(events) != source_count:
+            print("ERROR: policy episode contains invalid records")
+            return 1
+        if "message.acted_on" in types:
+            print("ERROR: legacy influence marker in route-gossip episode")
+            return 1
     missing = required - types
     if missing:
         print(f"MISSING required types: {missing}")
