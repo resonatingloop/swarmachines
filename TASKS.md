@@ -12,14 +12,14 @@ The coordinator owns routing; the ledger is the single source of truth.
 - [doing] swarmachines-b9f: PR#6 sast HIGH: freight-world integration dead code — run() never wires FreightWorld — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-bof: Fix PR #5: decouple freight-world contamination, gate peer-mute on turn, restore undeliverable — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-bpk: m9p-a: report skeleton scaffold in docs/report/ (colette keeps m9p content ownership) — owner: forge — updated: 2026-11-07T20:00Z
-- [doing] swarmachines-avf: freight world + runner integration — PR #29 dual gate PASSES at head 1c3fd50 (verifier verdict anchored gh comment 6715954075: 24/24 suite, byte-identical determinism, merge-result 0 conflicts; sast clean), merge-ready with the merge hand — owner: forge — updated: 2026-11-08T02:22Z
+- [doing] swarmachines-avf: freight world + runner integration — gate-blocker fix commit 2eadaca pushed 02:24:38Z AFTER the 1c3fd50 dual-gate PASS (02:22Z) — gates STALE at head 2eadaca; re-gate dispatched to verifier+sast; merge hand holds until verdicts anchor at 2eadaca — owner: forge — updated: 2026-11-08T02:33Z
 - [doing] swarmachines-fvn: Langfuse trace wiring: spec'd in 001-hackathon-plan, zero code refs — owner: forge — updated: 2026-11-07T20:08Z
 - [open] swarmachines-m9p: Report skeleton on official template (huddled 20:35Z, unclaimed; sequencing escalated to pug-bot) — owner: colette — updated: 2026-11-08T00:54Z
 - [open] swarmachines-956: Viewer: replay real recorded episode (day-1 checkpoint) (huddled 20:35Z, unclaimed; sequencing escalated to pug-bot) — owner: asterion — updated: 2026-11-08T00:54Z
 - [open] swarmachines-19m: Measures and comparison framing for report (huddled 20:35Z, unclaimed; sequencing escalated to pug-bot) — owner: caduceus — updated: 2026-11-08T00:54Z
 - [doing] swarmachines-mnp-load-events: load_events hardening (commits 6b51134/b8a5f1b ride PR #5 ancestry + swarmachines-mnp-load-events-hardening-clean branch; NOT PR #16 — gh-verified) — owner: forge — updated: 2026-11-07T20:57Z
 - [open] T-006: integrated freight + ring/peer-mute acceptance commit — exact zero-provider invocation, job release/completion evidence, policy fixture: received information changes a legal decision; PR #19 fix-forward now merged (89e6517), still waits on PR #6 (queued behind forge's in-flight PR#6 fixes; round stalled on owner approval — AGENTS.md edit — escalated to pug-bot) — owner: forge — updated: 2026-11-08T00:46Z
-- [open] T-007: accepted measure definitions — observable-source mapping review (huddled 01:14Z to caduceus, unclaimed) — owner: caduceus — updated: 2026-11-08T01:14Z
+- [open] T-007: accepted measure definitions — observable-source mapping review (huddled 01:14Z to caduceus; PR #31 02:26Z maps spec006 gate-3 measurements to real source fields, held for caduceus review — unclaimed) — owner: caduceus — updated: 2026-11-08T02:33Z
 - [doing] swarmachines-i3v: DEVELOPMENT.md/AGENTS.md claim stale: no committed automated test suite — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-h1m: CLAUDE.md template residue: unfilled placeholders — owner: forge — updated: 2026-11-07T20:00Z
 - [doing] swarmachines-m04: Harden viewer/evidence.js markdown escaping (U+200E/200F, U+061C bidi) — owner: forge — updated: 2026-11-07T20:00Z
