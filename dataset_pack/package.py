@@ -25,6 +25,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from runtime.runner import verify_seal
+
 _CREDENTIAL_MARKERS = (
     "ADAPTION_API_KEY",
     "adaption_api_key",
@@ -903,6 +905,26 @@ If you use this dataset, please cite the associated hackathon report.
             "passed": len(found) == 0,
         }
 
+    def verify_source_seals(self) -> dict[str, int | bool]:
+        """recompute every persisted source seal immediately before packaging."""
+        verified = 0
+        for run_dir in sorted(self.base_dir.glob("run-*")):
+            if not run_dir.is_dir():
+                continue
+            events_path = run_dir / "logs" / "events.jsonl"
+            if not events_path.exists():
+                raise ValueError(f"run is missing sealed events: {run_dir.name}")
+            events = [
+                json.loads(line)
+                for line in events_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            verify_seal(events)
+            verified += 1
+        if verified == 0:
+            raise ValueError("no sealed source runs found for packaging")
+        return {"passed": True, "runs_verified": verified}
+
     def package_all(self) -> dict[str, Any]:
         """
         Execute full packaging workflow.
@@ -918,6 +940,8 @@ If you use this dataset, please cite the associated hackathon report.
             Dict with packaging results.
         """
         import shutil
+
+        seal_check = self.verify_source_seals()
 
         # Reconcile manifest
         manifest = self.reconcile_manifest()
@@ -962,6 +986,7 @@ If you use this dataset, please cite the associated hackathon report.
             "raw_runs_shipped": len(run_dirs),
             "no_split_check": split_check,
             "no_key_check": key_check,
+            "source_seal_check": seal_check,
         }
 
 

@@ -9,6 +9,7 @@ Tests per spec (specs/001-hackathon-plan.md step 5):
 - Assert no-op path when unconfigured
 """
 
+import hashlib
 import sys
 from pathlib import Path
 
@@ -65,7 +66,8 @@ def test_trace_start_end():
 
     # Check trace has correct metadata
     trace = exporter.traces[0]
-    assert trace["id"] == "test-run-123", f"Wrong trace id: {trace['id']}"
+    expected_id = hashlib.sha256(b"test-run-123").hexdigest()
+    assert trace["metadata"]["run_id_sha256"] == expected_id
     assert trace["metadata"]["condition"] == "ring-mute"
     assert trace["metadata"]["seed"] == 42
 
@@ -380,7 +382,7 @@ def test_turnseam_runner_with_fake_exporter():
     )
 
     # Assert every turn span's parent_id == run trace id
-    trace_id = runner.run_id  # "run-seed0042"
+    trace_id = tracer.current_trace_id
     for span in turn_spans:
         assert span.get("parent_id") == trace_id, (
             f"Turn span {span['name']} has parent_id {span.get('parent_id')}, expected {trace_id}"

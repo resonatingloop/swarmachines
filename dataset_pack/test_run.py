@@ -13,7 +13,13 @@ from unittest.mock import patch
 
 import jsonschema
 
+from runtime.adaption_adapter import (
+    AdapterResponse,
+    AdapterUsage,
+    ResponseDiagnostics,
+)
 from runtime.runner import verify_seal
+from runtime.tracer import FakeExporter, TraceConfig, Tracer
 
 from .budget import BudgetExceeded, CreditBudget
 from .configs import get_task_configs
@@ -28,9 +34,25 @@ class _FakeAdapter:
 
     def chat(self, *, model: str, messages: list[dict[str, str]], **kwargs):
         type(self).calls += 1
-        return SimpleNamespace(
-            output_text=f"offline-response-{type(self).calls}",
-            usage=SimpleNamespace(input_tokens=7, output_tokens=3),
+        response = f"offline-response-{type(self).calls}"
+        return AdapterResponse(
+            model=model,
+            output_text=response,
+            usage=AdapterUsage(
+                input_tokens=7,
+                output_tokens=3,
+                total_tokens=10,
+            ),
+            latency_ms=1.0,
+            diagnostics=ResponseDiagnostics(
+                response_id_sha256="0" * 64,
+                status="completed",
+                incomplete_reason=None,
+                output_item_type_counts={"message": 1},
+                message_content_type_counts={"output_text": 1},
+                visible_response_chars=len(response),
+                model_matches_selected=True,
+            ),
             raw_response=SimpleNamespace(estimated_credits_consumed="0.00001"),
         )
 
@@ -47,6 +69,13 @@ class _FailingAdapter(_FakeAdapter):
 
 def _read_jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+
+def _fake_tracer() -> Tracer:
+    return Tracer(
+        TraceConfig(enabled=True, strict=True),
+        exporter=FakeExporter(),
+    )
 
 
 def _assert_schema(test: unittest.TestCase, events: list[dict]) -> None:
@@ -77,7 +106,13 @@ class GovernedRunCausalityTests(unittest.TestCase):
         _FakeAdapter.calls = 0
         with tempfile.TemporaryDirectory() as root:
             budget = CreditBudget("10", max_calls=8)
-            runner = GovernedRunner(root, config, dry_run=False, budget=budget)
+            runner = GovernedRunner(
+                root,
+                config,
+                dry_run=False,
+                budget=budget,
+                tracer=_fake_tracer(),
+            )
             runner.prepare()
             with patch("runtime.adaption_adapter.AdaptionAdapter", _FakeAdapter):
                 runner.submit()
@@ -113,7 +148,7 @@ class GovernedRunCausalityTests(unittest.TestCase):
             GovernedRunner(root, config, dry_run=False)
 
     def test_budget_preflight_and_stop_are_fail_closed(self):
-        budget = CreditBudget("0.004", max_calls=2)
+        budget = CreditBudget("0.008", max_calls=2)
         proof = budget.preflight(2)
         self.assertEqual(proof["planned_calls"], 2)
 
@@ -129,7 +164,13 @@ class GovernedRunCausalityTests(unittest.TestCase):
         budget = CreditBudget("10", max_calls=8)
         _FailingAdapter.calls = 0
         with tempfile.TemporaryDirectory() as root:
-            runner = GovernedRunner(root, config, dry_run=False, budget=budget)
+            runner = GovernedRunner(
+                root,
+                config,
+                dry_run=False,
+                budget=budget,
+                tracer=_fake_tracer(),
+            )
             with (
                 patch("runtime.adaption_adapter.AdaptionAdapter", _FailingAdapter),
                 self.assertRaisesRegex(RuntimeError, "synthetic provider failure"),
@@ -141,7 +182,8 @@ class GovernedRunCausalityTests(unittest.TestCase):
             calls = _read_jsonl(run_dir / "logs" / "calls.jsonl")
             self.assertEqual(metadata["status"], "failed")
             self.assertEqual(metadata["failure_type"], "RuntimeError")
-            self.assertEqual(len(calls), 1)
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(calls[-1]["categorical_error"], "provider_transport_error")
             self.assertEqual(budget.calls_completed, 1)
             self.assertEqual(budget.calls_failed, 1)
 

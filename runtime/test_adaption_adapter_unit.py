@@ -14,10 +14,34 @@ Usage:
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 # Add runtime to path
 sys.path.insert(0, str(Path(__file__).parent))
+
+
+def _mock_response(*, text: str, input_tokens: int, output_tokens: int, model: str):
+    return SimpleNamespace(
+        id="resp-fictional",
+        output_text=text,
+        output=[
+            SimpleNamespace(
+                type="message",
+                content=[SimpleNamespace(type="output_text")],
+            )
+        ],
+        status="completed",
+        incomplete_details=None,
+        usage=SimpleNamespace(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=input_tokens + output_tokens,
+            input_tokens_details=None,
+            output_tokens_details=None,
+        ),
+        model=model,
+    )
 
 
 def test_adapter_response_structure():
@@ -25,11 +49,12 @@ def test_adapter_response_structure():
     Test that adapter returns correctly structured response when SDK is mocked.
     """
     # Mock the SDK response
-    mock_response = Mock()
-    mock_response.output_text = "test response"
-    mock_response.usage.input_tokens = 10
-    mock_response.usage.output_tokens = 5
-    mock_response.model = "test-model"
+    mock_response = _mock_response(
+        text="test response",
+        input_tokens=10,
+        output_tokens=5,
+        model="test-model",
+    )
 
     mock_client = Mock()
     mock_client.responses.create.return_value = mock_response
@@ -76,11 +101,12 @@ def test_adapter_chat_interface():
     """
     Test that adapter.chat() accepts messages format correctly.
     """
-    mock_response = Mock()
-    mock_response.output_text = "chat response"
-    mock_response.usage.input_tokens = 20
-    mock_response.usage.output_tokens = 10
-    mock_response.model = "test-model"
+    mock_response = _mock_response(
+        text="chat response",
+        input_tokens=20,
+        output_tokens=10,
+        model="test-model",
+    )
 
     mock_client = Mock()
     mock_client.responses.create.return_value = mock_response
@@ -121,11 +147,12 @@ def test_adapter_uses_input_parameter():
 
     This validates the fix for the input-vs-messages API mismatch.
     """
-    mock_response = Mock()
-    mock_response.output_text = "response"
-    mock_response.usage.input_tokens = 5
-    mock_response.usage.output_tokens = 5
-    mock_response.model = "test-model"
+    mock_response = _mock_response(
+        text="response",
+        input_tokens=5,
+        output_tokens=5,
+        model="test-model",
+    )
 
     mock_client = Mock()
     mock_client.responses.create.return_value = mock_response

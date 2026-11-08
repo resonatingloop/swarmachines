@@ -1,374 +1,717 @@
-"""
-Langfuse-compatible execution tracing for swarmachines.
+"""privacy-bounded langfuse tracing for governed swarm runs."""
 
-Provides optional tracing behind --trace CLI flag and LANGFUSE_* env config.
-When unconfigured, tracing is a no-op (zero network, zero behavior change).
+from __future__ import annotations
 
-Trace shape per spec (specs/001-hackathon-plan.md step 5):
-- One trace per run (run id + condition + seed)
-- Spans nested under each agent turn (observe/exchange/act)
-- Model/tool calls as child spans with identity, latency, error, and token usage
-- Missing usage recorded as unknown, not fabricated
-- Telemetry failures are non-fatal: never alter world state, duplicate action, or fail run
-
-Langfuse data model: https://langfuse.com/docs/observability/data-model
-"""
-
+import hashlib
 import os
+import re
+import stat
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 class RunStatus(Enum):
-    """Terminal run states per spec."""
-
     COMPLETED = "completed"
     FAILED = "failed"
     BUDGET_STOPPED = "budget-stopped"
     CANCELLED = "cancelled"
 
 
-@dataclass
-class TraceConfig:
-    """Configuration for tracing."""
+class TelemetryFailure(RuntimeError):
+    """a strict trace operation failed and the live batch must stop."""
 
+
+@dataclass(frozen=True)
+class TraceConfig:
     enabled: bool = False
-    public_key: str | None = None
-    secret_key: str | None = None
-    host: str | None = None
+    public_key: str | None = field(default=None, repr=False)
+    secret_key: str | None = field(default=None, repr=False)
+    base_url: str | None = None
     run_id: str | None = None
     condition: str | None = None
     seed: int | None = None
+    strict: bool = False
+    release: str = "uncommitted"
+    environment: str = "task10"
 
     @classmethod
-    def from_env(
+    def from_file(
         cls,
-        run_id: str | None = None,
-        condition: str | None = None,
-        seed: int | None = None,
-    ) -> "TraceConfig":
-        """Build config from environment variables."""
-        enabled = os.environ.get("LANGFUSE_ENABLED", "").lower() == "true"
-        # Also enable if --trace flag was used (passed via env)
-        if os.environ.get("TRACE_ENABLED", "").lower() == "true":
-            enabled = True
+        path: str | Path,
+        *,
+        release: str,
+        strict: bool = True,
+    ) -> TraceConfig:
+        """load a private credentials file without changing process environment."""
+        credential_path = Path(path)
+        metadata = credential_path.lstat()
+        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
+            raise ValueError("langfuse credential path must be a regular non-symlink file")
+        if metadata.st_uid != os.getuid():
+            raise PermissionError("langfuse credential file must be owned by this user")
+        if stat.S_IMODE(metadata.st_mode) & 0o077:
+            raise PermissionError("langfuse credential file must have mode 0600 or stricter")
+
+        values: dict[str, str] = {}
+        for raw_line in credential_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            key, separator, value = line.partition("=")
+            if not separator or key not in {
+                "LANGFUSE_PUBLIC_KEY",
+                "LANGFUSE_SECRET_KEY",
+                "LANGFUSE_BASE_URL",
+            }:
+                raise ValueError("langfuse credential file has an invalid field")
+            if key in values or not value.strip():
+                raise ValueError("langfuse credential file has a duplicate or empty field")
+            values[key] = value.strip()
+
+        required = {
+            "LANGFUSE_PUBLIC_KEY",
+            "LANGFUSE_SECRET_KEY",
+            "LANGFUSE_BASE_URL",
+        }
+        if set(values) != required:
+            raise ValueError("langfuse credential file is incomplete")
+        parsed = urlparse(values["LANGFUSE_BASE_URL"])
+        if parsed.scheme != "https" or not parsed.hostname or parsed.username:
+            raise ValueError("langfuse base url must be an https origin")
+        if parsed.query or parsed.fragment:
+            raise ValueError("langfuse base url must not contain query or fragment")
 
         return cls(
-            enabled=enabled,
-            public_key=os.environ.get("LANGFUSE_PUBLIC_KEY"),
-            secret_key=os.environ.get("LANGFUSE_SECRET_KEY"),
-            host=os.environ.get("LANGFUSE_HOST"),
-            run_id=run_id,
-            condition=condition,
-            seed=seed,
+            enabled=True,
+            public_key=values["LANGFUSE_PUBLIC_KEY"],
+            secret_key=values["LANGFUSE_SECRET_KEY"],
+            base_url=values["LANGFUSE_BASE_URL"].rstrip("/"),
+            strict=strict,
+            release=release,
         )
 
 
-@dataclass
-class SpanContext:
-    """Context for a span being built."""
-
-    id: str
-    name: str
-    start_time: datetime
-    parent_id: str | None = None
-    metadata: dict = field(default_factory=dict)
-    usage: dict | None = None
-    error: str | None = None
-
-
 class FakeExporter:
-    """
-    In-memory exporter for testing.
-    Captures trace events without network calls.
-    """
+    """zero-network trace sink used by offline proofs."""
 
     def __init__(self):
-        self.traces: list[dict] = []
-        self.spans: list[dict] = []
-        self.errors: list[dict] = []
+        self.traces: list[dict[str, Any]] = []
+        self.spans: list[dict[str, Any]] = []
+        self.generations: list[dict[str, Any]] = []
+        self.errors: list[dict[str, Any]] = []
+        self.flush_count = 0
+        self.fail_flush = False
 
-    def trace(self, trace_data: dict) -> None:
-        """Record a trace."""
+    def trace(self, trace_data: dict[str, Any]) -> None:
         self.traces.append(trace_data)
 
-    def span(self, span_data: dict) -> None:
-        """Record a span."""
+    def span(self, span_data: dict[str, Any]) -> None:
         self.spans.append(span_data)
 
-    def error(self, error_data: dict) -> None:
-        """Record an error."""
+    def generation(self, generation_data: dict[str, Any]) -> None:
+        self.generations.append(generation_data)
+
+    def error(self, error_data: dict[str, Any]) -> None:
         self.errors.append(error_data)
 
+    def flush(self) -> None:
+        self.flush_count += 1
+        if self.fail_flush:
+            raise RuntimeError("synthetic flush failure")
+
     def clear(self) -> None:
-        """Clear all recorded events."""
         self.traces.clear()
         self.spans.clear()
+        self.generations.clear()
         self.errors.clear()
+        self.flush_count = 0
 
-    def get_spans_by_parent(self, parent_id: str | None) -> list[dict]:
-        """Get all spans with a given parent."""
-        return [s for s in self.spans if s.get("parent_id") == parent_id]
+    def get_spans_by_parent(self, parent_id: str | None) -> list[dict[str, Any]]:
+        return [span for span in self.spans if span.get("parent_id") == parent_id]
 
-    def get_spans_by_name(self, name: str) -> list[dict]:
-        """Get all spans with a given name."""
-        return [s for s in self.spans if s.get("name") == name]
+    def get_spans_by_name(self, name: str) -> list[dict[str, Any]]:
+        return [span for span in self.spans if span.get("name") == name]
+
+
+class GenerationObservation:
+    """one provider call's allowlisted, metadata-only trace state."""
+
+    def __init__(
+        self,
+        *,
+        traceparent: str | None,
+        data: dict[str, Any],
+        observation: Any = None,
+    ):
+        self.traceparent = traceparent
+        self.data = data
+        self.observation = observation
+
+    def complete(
+        self,
+        *,
+        response_sha256: str | None,
+        diagnostics: dict[str, Any],
+        usage_details: dict[str, int],
+        cost_details: dict[str, float] | None,
+        latency_ms: float,
+        terminal_state: str,
+    ) -> None:
+        safe_hash = (
+            response_sha256
+            if isinstance(response_sha256, str)
+            and re.fullmatch(r"[0-9a-f]{64}", response_sha256)
+            else None
+        )
+        safe_usage = {
+            key: value
+            for key, value in usage_details.items()
+            if key
+            in {
+                "input",
+                "output",
+                "total",
+                "output_reasoning_tokens",
+                "input_cached_tokens",
+            }
+            and isinstance(value, int)
+            and not isinstance(value, bool)
+            and 0 <= value <= 100_000_000
+        }
+        safe_cost = {}
+        total_cost = (cost_details or {}).get("total")
+        if (
+            isinstance(total_cost, (int, float))
+            and not isinstance(total_cost, bool)
+            and 0 <= total_cost <= 10_000
+        ):
+            safe_cost["total"] = float(total_cost)
+        safe_latency = (
+            round(float(latency_ms), 3)
+            if isinstance(latency_ms, (int, float))
+            and not isinstance(latency_ms, bool)
+            and 0 <= latency_ms <= 3_600_000
+            else None
+        )
+        safe_terminal = (
+            terminal_state
+            if terminal_state in {"completed", "rejected", "failed"}
+            else "failed"
+        )
+        self.data.update(
+            output={"response_sha256": safe_hash},
+            metadata={
+                **self.data["metadata"],
+                **_safe_diagnostics(diagnostics),
+                "response_sha256": safe_hash,
+                "latency_ms": safe_latency,
+                "terminal_state": safe_terminal,
+            },
+            usage_details=safe_usage,
+            cost_details=safe_cost,
+        )
+        if self.observation is not None:
+            self.observation.update(
+                output=self.data["output"],
+                metadata=self.data["metadata"],
+                usage_details=safe_usage,
+                cost_details=safe_cost or None,
+            )
+
+
+def _sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _bounded_label(value: Any, *, pattern: str, maximum: int = 64) -> str:
+    if (
+        isinstance(value, str)
+        and 0 < len(value) <= maximum
+        and re.fullmatch(pattern, value)
+    ):
+        return value
+    return "other"
+
+
+def _safe_generation_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    """project caller metadata onto the finite task10 export contract."""
+    safe: dict[str, Any] = {}
+    turn = metadata.get("turn")
+    if isinstance(turn, int) and not isinstance(turn, bool) and 0 <= turn <= 100:
+        safe["turn"] = turn
+    seed = metadata.get("seed")
+    if isinstance(seed, int) and not isinstance(seed, bool) and 0 <= seed <= 2**63 - 1:
+        safe["seed"] = seed
+    if "phase" in metadata:
+        phase = metadata["phase"]
+        safe["phase"] = phase if phase in {"observe", "exchange", "act"} else "other"
+    if "agent_id" in metadata:
+        safe["agent_id"] = _bounded_label(
+            metadata["agent_id"],
+            pattern=r"[a-zA-Z0-9-]+",
+            maximum=40,
+        )
+    if "source_event_type" in metadata:
+        source = metadata["source_event_type"]
+        safe["source_event_type"] = (
+            source
+            if source in {"observation.recorded", "policy.decision"}
+            else "other"
+        )
+    if "condition" in metadata:
+        safe["condition"] = _bounded_label(
+            metadata["condition"],
+            pattern=r"[a-z,-]+",
+        )
+    if "topology" in metadata:
+        topology = metadata["topology"]
+        safe["topology"] = (
+            topology
+            if topology in {"mesh", "hub-spoke", "bidirectional-ring"}
+            else "other"
+        )
+    return safe
+
+
+def _safe_span_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    """project ordinary span metadata onto the same finite export contract."""
+    safe = _safe_generation_metadata(metadata)
+    if metadata.get("type") == "agent_turn":
+        safe["type"] = "agent_turn"
+    return safe
+
+
+def _safe_reason_category(reason: Any) -> str | None:
+    """retain only coarse terminal categories, never caller-supplied prose."""
+    if reason is None:
+        return None
+    return (
+        reason
+        if reason
+        in {
+            "budget_stopped",
+            "cancelled",
+            "provider_error",
+            "runner_error",
+            "schema_validation_error",
+            "telemetry_error",
+        }
+        else "other"
+    )
+
+
+def _safe_count_map(value: Any, allowed: set[str]) -> dict[str, int]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        key: count
+        for key, count in sorted(value.items())
+        if key in allowed
+        and isinstance(count, int)
+        and not isinstance(count, bool)
+        and 0 <= count <= 10_000
+    }
+
+
+def _safe_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
+    safe: dict[str, Any] = {}
+    response_hash = diagnostics.get("response_id_sha256")
+    safe["response_id_sha256"] = (
+        response_hash
+        if isinstance(response_hash, str)
+        and re.fullmatch(r"[0-9a-f]{64}", response_hash)
+        else None
+    )
+    status = diagnostics.get("status")
+    safe["status"] = (
+        status
+        if status
+        in {
+            "completed",
+            "incomplete",
+            "failed",
+            "cancelled",
+            "queued",
+            "in_progress",
+            "other",
+        }
+        else "other"
+    )
+    reason = diagnostics.get("incomplete_reason")
+    safe["incomplete_reason"] = (
+        reason if reason in {"max_output_tokens", "content_filter", "other"} else None
+    )
+    safe["output_item_type_counts"] = _safe_count_map(
+        diagnostics.get("output_item_type_counts"),
+        {
+            "message",
+            "reasoning",
+            "function_call",
+            "mcp_call",
+            "mcp_approval_request",
+            "mcp_list_tools",
+            "file_search_call",
+            "other",
+        },
+    )
+    safe["message_content_type_counts"] = _safe_count_map(
+        diagnostics.get("message_content_type_counts"),
+        {"output_text", "refusal", "other"},
+    )
+    visible_chars = diagnostics.get("visible_response_chars")
+    safe["visible_response_chars"] = (
+        visible_chars
+        if isinstance(visible_chars, int)
+        and not isinstance(visible_chars, bool)
+        and 0 <= visible_chars <= 10_000_000
+        else None
+    )
+    model_matches = diagnostics.get("model_matches_selected")
+    safe["model_matches_selected"] = (
+        model_matches if isinstance(model_matches, bool) else None
+    )
+    error = diagnostics.get("categorical_error")
+    safe["categorical_error"] = (
+        error
+        if error
+        in {
+            "model_mismatch",
+            "response_not_completed",
+            "empty_visible_response",
+            "malformed_usage",
+            "malformed_output_text",
+            "provider_transport_error",
+        }
+        else None
+    )
+    return safe
+
+
+def _mask_otel_spans(*, params: Any) -> Any:
+    """return v5 export-stage patches that delete raw content and errors."""
+    from langfuse.types import MaskOtelSpansResult, OtelSpanPatch
+
+    blocked_prefixes = (
+        "gen_ai.prompt",
+        "gen_ai.completion",
+        "exception.",
+        "error.",
+    )
+    blocked_exact = {
+        "langfuse.observation.input",
+        "langfuse.observation.output",
+        "langfuse.observation.status_message",
+    }
+    patches = {}
+    for identifier, span in params.spans.items():
+        delete_attributes = tuple(
+            key
+            for key in span.attributes
+            if key in blocked_exact or key.startswith(blocked_prefixes)
+        )
+        if delete_attributes:
+            patches[identifier] = OtelSpanPatch(
+                delete_attributes=delete_attributes,
+                set_attributes={"swarmachines.masking_applied": True},
+            )
+    return MaskOtelSpansResult(span_patches=patches)
 
 
 class Tracer:
-    """
-    Langfuse-compatible tracer.
+    """current-sdk tracing with strict task10 failure semantics."""
 
-    When not configured (no keys), all methods are no-ops.
-    When configured, uses Langfuse SDK or fake exporter for tests.
-    """
-
-    def __init__(self, config: TraceConfig, exporter: FakeExporter | None = None):
+    def __init__(
+        self,
+        config: TraceConfig,
+        exporter: FakeExporter | None = None,
+        *,
+        client: Any | None = None,
+    ):
         self.config = config
-        self.exporter = exporter  # Fake exporter for tests
-        self._client = None
-        self._current_trace = None
+        self.exporter = exporter
+        self._client = client
+        self._initialized = client is not None
         self._current_trace_id: str | None = None
-        self._span_stack: list[SpanContext] = []
-        self._telemetry_errors: list[dict] = []
-        self._initialized = False
+        self._root_context: Any = None
+        self._root_observation: Any = None
+        self._telemetry_errors: list[dict[str, Any]] = []
+
+    def _failure(self, category: str, error: BaseException | None = None) -> None:
+        record = {
+            "type": category,
+            "time": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        }
+        self._telemetry_errors.append(record)
+        if self.exporter is not None:
+            self.exporter.error(record)
+        if self.config.strict:
+            raise TelemetryFailure(category) from error
 
     def _try_init(self) -> bool:
-        """Try to initialize the Langfuse client. Returns True if successful."""
         if not self.config.enabled:
             return False
-
         if self._initialized:
-            # Already initialized: success if we have either a real client or fake exporter
             return self._client is not None or self.exporter is not None
-
         self._initialized = True
-
-        # If using fake exporter (tests), no real client needed
         if self.exporter is not None:
             return True
-
-        # Try to import and initialize Langfuse
-        if not self.config.public_key or not self.config.secret_key:
+        if not (
+            self.config.public_key
+            and self.config.secret_key
+            and self.config.base_url
+        ):
+            self._failure("trace_config_incomplete")
             return False
-
         try:
             from langfuse import Langfuse
 
             self._client = Langfuse(
                 public_key=self.config.public_key,
                 secret_key=self.config.secret_key,
-                host=self.config.host,
+                base_url=self.config.base_url,
+                release=self.config.release,
+                environment=self.config.environment,
+                mask_otel_spans=_mask_otel_spans,
             )
-            return True
-        except Exception:  # noqa: BLE001
-            # Telemetry failure: log and continue as no-op
-            self._telemetry_errors.append(
-                {
-                    "type": "init_failed",
-                    "time": datetime.now(UTC).isoformat() + "Z",
-                }
-            )
+        except Exception as error:  # noqa: BLE001
+            self._failure("trace_init_failed", error)
             return False
+        return True
+
+    @property
+    def current_trace_id(self) -> str | None:
+        return self._current_trace_id
 
     def start_trace(
         self, run_id: str, condition: str | None = None, seed: int | None = None
     ) -> None:
-        """
-        Start a new trace for a run.
-
-        Per spec: one trace per run (run id + condition + seed).
-        """
-        # Store the trace id for child spans to reference
-        self._current_trace_id = run_id
-
         if not self._try_init():
             return
-
-        trace_data = {
-            "id": run_id,
-            "name": f"swarmachines-run-{run_id}",
-            "metadata": {
-                "condition": condition,
-                "seed": seed,
-                "type": "run",
-            },
-            "input": {
-                "run_id": run_id,
-                "condition": condition,
-                "seed": seed,
-            },
+        self._current_trace_id = (
+            _sha256_text(f"swarmachines:{run_id}")[:32]
+            if self.exporter is not None
+            else self._client.create_trace_id(seed=f"swarmachines:{run_id}")
+        )
+        metadata = {
+            "run_id_sha256": _sha256_text(run_id),
+            "condition": _bounded_label(condition, pattern=r"[a-z,-]+")
+            if condition is not None
+            else None,
+            "seed": seed
+            if isinstance(seed, int)
+            and not isinstance(seed, bool)
+            and 0 <= seed <= 2**63 - 1
+            else None,
+            "type": "run",
+            "schema_version": "task10-observability-v1",
         }
-
         try:
-            if self.exporter:
-                self.exporter.trace(trace_data)
-            elif self._client:
-                self._current_trace = self._client.trace(**trace_data)
-        except Exception as e:  # noqa: BLE001
-            # Telemetry failure: non-fatal, log and continue
-            self._telemetry_errors.append(
-                {
-                    "type": "trace_start_failed",
-                    "time": datetime.now(UTC).isoformat() + "Z",
-                    "error": str(type(e).__name__),
-                }
-            )
-
-    def end_trace(self, status: RunStatus, reason: str | None = None) -> None:
-        """
-        End the current trace with terminal status.
-
-        Per spec: finish runs as completed/failed/budget-stopped/cancelled with a reason.
-        """
-        if not self._try_init():
-            return
-
-        output_data = {
-            "status": status.value,
-            "reason": reason,
-            "telemetry_errors": len(self._telemetry_errors),
-        }
-
-        try:
-            if self.exporter:
+            if self.exporter is not None:
                 self.exporter.trace(
                     {
-                        "id": self.config.run_id,
-                        "output": output_data,
+                        "id": metadata["run_id_sha256"],
+                        "trace_id": self._current_trace_id,
+                        "metadata": metadata,
                     }
                 )
-            elif self._current_trace:
-                self._current_trace.update(output=output_data)
-                self._current_trace.end()
-        except Exception as e:  # noqa: BLE001
-            # Telemetry failure: non-fatal
-            self._telemetry_errors.append(
-                {
-                    "type": "trace_end_failed",
-                    "time": datetime.now(UTC).isoformat() + "Z",
-                    "error": str(type(e).__name__),
-                }
+                return
+            self._root_context = self._client.start_as_current_observation(
+                as_type="span",
+                name="swarmachines-run",
+                trace_context={"trace_id": self._current_trace_id},
+                input={"run_id_sha256": metadata["run_id_sha256"]},
+                metadata=metadata,
             )
+            self._root_observation = self._root_context.__enter__()
+        except Exception as error:  # noqa: BLE001
+            self._failure("trace_start_failed", error)
+
+    def end_trace(self, status: RunStatus, reason: str | None = None) -> None:
+        if not self.config.enabled:
+            return
+        output = {
+            "status": status.value,
+            "reason_category": _safe_reason_category(reason),
+            "telemetry_error_count": len(self._telemetry_errors),
+        }
+        try:
+            if self.exporter is not None:
+                self.exporter.trace({"id": self._current_trace_id, "output": output})
+            elif self._root_observation is not None:
+                self._root_observation.update(output=output)
+            if self._root_context is not None:
+                self._root_context.__exit__(None, None, None)
+        except Exception as error:  # noqa: BLE001
+            self._failure("trace_end_failed", error)
+        finally:
+            self._root_context = None
+            self._root_observation = None
+        self.flush()
 
     @contextmanager
     def span(
         self, name: str, parent_id: str | None = None, metadata: dict | None = None
     ):
-        """
-        Create a span with automatic timing.
-
-        Usage:
-            with tracer.span("observe", metadata={"agent_id": "a"}):
-                # do work
-        """
         if not self._try_init():
             yield
             return
-
-        start_time = datetime.now(UTC)
-        span_data = {
-            "name": name,
-            "start_time": start_time,
-            "parent_id": parent_id,
-            "metadata": metadata or {},
-        }
-
-        langfuse_span = None
+        safe_metadata = _safe_span_metadata(metadata or {})
+        started = datetime.now(UTC)
+        observation_context = None
         try:
-            if self.exporter:
-                # Fake exporter: record span start
-                pass
-            elif self._current_trace:
-                langfuse_span = self._current_trace.span(
+            if self.exporter is None:
+                observation_context = self._client.start_as_current_observation(
+                    as_type="span",
                     name=name,
-                    parent_id=parent_id,
-                    metadata=metadata or {},
+                    metadata=safe_metadata,
                 )
-        except Exception as e:  # noqa: BLE001
-            # Telemetry failure: non-fatal, continue without tracing
-            self._telemetry_errors.append(
-                {
-                    "type": "span_start_failed",
-                    "name": name,
-                    "time": datetime.now(UTC).isoformat() + "Z",
-                    "error": str(type(e).__name__),
-                }
-            )
+                observation_context.__enter__()
             yield
-            return
-
-        try:
-            yield
-        except Exception as e:
-            # Record error in span
-            if langfuse_span:
-                try:
-                    langfuse_span.end(
-                        level="ERROR",
-                        status_message=str(e),
-                    )
-                except Exception:  # noqa: BLE001, S110
-                    pass
-            self._telemetry_errors.append(
-                {
-                    "type": "span_error",
-                    "name": name,
-                    "time": datetime.now(UTC).isoformat() + "Z",
-                    "error": str(e),
-                }
-            )
+        except BaseException as error:
+            if observation_context is not None:
+                observation_context.__exit__(type(error), error, error.__traceback__)
             raise
         else:
-            # Success: end span with timing
-            end_time = datetime.now(UTC)
-            duration_ms = (end_time - start_time).total_seconds() * 1000
-
-            span_data["end_time"] = end_time
-            span_data["duration_ms"] = duration_ms
-
-            try:
-                if self.exporter:
-                    self.exporter.span(span_data)
-                elif langfuse_span:
-                    langfuse_span.end()
-            except Exception as e:  # noqa: BLE001
-                self._telemetry_errors.append(
+            if self.exporter is not None:
+                ended = datetime.now(UTC)
+                self.exporter.span(
                     {
-                        "type": "span_end_failed",
                         "name": name,
-                        "time": datetime.now(UTC).isoformat() + "Z",
-                        "error": str(type(e).__name__),
+                        "parent_id": parent_id,
+                        "metadata": safe_metadata,
+                        "start_time": started,
+                        "end_time": ended,
+                        "duration_ms": (ended - started).total_seconds() * 1000,
                     }
                 )
-
-    @property
-    def current_trace_id(self) -> str | None:
-        """Return the current trace id (set by start_trace)."""
-        return self._current_trace_id
+            elif observation_context is not None:
+                observation_context.__exit__(None, None, None)
 
     @contextmanager
     def turn_span(
         self, turn: int, phase: str, agent_id: str, parent_id: str | None = None
     ):
-        """
-        Create a span for an agent turn phase (observe/exchange/act).
-
-        Per spec: nest model/tool observations under agent turns grouped by episode/run reference.
-        """
-        span_name = f"turn-{turn}-{phase}"
-        metadata = {
-            "turn": turn,
-            "phase": phase,
-            "agent_id": agent_id,
-            "type": "agent_turn",
-        }
-
-        with self.span(span_name, parent_id=parent_id, metadata=metadata):
+        with self.span(
+            f"turn-{turn}-{phase}",
+            parent_id=parent_id,
+            metadata={
+                "turn": turn,
+                "phase": phase,
+                "agent_id": agent_id,
+                "type": "agent_turn",
+            },
+        ):
             yield
+
+    @contextmanager
+    def generation(
+        self,
+        *,
+        call_id: str,
+        model_id: str,
+        prompt: str,
+        metadata: dict[str, Any],
+    ):
+        """create one generation and flush it before another provider call."""
+        if not self._try_init():
+            yield GenerationObservation(
+                traceparent=None,
+                data={"metadata": dict(metadata)},
+            )
+            return
+        safe_metadata = {
+            **_safe_generation_metadata(metadata),
+            "call_id_sha256": _sha256_text(call_id),
+            "prompt_sha256": _sha256_text(prompt),
+        }
+        data: dict[str, Any] = {
+            "name": "swarmachines-model-call",
+            "model": model_id,
+            "input": {"prompt_sha256": safe_metadata["prompt_sha256"]},
+            "metadata": safe_metadata,
+        }
+        observation_context = None
+        observation = None
+        try:
+            if self.exporter is None:
+                observation_context = self._client.start_as_current_observation(
+                    as_type="generation",
+                    name=data["name"],
+                    model=model_id,
+                    input=data["input"],
+                    metadata=safe_metadata,
+                )
+                observation = observation_context.__enter__()
+        except Exception as error:  # noqa: BLE001
+            self._failure("generation_start_failed", error)
+
+        trace_id = self._current_trace_id or _sha256_text("missing-trace")[:32]
+        if self.exporter is not None:
+            observation_id = _sha256_text(call_id)[:16]
+        else:
+            observation_id = self._client.get_current_observation_id()
+        traceparent = (
+            f"00-{trace_id}-{observation_id}-01"
+            if isinstance(observation_id, str)
+            and len(trace_id) == 32
+            and len(observation_id) == 16
+            else None
+        )
+        capture = GenerationObservation(
+            traceparent=traceparent,
+            data=data,
+            observation=observation,
+        )
+        pending_error: BaseException | None = None
+        pending_traceback = None
+        try:
+            yield capture
+        except BaseException as error:  # noqa: BLE001 - preserve user interruption evidence
+            pending_error = error
+            pending_traceback = error.__traceback__
+            if "output" not in data:
+                data.update(
+                    output={"response_sha256": None},
+                    metadata={
+                        **data["metadata"],
+                        "categorical_error": "provider_call_exception",
+                        "terminal_state": "failed",
+                    },
+                    usage_details={},
+                    cost_details={},
+                )
+                if observation is not None:
+                    observation.update(
+                        output=data["output"],
+                        metadata=data["metadata"],
+                    )
+
+        export_error: BaseException | None = None
+        try:
+            if self.exporter is not None:
+                self.exporter.generation(data)
+            elif observation_context is not None:
+                observation_context.__exit__(None, None, None)
+            self.flush()
+        except TelemetryFailure as error:
+            export_error = error
+        except Exception as error:  # noqa: BLE001
+            try:
+                self._failure("generation_export_failed", error)
+            except TelemetryFailure as categorized:
+                export_error = categorized
+            else:
+                export_error = error
+
+        if pending_error is not None:
+            raise pending_error.with_traceback(pending_traceback)
+        if export_error is not None:
+            raise export_error
 
     def record_model_call(
         self,
@@ -379,68 +722,20 @@ class Tracer:
         latency_ms: float | None = None,
         error: str | None = None,
     ) -> None:
-        """
-        Record a model call as a child span with usage data.
-
-        Per spec: record identity, timing, errors, and usage; missing usage remains unknown.
-        """
-        if not self._try_init():
-            return
-
-        # Per spec: missing usage recorded as unknown, not fabricated
         usage = {
             "prompt_tokens": prompt_tokens if prompt_tokens is not None else "unknown",
-            "completion_tokens": completion_tokens
-            if completion_tokens is not None
-            else "unknown",
+            "completion_tokens": (
+                completion_tokens if completion_tokens is not None else "unknown"
+            ),
             "total_tokens": total_tokens if total_tokens is not None else "unknown",
         }
-
-        metadata = {
-            "model_id": model_id,
-            "type": "model_call",
-            "latency_ms": latency_ms,
-        }
-
-        span_data = {
-            "name": f"model:{model_id}",
-            "metadata": metadata,
-            "usage": usage,
-            "error": error,
-        }
-
-        try:
-            if self.exporter:
-                self.exporter.span(span_data)
-            elif self._current_trace:
-                span = self._current_trace.span(
-                    name=f"model:{model_id}",
-                    metadata=metadata,
-                )
-                # Per spec: record usage only when present, never fabricate zeros
-                # Langfuse SDK accepts None for unknown usage
-                if (
-                    prompt_tokens is not None
-                    or completion_tokens is not None
-                    or total_tokens is not None
-                ):
-                    span.usage(
-                        input=prompt_tokens,
-                        output=completion_tokens,
-                        total=total_tokens,
-                    )
-                if error:
-                    span.end(level="ERROR", status_message=error)
-                else:
-                    span.end()
-        except Exception as e:  # noqa: BLE001
-            # Telemetry failure: non-fatal
-            self._telemetry_errors.append(
+        if self.exporter is not None and self._try_init():
+            self.exporter.span(
                 {
-                    "type": "model_call_record_failed",
-                    "model_id": model_id,
-                    "time": datetime.now(UTC).isoformat() + "Z",
-                    "error": str(type(e).__name__),
+                    "name": f"model:{model_id}",
+                    "metadata": {"model_id": model_id, "type": "model_call", "latency_ms": latency_ms},
+                    "usage": usage,
+                    "error": error,
                 }
             )
 
@@ -452,65 +747,33 @@ class Tracer:
         latency_ms: float | None = None,
         error: str | None = None,
     ) -> None:
-        """
-        Record a tool call as a child span.
-
-        Per spec: record identity, timing, errors.
-        """
-        if not self._try_init():
-            return
-
-        metadata = {
-            "tool_name": tool_name,
-            "type": "tool_call",
-            "latency_ms": latency_ms,
-            "args": args,
-        }
-
-        span_data = {
-            "name": f"tool:{tool_name}",
-            "metadata": metadata,
-            "error": error,
-        }
-
-        try:
-            if self.exporter:
-                self.exporter.span(span_data)
-            elif self._current_trace:
-                span = self._current_trace.span(
-                    name=f"tool:{tool_name}",
-                    metadata=metadata,
-                )
-                if error:
-                    span.end(level="ERROR", status_message=error)
-                else:
-                    span.end()
-        except Exception as e:  # noqa: BLE001
-            # Telemetry failure: non-fatal
-            self._telemetry_errors.append(
+        if self.exporter is not None and self._try_init():
+            self.exporter.span(
                 {
-                    "type": "tool_call_record_failed",
-                    "tool_name": tool_name,
-                    "time": datetime.now(UTC).isoformat() + "Z",
-                    "error": str(type(e).__name__),
+                    "name": f"tool:{tool_name}",
+                    "metadata": {
+                        "tool_name": tool_name,
+                        "type": "tool_call",
+                        "latency_ms": latency_ms,
+                        "args": args,
+                    },
+                    "error": error,
                 }
             )
 
-    def get_telemetry_errors(self) -> list[dict]:
-        """Return list of telemetry errors encountered."""
-        return self._telemetry_errors.copy()
+    def get_telemetry_errors(self) -> list[dict[str, Any]]:
+        return [dict(error) for error in self._telemetry_errors]
 
     def flush(self) -> None:
-        """Flush any pending trace data."""
         if not self._try_init():
             return
-
         try:
-            if self._client:
+            if self.exporter is not None:
+                self.exporter.flush()
+            elif self._client is not None:
                 self._client.flush()
-        except Exception:  # noqa: BLE001, S110
-            # Non-fatal
-            pass
+        except Exception as error:  # noqa: BLE001
+            self._failure("trace_flush_failed", error)
 
 
 def create_tracer(
@@ -519,26 +782,11 @@ def create_tracer(
     seed: int | None = None,
     use_fake_exporter: bool = False,
 ) -> tuple[Tracer, FakeExporter | None]:
-    """
-    Create a tracer for a run.
-
-    Args:
-        run_id: Unique run identifier
-        condition: Experimental condition (e.g., "mesh", "ring-mute")
-        seed: Random seed used
-        use_fake_exporter: If True, use in-memory exporter for tests
-
-    Returns:
-        Tuple of (tracer, fake_exporter) - exporter is None if not using fake
-    """
-    config = TraceConfig.from_env(run_id=run_id, condition=condition, seed=seed)
-
-    # Enable tracing when using fake exporter (tests)
-    if use_fake_exporter:
-        config.enabled = True
-
     exporter = FakeExporter() if use_fake_exporter else None
-
-    tracer = Tracer(config, exporter=exporter)
-
-    return tracer, exporter
+    config = TraceConfig(
+        enabled=use_fake_exporter,
+        run_id=run_id,
+        condition=condition,
+        seed=seed,
+    )
+    return Tracer(config, exporter=exporter), exporter

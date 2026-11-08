@@ -1,8 +1,8 @@
 # swarmachines / status
 
 > continuity role: operational checkpoint
-> status: event-log seal merged to master (PR #46, fabrication-detectable logs); formal protocol accepted; seed-42 pair recorded; report synthesis pending
-> last verified: 2026-11-08 (checkpoint merge window through 08:45Z; query origin/master for the current tip)
+> status: task10 response/langfuse repair implemented offline on candidate branch; exact-head review and every external call remain gated
+> last verified: 2026-11-08 (offline candidate based on origin/master; query the remote before integration)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
 
@@ -68,6 +68,11 @@ experimental batch or provider calls.
 
 ## working now
 
+- task10 repair candidate: 4,096-token visible-response mode, bounded response
+  diagnostics, fail-closed empty/incomplete handling, langfuse 5.x generations
+  with hashes-only export and strict flush, explicit private credential-file
+  loading, one source-linked `model.call.failed` event per rejected attempt,
+  pre-seal schema validation, and pre-package seal verification
 - freight-world integration merged (PR #29 + PR #38 fix-forward); act-phase legal no-ops now correctly labeled action.committed
 - spec006 formal pair recorded (PR #39): seed-42 mesh vs ring under peer-mute:8:c with frozen manifest
 - tracing layer wired (PR #30): Langfuse-compatible tracer with --trace flag, offline default byte-identical
@@ -76,6 +81,14 @@ experimental batch or provider calls.
 
 ## incomplete or broken
 
+- task10 external proof is intentionally unrun: no langfuse authentication,
+  synthetic trace, adaption diagnostic call, continuation of runs 005–015,
+  packaging, upload, or publication is authorized by the offline candidate
+- task10 exact-head independent review is pending a commit/push/pr gate; pr #75
+  is a separate implementation and is not the accepted candidate described here
+- local beads writes are blocked by a project-id mismatch between workspace
+  metadata and the authoritative database; the existing board remains readable
+  and no bootstrap, fix, init, or sync was attempted
 - report content pending (colette owns; skeleton ready, drafting unstarted)
 - measures framing (T-007 / swarmachines-19m): accepted measure definitions — observable-source mapping review unclaimed
 - regression test gap (swarmachines-oe3): act-phase fix needs discriminating test (FAILS on pre-#38, PASSES on master)
@@ -83,6 +96,9 @@ experimental batch or provider calls.
 
 ## active work
 
+- swarmachines-y24: offline implementation is on branch
+  `asterion/langfuse-response-repair`; the full python suite and ruff pass in
+  an isolated environment, while the publication/review gate remains pending
 - pug reports the prior integration/data/pair sequence complete after #38; report synthesis is the next main deliverable. follow-up regression coverage and measurement interpretation remain explicit work below
 - report content: colette owns; skeleton in docs/report/ ready for drafting (deadline: Sunday Nov 8, 11:59 PM AoE)
 - T-007: measure definitions review — huddled 01:14Z to caduceus, unclaimed
@@ -90,7 +106,12 @@ experimental batch or provider calls.
 
 ## next useful action
 
-colette drafts report prose from `docs/report/report-skeleton.md`. use the recorded pair in `runs/spec006/` and reconciled job measures as evidence, keeping the single scripted scenario, absent no-mute control, and unestablished coordination benefit explicit. describe runtime/tracing as methods and the generated data pack as seed material, not experimental results. coordinate measures framing and the discriminating no-op regression test with their current beads owners before claiming either task.
+obtain the explicit publication gate for the isolated task10 candidate, then
+commit and push only its reviewed files, open a pr, and ask caduceus for
+independent review at the exact sha. after that review passes, return to the
+owner for the separately gated langfuse authentication check and fictional
+metadata-only synthetic trace. do not infer authority for an adaption call,
+runs 005–015, packaging, upload, publication, or merge.
 
 ## re-entry notes
 

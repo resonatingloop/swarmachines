@@ -26,7 +26,7 @@ class CreditBudget:
     OUTPUT_CREDITS_PER_MILLION = Decimal("0.50")
     MAX_PROMPT_BYTES = 8192
     WRAPPER_TOKEN_ALLOWANCE = 4096
-    MAX_OUTPUT_TOKENS = 256
+    MAX_OUTPUT_TOKENS = 4096
 
     def __init__(self, ceiling_credits: str, max_calls: int):
         ceiling = Decimal(ceiling_credits)
@@ -112,6 +112,26 @@ class CreditBudget:
             raise BudgetExceeded("provider charge exceeded the pre-call reservation")
         self.credits_accounted += accounted
         self.calls_completed += 1
+        return accounted
+
+    def finish_failed(
+        self,
+        reservation: Reservation,
+        *,
+        input_tokens: int,
+        output_tokens: int,
+        provider_credits: Any = None,
+    ) -> Decimal:
+        """account a paid but analytically rejected response without retrying it."""
+        if output_tokens > self.MAX_OUTPUT_TOKENS:
+            raise BudgetExceeded("provider exceeded the bounded output envelope")
+        token_cost = self._token_cost(input_tokens, output_tokens)
+        provider_cost = self._provider_credit(provider_credits)
+        accounted = max(token_cost, provider_cost or Decimal(0))
+        if accounted > reservation.credits:
+            raise BudgetExceeded("provider charge exceeded the pre-call reservation")
+        self.credits_accounted += accounted
+        self.calls_failed += 1
         return accounted
 
     def fail(self, reservation: Reservation) -> None:

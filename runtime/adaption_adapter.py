@@ -1,180 +1,255 @@
-#!/usr/bin/env python3
-"""
-Adaption provider adapter for swarmachines.
+"""bounded adaption responses-api adapter for governed swarm runs."""
 
-Provides a thin wrapper around the Adaption SDK for model inference calls.
-Reads ADAPTION_API_KEY from environment; never prints or logs the key.
+from __future__ import annotations
 
-Usage:
-    from adaption_adapter import AdaptionAdapter
-
-    adapter = AdaptionAdapter()
-    response = adapter.chat(
-        model="glm-53-flash",
-        messages=[{"role": "user", "content": "Hello"}],
-    )
-    print(response.output_text)
-    print(f"Latency: {response.latency_ms:.2f}ms")
-    print(f"Tokens: {response.usage.input_tokens} + {response.usage.output_tokens}")
-"""
-
+import hashlib
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
+MAX_TOKEN_COUNT = 100_000_000
+ALLOWED_STATUSES = {
+    "completed",
+    "incomplete",
+    "failed",
+    "cancelled",
+    "queued",
+    "in_progress",
+}
+ALLOWED_INCOMPLETE_REASONS = {"max_output_tokens", "content_filter"}
+ALLOWED_OUTPUT_TYPES = {
+    "message",
+    "reasoning",
+    "function_call",
+    "mcp_call",
+    "mcp_approval_request",
+    "mcp_list_tools",
+    "file_search_call",
+}
+ALLOWED_CONTENT_TYPES = {"output_text", "refusal"}
 
-@dataclass
+
+class ResponseContractError(RuntimeError):
+    """a provider response cannot become an analytically complete call."""
+
+    def __init__(self, category: str, diagnostics: ResponseDiagnostics):
+        super().__init__(category)
+        self.category = category
+        self.diagnostics = diagnostics
+
+
+class ResponseShapeError(ResponseContractError):
+    """the provider response does not match the bounded local contract."""
+
+
+class IncompleteResponseError(ResponseContractError):
+    """the provider returned no acceptable visible answer."""
+
+
+def _get(value: Any, name: str, default: Any = None) -> Any:
+    if isinstance(value, dict):
+        return value.get(name, default)
+    return getattr(value, name, default)
+
+
+def _bounded_int(value: Any, field_name: str, *, required: bool = True) -> int | None:
+    if value is None and not required:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"invalid_{field_name}")
+    if value < 0 or value > MAX_TOKEN_COUNT:
+        raise ValueError(f"invalid_{field_name}")
+    return value
+
+
+def _allowlisted(value: Any, allowed: set[str]) -> str:
+    return value if isinstance(value, str) and value in allowed else "other"
+
+
+def _count_types(items: Any, allowed: set[str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    if not isinstance(items, (list, tuple)):
+        return counts
+    for item in items:
+        item_type = _allowlisted(_get(item, "type"), allowed)
+        counts[item_type] = counts.get(item_type, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+@dataclass(frozen=True)
 class AdapterUsage:
-    """Token usage from a model response."""
+    """validated token usage from a model response."""
 
     input_tokens: int
     output_tokens: int
     total_tokens: int
+    reasoning_tokens: int | None = None
+    cached_input_tokens: int | None = None
+
+
+@dataclass
+class ResponseDiagnostics:
+    """bounded, allowlisted provider evidence safe for local persistence."""
+
+    response_id_sha256: str | None
+    status: str
+    incomplete_reason: str | None
+    output_item_type_counts: dict[str, int] = field(default_factory=dict)
+    message_content_type_counts: dict[str, int] = field(default_factory=dict)
+    visible_response_chars: int = 0
+    model_matches_selected: bool = False
+    categorical_error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass
 class AdapterResponse:
-    """Normalized response from the Adaption adapter."""
+    """normalized response with raw payload retained in memory only."""
 
     model: str
     output_text: str
     usage: AdapterUsage
     latency_ms: float
-    raw_response: Any
+    diagnostics: ResponseDiagnostics
+    raw_response: Any = field(repr=False)
+
+    def validate_complete(self) -> None:
+        if not self.diagnostics.model_matches_selected:
+            self.diagnostics.categorical_error = "model_mismatch"
+            raise IncompleteResponseError("model_mismatch", self.diagnostics)
+        if self.diagnostics.status != "completed":
+            self.diagnostics.categorical_error = "response_not_completed"
+            raise IncompleteResponseError("response_not_completed", self.diagnostics)
+        if not self.output_text.strip():
+            self.diagnostics.categorical_error = "empty_visible_response"
+            raise IncompleteResponseError("empty_visible_response", self.diagnostics)
 
 
 class AdaptionAdapter:
-    """
-    Adaption provider adapter for swarmachines.
+    """single-attempt, bounded-time adapter for the documented responses api."""
 
-    Wraps the Adaption SDK to provide a consistent interface for model calls.
-    Records latency, tokens, and model ID for each call.
+    def __init__(self, *, client: Any | None = None, timeout_seconds: float = 60.0):
+        if timeout_seconds <= 0 or timeout_seconds > 120:
+            raise ValueError("timeout_seconds must be in (0, 120]")
+        if client is None:
+            from adaption import Adaption
 
-    Credential contract: the API key is read from the ADAPTION_API_KEY
-    environment variable by the SDK itself. Do not pass credentials
-    as arguments. If the env var is absent, the SDK will raise its
-    own error on first use.
-    """
-
-    def __init__(self):
-        """
-        Initialize the Adaption adapter.
-
-        The SDK reads ADAPTION_API_KEY from the environment automatically.
-        No arguments are accepted — credentials must come from the environment.
-        """
-        # Lazy import: allows graceful degradation when SDK is unavailable
-        from adaption import Adaption
-
-        self._client = Adaption()
+            client = Adaption(max_retries=0, timeout=timeout_seconds)
+        self._client = client
 
     def chat(
         self,
         model: str,
         messages: list[dict[str, str]],
-        **kwargs,
+        **kwargs: Any,
     ) -> AdapterResponse:
-        """
-        Send a chat completion request to Adaption.
-
-        Args:
-            model: Model ID (e.g., "glm-53-flash", "gemma-4-26b-a4b-it").
-            messages: List of message dicts with "role" and "content" keys.
-            **kwargs: Additional parameters passed to the Adaption API.
-
-        Returns:
-            AdapterResponse with normalized output, usage, and latency.
-
-        Raises:
-            adaption.AdaptionError: If the API call fails.
-        """
+        """make exactly one request and normalize only bounded diagnostics."""
         start = time.perf_counter()
-
-        # Adaption uses 'input' parameter (not 'messages') for the prompt/messages
         response = self._client.responses.create(
             model=model,
             input=messages,
             **kwargs,
         )
-
         elapsed_ms = (time.perf_counter() - start) * 1000
+        try:
+            usage_raw = _get(response, "usage")
+            input_tokens = _bounded_int(_get(usage_raw, "input_tokens"), "input_tokens")
+            output_tokens = _bounded_int(_get(usage_raw, "output_tokens"), "output_tokens")
+            total_raw = _get(usage_raw, "total_tokens")
+            total_tokens = (
+                input_tokens + output_tokens
+                if total_raw is None
+                else _bounded_int(total_raw, "total_tokens")
+            )
+            input_details = _get(usage_raw, "input_tokens_details")
+            output_details = _get(usage_raw, "output_tokens_details")
+            cached = _bounded_int(
+                _get(input_details, "cached_tokens"),
+                "cached_input_tokens",
+                required=False,
+            )
+            reasoning = _bounded_int(
+                _get(output_details, "reasoning_tokens"),
+                "reasoning_tokens",
+                required=False,
+            )
+            if total_tokens < input_tokens + output_tokens:
+                raise ValueError("invalid_total_tokens")
+            if reasoning is not None and reasoning > output_tokens:
+                raise ValueError("invalid_reasoning_tokens")
+            if cached is not None and cached > input_tokens:
+                raise ValueError("invalid_cached_input_tokens")
+        except (TypeError, ValueError) as error:
+            diagnostics = self._diagnostics(response, model, "", "malformed_usage")
+            raise ResponseShapeError("malformed_usage", diagnostics) from error
 
-        usage = AdapterUsage(
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
-            total_tokens=response.usage.input_tokens + response.usage.output_tokens,
-        )
+        output_text = _get(response, "output_text", "")
+        if not isinstance(output_text, str):
+            diagnostics = self._diagnostics(response, model, "", "malformed_output_text")
+            raise ResponseShapeError("malformed_output_text", diagnostics)
 
+        diagnostics = self._diagnostics(response, model, output_text)
+        normalized_model = _get(response, "model")
         return AdapterResponse(
-            model=response.model,
-            output_text=response.output_text,
-            usage=usage,
+            model=model if normalized_model == model else "other",
+            output_text=output_text,
+            usage=AdapterUsage(
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens,
+                reasoning_tokens=reasoning,
+                cached_input_tokens=cached,
+            ),
             latency_ms=elapsed_ms,
+            diagnostics=diagnostics,
             raw_response=response,
         )
 
-    def simple_prompt(
-        self,
-        model: str,
-        prompt: str,
-        **kwargs,
-    ) -> AdapterResponse:
-        """
-        Send a simple text prompt to Adaption.
+    @staticmethod
+    def _diagnostics(
+        response: Any,
+        selected_model: str,
+        output_text: str,
+        categorical_error: str | None = None,
+    ) -> ResponseDiagnostics:
+        response_id = _get(response, "id")
+        response_id_hash = (
+            hashlib.sha256(response_id.encode("utf-8")).hexdigest()
+            if isinstance(response_id, str) and response_id
+            else None
+        )
+        output = _get(response, "output", [])
+        content_items: list[Any] = []
+        if isinstance(output, (list, tuple)):
+            for item in output:
+                if _get(item, "type") == "message":
+                    content = _get(item, "content", [])
+                    if isinstance(content, (list, tuple)):
+                        content_items.extend(content)
+        incomplete_details = _get(response, "incomplete_details")
+        reason_raw = _get(incomplete_details, "reason")
+        return ResponseDiagnostics(
+            response_id_sha256=response_id_hash,
+            status=_allowlisted(_get(response, "status"), ALLOWED_STATUSES),
+            incomplete_reason=(
+                _allowlisted(reason_raw, ALLOWED_INCOMPLETE_REASONS)
+                if reason_raw is not None
+                else None
+            ),
+            output_item_type_counts=_count_types(output, ALLOWED_OUTPUT_TYPES),
+            message_content_type_counts=_count_types(
+                content_items, ALLOWED_CONTENT_TYPES
+            ),
+            visible_response_chars=len(output_text),
+            model_matches_selected=_get(response, "model") == selected_model,
+            categorical_error=categorical_error,
+        )
 
-        Convenience wrapper for single-turn text completion.
-
-        Args:
-            model: Model ID.
-            prompt: Text prompt.
-            **kwargs: Additional parameters passed to the Adaption API.
-
-        Returns:
-            AdapterResponse with normalized output, usage, and latency.
-        """
+    def simple_prompt(self, model: str, prompt: str, **kwargs: Any) -> AdapterResponse:
         return self.chat(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             **kwargs,
         )
-
-
-def smoke_test() -> dict:
-    """
-    Run a smoke test against the Adaption API.
-
-    Makes a minimal call to validate connectivity and record metrics.
-    Uses the small model (gemma-4-26b-a4b-it) to minimize cost.
-
-    Returns:
-        Dict with model_id, latency_ms, input_tokens, output_tokens.
-
-    Raises:
-        adaption.AdaptionError: If the API call fails.
-    """
-    adapter = AdaptionAdapter()
-    response = adapter.simple_prompt(
-        model="gemma-4-26b-a4b-it",
-        prompt="Reply with exactly one word: hello",
-    )
-    return {
-        "model_id": response.model,
-        "latency_ms": response.latency_ms,
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-        "output_text": response.output_text,
-    }
-
-
-if __name__ == "__main__":
-    import json
-    import sys
-
-    try:
-        result = smoke_test()
-        print(json.dumps(result, indent=2))
-        sys.exit(0)
-    except Exception as e:  # noqa: BLE001 - Broad catch for __main__ entry point: surface any failure mode
-        # Broad catch for __main__ entry point: surface any failure mode
-        print(f"Smoke test failed: {e}", file=sys.stderr)
-        sys.exit(1)
