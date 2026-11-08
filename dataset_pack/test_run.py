@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from dataclasses import replace
@@ -15,6 +16,7 @@ import jsonschema
 from runtime.runner import verify_seal
 
 from .configs import get_task_configs
+from .package import find_potential_credentials
 from .run import GovernedRunner
 
 
@@ -105,6 +107,40 @@ class GovernedRunCausalityTests(unittest.TestCase):
                 if (call["prompt_full"], call["response_full"]) not in event_pairs
             ]
             self.assertEqual(unmatched, [])
+
+
+class CredentialScanTests(unittest.TestCase):
+    def test_benign_task_identifier_is_not_a_key(self):
+        with tempfile.TemporaryDirectory() as root:
+            fixture = Path(root) / "run.json"
+            fixture.write_text('{"instance_id":"task-inst-001"}', encoding="utf-8")
+            with patch.dict(os.environ, {"ADAPTION_API_KEY": ""}):
+                self.assertEqual(find_potential_credentials(Path(root)), [])
+
+    def test_credential_shaped_values_are_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            fixture = Path(root) / "record.json"
+            with patch.dict(os.environ, {"ADAPTION_API_KEY": ""}):
+                for value in (
+                    "sk-syntheticcredential123456",
+                    "hf_syntheticcredential123456",
+                    "adk_syntheticcredential123456",
+                ):
+                    with self.subTest(prefix=value[:4]):
+                        fixture.write_text(
+                            json.dumps({"token": value}), encoding="utf-8"
+                        )
+                        self.assertEqual(
+                            find_potential_credentials(Path(root)), [str(fixture)]
+                        )
+
+    def test_actual_environment_credential_is_rejected(self):
+        synthetic_credential = "synthetic-environment-credential-value"
+        with tempfile.TemporaryDirectory() as root:
+            fixture = Path(root) / "record.json"
+            fixture.write_text(synthetic_credential, encoding="utf-8")
+            with patch.dict(os.environ, {"ADAPTION_API_KEY": synthetic_credential}):
+                self.assertEqual(find_potential_credentials(Path(root)), [str(fixture)])
 
 
 if __name__ == "__main__":

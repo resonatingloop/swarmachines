@@ -1138,6 +1138,10 @@ def load_events(
     with open(schema_path) as f:
         schema = json.load(f)
 
+    validator_class = jsonschema.validators.validator_for(schema)
+    validator_class.check_schema(schema)
+    validator = validator_class(schema)
+
     events = []
     errors = []
     total_chars = 0
@@ -1168,7 +1172,7 @@ def load_events(
 
             # Validate against schema
             try:
-                jsonschema.validate(event, schema)
+                validator.validate(event)
                 events.append(event)
             except jsonschema.ValidationError:
                 # Non-echoing: do not include raw hostile data from event in error message
