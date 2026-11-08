@@ -55,15 +55,28 @@ Issues in Beads are:
 - Branch-aware issue tracking
 - Dolt-native three-way merge resolution
 
-## Get Started with Beads
+## Get Started in This Repo
 
-Try Beads in your own projects:
+The beads control files are already anchored in-repo at `.beads/`. To get oriented and sync:
+
+```bash
+# Find where beads data lives for this repo
+bd where
+
+# Pull latest beads data from the Dolt remote
+bd dolt pull
+```
+
+### Starting Beads in a Different Repo
+
+To use beads in your own projects (outside this repo):
 
 ```bash
 # Install Beads
 curl -sSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
 
-# Initialize in your repo
+# Initialize beads in your repo (NOT in swarmachines)
+cd /path/to/your/repo
 bd init
 
 # Create your first issue
