@@ -339,7 +339,9 @@ def run_e2e_test(repo_path: Path | None = None) -> dict:
         turns = 4
         disturbance = "relay-loss:2:a"
 
-        code, out = run_runner(clone_dir, seed, turns, episode_path, disturbance=disturbance)
+        code, out = run_runner(
+            clone_dir, seed, turns, episode_path, disturbance=disturbance
+        )
         if code != 0:
             results["runner_execution"] = {
                 "status": "FAIL",
@@ -356,7 +358,9 @@ def run_e2e_test(repo_path: Path | None = None) -> dict:
             results["overall"] = "FAIL"
             return results
 
-        event_count = sum(1 for line in episode_path.read_text().splitlines() if line.strip())
+        event_count = sum(
+            1 for line in episode_path.read_text().splitlines() if line.strip()
+        )
         results["runner_execution"] = {
             "status": "PASS",
             "message": f"Generated {event_count} events to {episode_path.name}",
@@ -370,7 +374,10 @@ def run_e2e_test(repo_path: Path | None = None) -> dict:
             results["overall"] = "FAIL"
             return results
 
-        results["schema_validation"] = {"status": "PASS", "message": out.split("\n")[-1]}
+        results["schema_validation"] = {
+            "status": "PASS",
+            "message": out.split("\n")[-1],
+        }
         print(f"  {results['schema_validation']['message']}")
 
         print("Step 4: Determinism check...")
