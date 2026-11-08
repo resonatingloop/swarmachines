@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """
 Pre-record data generation script for swarmachines hackathon.
-Generates prompts, scenarios, and coordination examples using Adaption API.
+Generates prompts, scenarios, and coordination examples from spec-based content - no API calls (see the provenance header below for how the shipped pack was produced).
+
+HONEST HEADER (provenance correction 2026-11-08):
+- This script generates spec-based content deterministically with no API calls (AdaptionAdapter import reserved for future governed regeneration path; not constructed in this script; shipped pack's model-generated artifacts came from the governed run logged in data/GENERATION-LOG.md)
+- The shipped data pack was produced through the governed run logged in data/GENERATION-LOG.md
+- The "0 calls" string in provenance footers applies to team-authored seeds ONLY
+- Per-file provenance values carry model id + timestamp; call numbers live in data/MANIFEST.md rows and receipt records
 """
 
 import json

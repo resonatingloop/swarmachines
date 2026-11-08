@@ -6,7 +6,7 @@
   "input_tokens": 525,
   "output_tokens": 1838,
   "total_tokens": 2363,
-  "item_path": "data/examples/ring-neighbor-routing.md",
+  "item_path": "data/runs/gen-full-20261108/artifacts/examples/ring-neighbor-routing.md",
   "kind": "example",
   "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "run_id": "gen-full-20261108"

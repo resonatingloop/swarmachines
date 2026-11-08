@@ -35,7 +35,7 @@ evidence — these are inputs, not results.
 | data/prompts/carrier_mesh.md | carrier | mesh | team-authored base, model acknowledgment in run log (call 1) |
 | data/prompts/carrier_ring.md | carrier | ring | team-authored base, model acknowledgment in run log (call 2) |
 | data/prompts/dispatcher_mesh.md | dispatcher | mesh | team-authored base, model acknowledgment in run log (call 3) |
-| data/prompts/dispatcher_ring.md | dispatcher | ring | team-authored base (0dca625), model acknowledgment in run log (call 4) |
+| data/prompts/dispatcher_ring.md | dispatcher | ring | team-authored base (3a5ff98), model acknowledgment in run log (call 4) |
 | data/prompts/observer_mesh.md | observer | mesh | team-authored base, model acknowledgment in run log (call 5) |
 | data/prompts/observer_ring.md | observer | ring | team-authored base, model acknowledgment in run log (call 6) |
 | data/prompts/relay_mesh.md | relay | mesh | team-authored base, model acknowledgment in run log (call 7) |
@@ -86,7 +86,7 @@ evidence — these are inputs, not results.
 **Run Directory**: `data/runs/gen-full-20261108/`
 
 - `logs/calls.jsonl` — complete JSONL stream (38 calls, full prompt + response per call)
-- `receipts/` — real captured receipts for calls with API responses
+- `receipts/` — 34 real captured receipts plus 4 labeled reconstructions per GENERATION-LOG.md
 - `run.json` — run manifest with totals
 
 ## Regeneration Path

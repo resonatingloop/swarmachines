@@ -6,7 +6,7 @@
   "input_tokens": 528,
   "output_tokens": 1333,
   "total_tokens": 1861,
-  "item_path": "data/examples/capacity-conflict.md",
+  "item_path": "data/runs/gen-full-20261108/artifacts/examples/capacity-conflict.md",
   "kind": "example",
   "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
   "run_id": "gen-full-20261108"

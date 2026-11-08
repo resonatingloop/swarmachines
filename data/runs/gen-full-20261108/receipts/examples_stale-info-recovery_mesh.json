@@ -10,5 +10,5 @@
   "kind": "example",
   "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T04:00:20.206829+00:00",
   "run_id": "gen-full-20261108",
-  "note": "Receipt reconstructed from calls.jsonl run log (call 37)"
+  "note": "Receipt reconstructed from calls.jsonl run log (call 35)"
 }
