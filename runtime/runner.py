@@ -21,21 +21,26 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, ClassVar
 
-from freight_world import FreightWorld
-from job_evidence import roster
-from route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select
-
 try:  # package mode: runtime/ is importable as a package
+    from .freight_world import FreightWorld  # type: ignore
+    from .job_evidence import roster  # type: ignore
+    from .route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select  # type: ignore
     from .tracer import RunStatus, TraceConfig, Tracer, create_tracer  # type: ignore
 except ImportError:  # script mode: python3 runtime/runner.py
     try:
+        from freight_world import FreightWorld  # type: ignore
+        from job_evidence import roster  # type: ignore
+        from route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select  # type: ignore
         from tracer import (  # type: ignore
             RunStatus,
             TraceConfig,
             Tracer,
             create_tracer,
         )
-    except ImportError:  # tracer module missing: tracing unavailable
+    except ImportError:  # sibling modules missing: fall back gracefully
+        FreightWorld = roster = MAX_REPORTS = POLICY = admit_report = make_report = (
+            select
+        ) = None  # type: ignore
         RunStatus = TraceConfig = Tracer = create_tracer = None  # type: ignore
 
 
@@ -1133,6 +1138,10 @@ def load_events(
     with open(schema_path) as f:
         schema = json.load(f)
 
+    validator_class = jsonschema.validators.validator_for(schema)
+    validator_class.check_schema(schema)
+    validator = validator_class(schema)
+
     events = []
     errors = []
     total_chars = 0
@@ -1163,7 +1172,7 @@ def load_events(
 
             # Validate against schema
             try:
-                jsonschema.validate(event, schema)
+                validator.validate(event)
                 events.append(event)
             except jsonschema.ValidationError:
                 # Non-echoing: do not include raw hostile data from event in error message
