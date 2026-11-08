@@ -21,6 +21,10 @@ task-submission workflow) is held for owner review with no merge request and
 zero provider calls; the delegation slice below carries a post-merge sast redo
 tracked as task t-011.
 
+spec010 session planning: [spec010](specs/010-explicit-task-submission.md) drafts explicit
+prepare/inspect/submit and post-run capture within a persistent named paid session.
+implementation and session approval are separate gates; neither has started.
+
 receipt-board slice: owner accepted [spec009](specs/009-worker-receipt-board.md)
 on 2026-11-08. optional read-only worker projection implemented; snapshot v2
 preserves v1 rendering. 48 offline tests pass, scoped ruff passes, and browser
