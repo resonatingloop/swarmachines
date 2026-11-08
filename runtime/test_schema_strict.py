@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
 """Schema validation tests for run.config and run.end events."""
 
 import json
-import jsonschema
+import sys
 from pathlib import Path
+
+import jsonschema
 
 # Load schema
 schema_path = Path(__file__).parent / "schema/events.schema.json"
@@ -137,7 +138,7 @@ if __name__ == "__main__":
     print("\n" + "=" * 50)
     if all_passed:
         print("All tests PASSED")
-        exit(0)
+        sys.exit(0)
     else:
         print("Some tests FAILED")
-        exit(1)
+        sys.exit(1)
