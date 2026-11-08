@@ -1,0 +1,13 @@
+{
+  "schema_version": "v1",
+  "call_name": "scenario_dual-disruption_ring",
+  "timestamp": "2026-11-08T03:59:08.904064+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 1244,
+  "output_tokens": 1542,
+  "total_tokens": 2786,
+  "item_path": "data/scenarios/dual-disruption-ring.json",
+  "kind": "scenario",
+  "provenance": "model-generated: gemma-4-26b-a4b-it @ 2026-11-08T03:56:35.313847+00:00",
+  "run_id": "gen-full-20261108"
+}
