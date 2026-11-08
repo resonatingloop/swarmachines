@@ -15,7 +15,7 @@
 
 ## Abstract
 
-**DRAFT** — 164 words by standard whitespace count (target 150-250).
+**DRAFT** — 193 words by standard whitespace count (target 150-250).
 
 Collective agent behaviors—coordination, role specialization, fracture, and repair—emerge at the multi-agent level and evade single-model safety tests. We present swarmachines, a reproducible testbed for studying agent collectives under disruption, with a tamper-evident turn-seam event log that records every action at the world boundary. The testbed supports scripted, zero-model-call episodes across communication topologies (fully-connected mesh, bidirectional ring) with applied disturbances (peer muting, relay loss). We report a formal topology comparison: seed-42 episodes under peer-mute:8:c (agent c muted from turn 8) show identical job completion across topologies (4/4 deliveries in both mesh and ring), with the topology signal appearing in event volume (mesh: 414 events; ring: 386 events) and message traffic patterns. The event log supports cryptographic sealing: a per-event SHA-256 chain over canonical event JSON plus a terminal run.seal record enable offline verification that no chained record was inserted, edited, or removed post-hoc. The frozen seed-42 artifacts measured in this report are legacy unsealed logs (predating the seal implementation) and measure identically but lack cryptographic verification. All runs are deterministic and replayable from the log alone. The testbed is designed for oversight research: it makes collective behaviors observable, auditable, and comparable across experimental conditions.
 
