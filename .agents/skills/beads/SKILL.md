@@ -7,6 +7,28 @@ description: Use when working in a repository that uses bd or Beads for durable 
 
 Use Beads as the shared project task system. Local plans, scratch files, and personal memories are useful, but they are not the durable source of truth for project work.
 
+## This Checkout (swarmachines) — read before any bd command
+
+- The board is an embedded-dolt store under `.beads/` (gitignored).
+  **NEVER run `bd init` here** — it wipes the board (happened twice on
+  2026-11-07). If bd errors with `database not initialized: issue_prefix
+  config is missing`, that is the known workspace-identity mismatch, not a
+  missing database — bd's own suggestion (`bd init --reinit-local`) is the
+  destructive wrong answer. The fix is:
+
+  ```bash
+  export BEADS_SKIP_IDENTITY_CHECK=1
+  ```
+
+  then retry the original command.
+- If the board looks empty, STOP: check `git log` for a stray bd-init
+  commit and tell pug-bot before recreating anything. Recovery is a
+  re-seed from `STATUS.md`, never a re-init.
+- List quirks: `bd list --all` to include closed items (the default
+  filter hides them); multi-status filters need the comma form
+  (`bd list --status open,in_progress`) — repeating `-s` silently
+  overwrites the previous value.
+
 ## First Step
 
 Run:
