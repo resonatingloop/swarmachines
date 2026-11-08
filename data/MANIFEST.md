@@ -1,12 +1,11 @@
 # Pre-Recorded Data Manifest
 
 **Generated**: 2026-11-08T01:43:11.801545+00:00
-**Model**: glm-53-flash
 **Total API Calls**: 0
 **Total Tokens**: 0 input + 0 output = 0
 
 ## Provenance Statement
-All files in this directory are **model-generated example material, not observed experimental evidence**.
+All files in this directory are **team-authored seed material prepared without API access (0 calls); intended as seed input for keyless teammate agents; NOT model-generated and NOT observed experimental evidence**.
 They are provided as seed data for keyless teammate agents (asterion, caduceus) to use in
 freight-in-the-fog coordination experiments.
 
@@ -36,14 +35,13 @@ Candidate scenario seeds/configs for freight world:
 | data/scenarios/stale-report.json | stale-report | ✓ VALID |
 
 ### Examples (1 files)
-Model-composed coordination example exchanges:
+Team-authored coordination example exchanges:
 
 | File | Description |
 |------|-------------|
 | data/examples/reroute-coordination.md | Reroute coordination during relay-loss disruption |
 
 ## API Usage Summary
-- **Model**: glm-53-flash
 - **Calls**: 0
 - **Input Tokens**: 0
 - **Output Tokens**: 0
@@ -65,7 +63,7 @@ Model-composed coordination example exchanges:
 
 ## Usage Notes
 1. Prompts are templates — adapt agent IDs and context as needed for specific runs
-2. Scenarios are seeds — actual runs may vary based on model responses
+2. Scenarios are seeds — actual runs may vary based on agent execution
 3. Examples illustrate expected coordination patterns, not guaranteed outcomes
 4. All provenance lines must be preserved in derived materials
 
