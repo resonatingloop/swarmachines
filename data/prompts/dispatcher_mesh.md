@@ -81,4 +81,4 @@ Rules:
 -
 
 ## Provenance
-model-generated via adaption (glm-53-flash, see MANIFEST.md for call details, 2026-11-08) — improves team-authored seed
+model-generated via adaption (gemma-4-26b-a4b-it, receipt: prompt_dispatcher_mesh, 2026-11-08) — improves team-authored seed

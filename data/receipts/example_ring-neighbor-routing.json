@@ -1,0 +1,13 @@
+{
+  "call_name": "example_ring-neighbor-routing",
+  "call_number": 20,
+  "timestamp": "2026-11-08T03:14:42+00:00",
+  "model": "gemma-4-26b-a4b-it",
+  "input_tokens": 193,
+  "output_tokens": 366,
+  "total_tokens": 559,
+  "item_path": "data/examples/ring-neighbor-routing.md",
+  "kind": "example exchange",
+  "provenance": "model-generated via adaption (gemma-4-26b-a4b-it, receipt: example_ring-neighbor-routing, 2026-11-08)",
+  "note": "Synthetic receipt reconstructed from gen-run.log tally; individual call metrics not preserved"
+}
