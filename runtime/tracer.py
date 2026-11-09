@@ -76,11 +76,18 @@ class TraceConfig:
                 "LANGFUSE_BASE_URL",
             }:
                 raise ValueError("langfuse credential file has an invalid field")
-            if key in values or not value.strip():
+            value = value.strip()
+            starts_quoted = value.startswith(('"', "'"))
+            ends_quoted = value.endswith(('"', "'"))
+            if starts_quoted or ends_quoted:
+                if len(value) < 2 or value[0] != value[-1]:
+                    raise ValueError("langfuse credential file has invalid quoting")
+                value = value[1:-1]
+            if key in values or not value:
                 raise ValueError(
                     "langfuse credential file has a duplicate or empty field"
                 )
-            values[key] = value.strip()
+            values[key] = value
 
         required = {
             "LANGFUSE_PUBLIC_KEY",

@@ -195,6 +195,41 @@ def test_credential_loader_is_explicit_private_and_non_symlink():
             TraceConfig.from_file(link, release="test")
 
 
+def test_credential_loader_accepts_literal_outer_quotes_only():
+    with tempfile.TemporaryDirectory() as root:
+        credential = Path(root) / "trace.token"
+        credential.write_text(
+            'LANGFUSE_BASE_URL="https://cloud.langfuse.com"\n'
+            "LANGFUSE_PUBLIC_KEY='test-public-key'\n"
+            'LANGFUSE_SECRET_KEY="test-secret-key"\n',
+            encoding="utf-8",
+        )
+        credential.chmod(0o600)
+
+        config = TraceConfig.from_file(credential, release="test")
+        assert config.base_url == "https://cloud.langfuse.com"
+        assert config.public_key == "test-public-key"
+        assert config.secret_key == "test-secret-key"
+
+        credential.write_text(
+            'LANGFUSE_BASE_URL="https://cloud.langfuse.com\n'
+            "LANGFUSE_PUBLIC_KEY='test-public-key'\n"
+            'LANGFUSE_SECRET_KEY="test-secret-key"\n',
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="invalid quoting"):
+            TraceConfig.from_file(credential, release="test")
+
+        credential.write_text(
+            'LANGFUSE_BASE_URL="https://cloud.langfuse.com"\n'
+            "LANGFUSE_PUBLIC_KEY=''\n"
+            'LANGFUSE_SECRET_KEY="test-secret-key"\n',
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="empty field"):
+            TraceConfig.from_file(credential, release="test")
+
+
 def test_generation_exports_hashes_only_and_flushes_strictly():
     exporter = FakeExporter()
     tracer = Tracer(

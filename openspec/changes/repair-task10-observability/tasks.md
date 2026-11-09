@@ -55,7 +55,7 @@
 
 ## offline evidence
 
-- `pytest -q`: 208 passed, 201 subtests passed; 42 pre-existing
+- `pytest -q`: 209 passed, 201 subtests passed; 42 pre-existing
   return-not-none warnings.
 - ruff on every changed python file: all checks passed.
 - task10 provider-free preflight: 15 instances, 1,920 planned calls, 4,096
