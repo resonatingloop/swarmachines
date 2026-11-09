@@ -92,7 +92,7 @@ def fixture(completed=None, empty=False):
             "jobs": [] if empty else [final],
             "termination": "completed",
             "horizon_turns": 16,
-            "recovery_interval_turns": 999,
+            "recovery_interval_turns": 9,
         },
     )
     return events
