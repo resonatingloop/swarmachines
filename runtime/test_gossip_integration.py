@@ -256,6 +256,50 @@ class IntegrationTests(unittest.TestCase):
         with self.assertRaises(jsonschema.ValidationError):
             jsonschema.Draft202012Validator(schema).validate(event)
 
+    def test_run_config_schema_rejects_extra_properties(self):
+        """run.config payload must not allow unknown fields."""
+        schema = json.loads(
+            (Path(__file__).parent / "schema/events.schema.json").read_text()
+        )
+        bad_event = {
+            "run_id": "test",
+            "seq": 0,
+            "turn": 0,
+            "agent_id": None,
+            "type": "run.config",
+            "ts": "2026-11-07T14:30:00Z",
+            "payload": {
+                "seed": 42,
+                "comm_topology": "mesh",
+                "delivery_config_sha": "44136fa355b3678a",
+                "disturbance_schedule": {},
+                "agents": ["a", "b"],
+                "unknown_field": "should fail",
+            },
+        }
+        with self.assertRaises(jsonschema.ValidationError):
+            jsonschema.Draft202012Validator(schema).validate(bad_event)
+
+    def test_run_end_schema_rejects_extra_properties(self):
+        """run.end payload must not allow unknown fields."""
+        schema = json.loads(
+            (Path(__file__).parent / "schema/events.schema.json").read_text()
+        )
+        bad_event = {
+            "run_id": "test",
+            "seq": 100,
+            "turn": 16,
+            "agent_id": None,
+            "type": "run.end",
+            "ts": "2026-11-07T14:33:09Z",
+            "payload": {
+                "recovery_interval_turns": 16,
+                "unknown_field": "should fail",
+            },
+        }
+        with self.assertRaises(jsonschema.ValidationError):
+            jsonschema.Draft202012Validator(schema).validate(bad_event)
+
     def test_verifier_rejects_partial_policy_file(self):
         import verify_events
 
