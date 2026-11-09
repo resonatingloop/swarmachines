@@ -113,7 +113,16 @@ class AdapterResponse:
     usage: AdapterUsage
     latency_ms: float
     diagnostics: ResponseDiagnostics
-    raw_response: Any = field(repr=False)
+    raw_response: Any = field(repr=False, default=None)
+
+    # Convenience properties for model_policy.py compatibility
+    @property
+    def status(self) -> str | None:
+        return self.diagnostics.status if self.diagnostics else None
+
+    @property
+    def incomplete_reason(self) -> str | None:
+        return self.diagnostics.incomplete_reason if self.diagnostics else None
 
     def validate_complete(self) -> None:
         if not self.diagnostics.model_matches_selected:
