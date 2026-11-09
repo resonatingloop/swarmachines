@@ -24,12 +24,34 @@ from typing import Any, ClassVar
 try:  # package mode: runtime/ is importable as a package
     from .freight_world import FreightWorld  # type: ignore
     from .job_evidence import roster  # type: ignore
+    from .model_policy import (  # type: ignore
+        ACCEPTED_MODELS,
+        MAX_CEILING_MICROCREDITS,
+        MAX_OUTPUT_TOKENS,
+        OUTPUT_CONTRACT,
+        BudgetLedger,
+        ModelActionPolicy,
+    )
+    from .model_policy import (
+        POLICY as MODEL_POLICY,
+    )
     from .route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select  # type: ignore
     from .tracer import RunStatus, TraceConfig, Tracer, create_tracer  # type: ignore
 except ImportError:  # script mode: python3 runtime/runner.py
     try:
         from freight_world import FreightWorld  # type: ignore
         from job_evidence import roster  # type: ignore
+        from model_policy import (  # type: ignore
+            ACCEPTED_MODELS,
+            MAX_CEILING_MICROCREDITS,
+            MAX_OUTPUT_TOKENS,
+            OUTPUT_CONTRACT,
+            BudgetLedger,
+            ModelActionPolicy,
+        )
+        from model_policy import (
+            POLICY as MODEL_POLICY,
+        )
         from route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select  # type: ignore
         from tracer import (  # type: ignore
             RunStatus,
@@ -41,11 +63,15 @@ except ImportError:  # script mode: python3 runtime/runner.py
         FreightWorld = roster = MAX_REPORTS = POLICY = admit_report = make_report = (
             select
         ) = None  # type: ignore
+        ACCEPTED_MODELS = MAX_CEILING_MICROCREDITS = MAX_OUTPUT_TOKENS = (
+            OUTPUT_CONTRACT
+        ) = BudgetLedger = ModelActionPolicy = MODEL_POLICY = None  # type: ignore
         RunStatus = TraceConfig = Tracer = create_tracer = None  # type: ignore
 
 
 SEAL_ALG = "eventlog-seal-v1"
 _SEAL_GENESIS_PREFIX = "swarmachines/eventlog-seal-v1|"
+REPORT_POLICIES = (POLICY, MODEL_POLICY)
 
 
 def _canonical_event(event: dict) -> str:
@@ -274,14 +300,16 @@ class CommunicationTopology:
         """
         # Check peer-mute disturbance: muted agent cannot send or receive messages
         # but can still perform local actions (observe, act)
-        mute = disturbances.get("peer-mute", {})
-        if mute.get("active") and mute.get("agent") in (from_agent, to_agent):
-            return False, "agent communication muted"
+        if "peer-mute" in disturbances:
+            mute = disturbances["peer-mute"]
+            if mute.get("active") and mute.get("agent") in (from_agent, to_agent):
+                return False, "agent communication muted"
 
         # Check relay-loss disturbance
-        loss = disturbances.get("relay-loss", {})
-        if loss.get("active") and loss.get("agent") in (from_agent, to_agent):
-            return False, "agent unreachable"
+        if "relay-loss" in disturbances:
+            loss = disturbances["relay-loss"]
+            if loss.get("active") and loss.get("agent") in (from_agent, to_agent):
+                return False, "agent unreachable"
 
         if self.topology == "mesh":
             # All agents can communicate with all others (unless disturbed)
@@ -484,7 +512,7 @@ class Agent:
                 if self.observe_rng.random() > 0.3
                 else [],
             }
-        if self.policy == POLICY:
+        if self.policy in REPORT_POLICIES:
             self.observation = deepcopy(visible)
             self.observation_seq = log.seq
             self.inbox = []  # only reports delivered after this turn's observation
@@ -518,7 +546,7 @@ class Agent:
             if self.exchange_send_rng.random() > 0.6:
                 message_id = self._next_message_id()
                 body = {"type": "report", "content": f"status from {self.agent_id}"}
-                if self.policy == POLICY:
+                if self.policy in REPORT_POLICIES:
                     body = make_report(self.observation, self.agent_id)
                 body_ref = message_store.store(
                     message_id, self.agent_id, other.agent_id, body
@@ -564,7 +592,7 @@ class Agent:
 
                     # Emit message.acted_on immediately after seen (deterministic based on exchange_acted_rng)
                     # Uses separate stream from send decision to prevent RNG entanglement
-                    if self.policy == POLICY:
+                    if self.policy in REPORT_POLICIES:
                         other.receive_report(body, self.agent_id, message_id, turn, log)
                     elif self.exchange_acted_rng.random() > 0.5:
                         lifecycle.mark_acted_on(message_id, turn)
@@ -662,16 +690,66 @@ class Agent:
         }
         self._commit_proposal(action, turn, log, freight_world)
 
+    def _act_model(self, turn, log, freight_world, model_policy, run_id):
+        """ask once for a bounded action and record every terminal call outcome."""
+        if self.observation is None or self.observation["turn"] != turn:
+            raise ValueError("missing current policy observation")
+        decision = model_policy.decide(
+            deepcopy(self.observation),
+            tuple(self.inbox),
+            run_id=run_id,
+            agent_id=self.agent_id,
+            turn=turn,
+        )
+        action_id = (
+            f"act-{self.agent_id}{turn:02d}" if decision.action is not None else None
+        )
+        payload = {
+            "policy": MODEL_POLICY,
+            "decision_id": f"decision-{self.agent_id}-{turn}",
+            "observation_seq": self.observation_seq,
+            "action_id": action_id,
+            "status": decision.status,
+            "reason": decision.reason,
+            "attempt_id": decision.attempt_id,
+            "model": decision.model,
+            "input_hash": decision.input_hash,
+            "response_hash": decision.response_hash,
+            "input_tokens": decision.input_tokens,
+            "output_tokens": decision.output_tokens,
+            "latency_ms": decision.latency_ms,
+            "reserved_microcredits": decision.reserved_microcredits,
+            "charged_microcredits": decision.charged_microcredits,
+            "cost_basis": decision.cost_basis,
+            "output_contract": decision.output_contract,
+            "max_output_tokens": decision.max_output_tokens,
+            "available_message_ids": list(decision.available_message_ids),
+            "provider_status": decision.provider_status,
+            "incomplete_reason": decision.incomplete_reason,
+        }
+        log.append(turn, self.agent_id, "model.decision", payload)
+        if decision.action is None:
+            return
+        action = {"action_id": action_id, **decision.action}
+        self._commit_proposal(action, turn, log, freight_world)
+
     def act(
         self,
         turn: int,
         log: EventLog,
         message_lifecycle: MessageLifecycle | None = None,
         freight_world: FreightWorld | None = None,
+        model_policy: ModelActionPolicy | None = None,
+        run_id: str | None = None,
     ) -> None:
         """Act phase: propose and commit actions."""
         if self.policy == POLICY:
             self._act_gossip(turn, log, freight_world)
+            return
+        if self.policy == MODEL_POLICY:
+            if model_policy is None or run_id is None:
+                raise ValueError("model policy boundary missing")
+            self._act_model(turn, log, freight_world, model_policy, run_id)
             return
         if self.act_rng.random() > 0.5:
             action_id = f"act-{self.agent_id}{turn:02d}"
@@ -749,7 +827,9 @@ class Agent:
         if legal:
             # Commit action and update freight world
             if freight_world is not None:
-                prior_jobs = roster(freight_world) if self.policy == POLICY else []
+                prior_jobs = (
+                    roster(freight_world) if self.policy in REPORT_POLICIES else []
+                )
                 success, commit_reason, event_payload = freight_world.apply_action(
                     action, self.agent_id
                 )
@@ -764,7 +844,7 @@ class Agent:
                             **(event_payload or {"result": "no-op"}),
                         },
                     )
-                    if self.policy == POLICY:
+                    if self.policy in REPORT_POLICIES:
                         previous = {row["job_id"]: row["state"] for row in prior_jobs}
                         for row in roster(freight_world):
                             if (
@@ -840,14 +920,19 @@ class TurnSeamRunner:
         use_freight_world: bool = False,
         policy: str = "legacy",
         tracer: object | None = None,
+        model_policy: ModelActionPolicy | None = None,
+        world_regime: str = "local-sufficient",
+        release_turns: tuple[int, ...] | None = None,
         world_graph: dict | None = None,
         job_set: list[dict] | None = None,
     ):
-        if policy not in ("legacy", POLICY) or (
-            policy == POLICY and not use_freight_world
+        if policy not in ("legacy", POLICY, MODEL_POLICY) or (
+            policy in REPORT_POLICIES and not use_freight_world
         ):
-            raise ValueError("route-gossip-v1 requires freight world")
-        if policy == POLICY and (
+            raise ValueError("evidence policies require freight world")
+        if policy == MODEL_POLICY and model_policy is None:
+            raise ValueError("model-route-v1 requires a model policy boundary")
+        if policy in REPORT_POLICIES and (
             not 1 <= len(agents_config) <= MAX_REPORTS
             or len(set(agents_config)) != len(agents_config)
             or any(
@@ -855,12 +940,33 @@ class TurnSeamRunner:
                 for aid in agents_config
             )
         ):
-            raise ValueError("route gossip requires unique bounded agent identities")
+            raise ValueError(
+                "evidence policies require unique bounded agent identities"
+            )
         self.policy = policy
+        self.model_policy = model_policy
+        self.world_regime = world_regime
         self.seed = seed
         self.rng = random.Random(seed)
         # Deterministic run_id based on seed
-        self.run_id = f"run-seed{seed:04d}"
+        if policy == MODEL_POLICY:
+            condition = {
+                "model": model_policy.model,
+                "output_contract": OUTPUT_CONTRACT,
+                "max_output_tokens": MAX_OUTPUT_TOKENS,
+                "topology": comm_topology,
+                "disturbance": disturbance_schedule,
+                "regime": world_regime,
+                "seed": seed,
+                "agents": agents_config,
+                "release_turns": release_turns,
+            }
+            digest = hashlib.sha256(
+                json.dumps(condition, sort_keys=True).encode("utf-8")
+            ).hexdigest()[:12]
+            self.run_id = f"run-model-seed{seed:04d}-{digest}"
+        else:
+            self.run_id = f"run-seed{seed:04d}"
         # Fixed base timestamp for determinism
         self.base_ts = "2026-11-07T14:30:00Z"
 
@@ -881,8 +987,6 @@ class TurnSeamRunner:
 
         self.log = EventLog(self.run_id, self.base_ts)
         self.delivery_map = delivery_map or {}
-        self.world_graph = world_graph
-        self.job_set = job_set
 
         # Initialize freight world if requested
         self.use_freight_world = use_freight_world
@@ -895,6 +999,8 @@ class TurnSeamRunner:
                 graph=world_graph,
                 job_set=job_set,
                 agent_roster=agents_config if world_graph is not None else None,
+                release_turns=release_turns,
+                regime=world_regime,
             )
 
     def _run_phase(
@@ -954,7 +1060,14 @@ class TurnSeamRunner:
                 disturbances=self.disturbance_scheduler.active,
             )
         elif phase == "act":
-            agent.act(turn, self.log, self.lifecycle, self.freight_world)
+            agent.act(
+                turn,
+                self.log,
+                self.lifecycle,
+                self.freight_world,
+                self.model_policy,
+                self.run_id,
+            )
 
     def run(self, num_turns: int) -> str:
         """Run the simulation for num_turns turns."""
@@ -962,14 +1075,7 @@ class TurnSeamRunner:
         # Compute delivery_config_sha (hash of delivery configuration, not delivery graph)
         # Named delivery_config_sha to clarify it hashes the hub/topology config,
         # not a graph of message deliveries (which is tracked separately in MessageLifecycle)
-        delivery_config = self.delivery_map
-        if self.world_graph is not None or self.job_set is not None:
-            delivery_config = {
-                "delivery_map": self.delivery_map,
-                "graph": self.world_graph,
-                "job_set": self.job_set,
-            }
-        delivery_map_json = json.dumps(delivery_config, sort_keys=True)
+        delivery_map_json = json.dumps(self.delivery_map, sort_keys=True)
         delivery_config_sha = hashlib.sha256(delivery_map_json.encode()).hexdigest()[
             :16
         ]
@@ -987,18 +1093,26 @@ class TurnSeamRunner:
                 "agents": self.agent_ids,
                 **(
                     {
-                        "policy": POLICY,
+                        "policy": self.policy,
                         "world": "freight",
                         "job_evidence_version": 1,
                         "horizon_turns": num_turns,
+                        **(
+                            {
+                                "model": self.model_policy.model,
+                                "world_regime": self.world_regime,
+                            }
+                            if self.policy == MODEL_POLICY
+                            else {}
+                        ),
                     }
-                    if self.policy == POLICY
+                    if self.policy in REPORT_POLICIES
                     else {}
                 ),
             },
         )
 
-        if self.policy == POLICY:
+        if self.policy in REPORT_POLICIES:
             self.log.append(
                 0,
                 None,
@@ -1047,7 +1161,16 @@ class TurnSeamRunner:
             event_type="world.changed",
             payload={
                 "what": "initial world state",
-                "effect": "all routes open",
+                "effect": (
+                    "all routes open"
+                    if not any(
+                        route.status == "closed"
+                        for route in self.freight_world.routes.values()
+                    )
+                    else "peer-required direct routes closed"
+                )
+                if self.freight_world is not None
+                else "all routes open",
                 "visibility": "all agents",
             },
         )
@@ -1122,7 +1245,7 @@ class TurnSeamRunner:
                         "termination": "completed",
                         "horizon_turns": num_turns,
                     }
-                    if self.policy == POLICY
+                    if self.policy in REPORT_POLICIES
                     else {}
                 ),
             },
@@ -1155,10 +1278,7 @@ def load_events(
     schema_path = Path(__file__).parent / "schema" / "events.schema.json"
     with open(schema_path) as f:
         schema = json.load(f)
-
-    validator_class = jsonschema.validators.validator_for(schema)
-    validator_class.check_schema(schema)
-    validator = validator_class(schema)
+    validator = jsonschema.Draft202012Validator(schema)
 
     events = []
     errors = []
@@ -1260,13 +1380,48 @@ def main():
 
     parser.add_argument(
         "--policy",
-        choices=["legacy", POLICY],
+        choices=["legacy", POLICY, MODEL_POLICY],
         default="legacy",
-        help="explicit scripted action policy; route gossip requires freight",
+        help="action policy; evidence policies require freight",
+    )
+    parser.add_argument(
+        "--model-id",
+        choices=sorted(ACCEPTED_MODELS),
+        help="accepted adaption model for model-route-v1",
+    )
+    parser.add_argument(
+        "--budget-ledger",
+        help="private json ledger path for model-route-v1",
+    )
+    parser.add_argument(
+        "--evidence-dir",
+        help="private raw call evidence directory for model-route-v1",
+    )
+    parser.add_argument(
+        "--budget-ceiling-microcredits",
+        type=int,
+        default=MAX_CEILING_MICROCREDITS,
+        help="hard ceiling, at most 10000000 microcredits",
+    )
+    parser.add_argument(
+        "--world-regime",
+        choices=list(FreightWorld.REGIMES),
+        default="local-sufficient",
+        help="freight information regime",
     )
     args = parser.parse_args()
-    if args.policy == POLICY and args.world != "freight":
-        parser.error("route-gossip-v1 requires --world freight")
+    if args.policy in REPORT_POLICIES and args.world != "freight":
+        parser.error("evidence policies require --world freight")
+    if args.policy == MODEL_POLICY and not all(
+        (args.model_id, args.budget_ledger, args.evidence_dir)
+    ):
+        parser.error(
+            "model-route-v1 requires --model-id, --budget-ledger and --evidence-dir"
+        )
+    if args.policy != MODEL_POLICY and any(
+        (args.model_id, args.budget_ledger, args.evidence_dir)
+    ):
+        parser.error("model provider arguments require --policy model-route-v1")
 
     # Validate agent ids (alphanumeric + hyphen only)
     agents = [a.strip() for a in args.agents.split(",")]
@@ -1326,6 +1481,19 @@ def main():
         )
         tracer = Tracer(config)
 
+    model_boundary = None
+    release_turns = None
+    if args.policy == MODEL_POLICY:
+        from adaption_adapter import AdaptionAdapter
+
+        model_boundary = ModelActionPolicy(
+            model=args.model_id,
+            adapter=AdaptionAdapter(),
+            ledger=BudgetLedger(args.budget_ledger, args.budget_ceiling_microcredits),
+            evidence_dir=args.evidence_dir,
+        )
+        release_turns = FreightWorld.RELEASE_TURNS
+
     runner = TurnSeamRunner(
         seed=args.seed,
         comm_topology=args.topology,
@@ -1335,6 +1503,9 @@ def main():
         use_freight_world=args.world == "freight",
         policy=args.policy,
         tracer=tracer,
+        model_policy=model_boundary,
+        world_regime=args.world_regime,
+        release_turns=release_turns,
     )
 
     output = runner.run(args.turns)

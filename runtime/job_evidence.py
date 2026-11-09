@@ -24,6 +24,10 @@ def roster(world, initial=False):
         if initial:
             if job.state != "pending":
                 raise ValueError("initial job must be pending")
-            row.update(origin=job.origin, destination=job.destination, release_turn=0)
+            row.update(
+                origin=job.origin,
+                destination=job.destination,
+                release_turn=job.release_turn,
+            )
         result.append(row)
     return result

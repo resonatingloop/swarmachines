@@ -1,0 +1,112 @@
+{
+  "summary_version": 1,
+  "episode_count": 3,
+  "invalid_count": 0,
+  "rows": [
+    {
+      "episode": "gemma-4-26b-a4b-it.jsonl",
+      "status": "valid",
+      "sha256": "94cb9ed67eecc8fe6314e0df65a6b3310fb0b2b39ae02ca6190079a534b256da",
+      "run_id": "run-model-seed0042-93cdc1a5e020",
+      "model": "gemma-4-26b-a4b-it",
+      "seed": 42,
+      "topology": "mesh",
+      "world_regime": "peer-required",
+      "condition": "control",
+      "horizon": 2,
+      "delivered_jobs": 0,
+      "released_jobs": 1,
+      "completion_value": 0.0,
+      "resumption_status": "unavailable",
+      "resumption_turns": null,
+      "calls": 2,
+      "input_tokens": 386,
+      "output_tokens": 96,
+      "charged_microcredits": 55,
+      "latency_ms": 1176.4015370026755,
+      "decision_failures": {
+        "malformed": 2
+      },
+      "actions": {
+        "proposed": 0,
+        "validated": 0,
+        "committed": 0,
+        "rejected": 0,
+        "validation_rejected": 0,
+        "apply_rejected": 0,
+        "reasons": {},
+        "sequences": []
+      }
+    },
+    {
+      "episode": "glm-53-flash.jsonl",
+      "status": "valid",
+      "sha256": "fb6a7fae4df1869949f08681270a177445f4b73978ac8adc930e45c4622b597a",
+      "run_id": "run-model-seed0042-19dad5c4d267",
+      "model": "glm-53-flash",
+      "seed": 42,
+      "topology": "mesh",
+      "world_regime": "peer-required",
+      "condition": "control",
+      "horizon": 2,
+      "delivered_jobs": 0,
+      "released_jobs": 1,
+      "completion_value": 0.0,
+      "resumption_status": "unavailable",
+      "resumption_turns": null,
+      "calls": 2,
+      "input_tokens": 330,
+      "output_tokens": 320,
+      "charged_microcredits": 210,
+      "latency_ms": 7298.052728001494,
+      "decision_failures": {
+        "malformed": 2
+      },
+      "actions": {
+        "proposed": 0,
+        "validated": 0,
+        "committed": 0,
+        "rejected": 0,
+        "validation_rejected": 0,
+        "apply_rejected": 0,
+        "reasons": {},
+        "sequences": []
+      }
+    },
+    {
+      "episode": "qwen3.5-397b.jsonl",
+      "status": "valid",
+      "sha256": "8b3e7169ae7f5e2b4feb8230a443682dae629f30a89901f9542783b0ff67563b",
+      "run_id": "run-model-seed0042-4f2ff0aee202",
+      "model": "qwen3.5-397b",
+      "seed": 42,
+      "topology": "mesh",
+      "world_regime": "peer-required",
+      "condition": "control",
+      "horizon": 2,
+      "delivered_jobs": 0,
+      "released_jobs": 1,
+      "completion_value": 0.0,
+      "resumption_status": "unavailable",
+      "resumption_turns": null,
+      "calls": 2,
+      "input_tokens": 350,
+      "output_tokens": 320,
+      "charged_microcredits": 1314,
+      "latency_ms": 4281.48224999677,
+      "decision_failures": {
+        "malformed": 2
+      },
+      "actions": {
+        "proposed": 0,
+        "validated": 0,
+        "committed": 0,
+        "rejected": 0,
+        "validation_rejected": 0,
+        "apply_rejected": 0,
+        "reasons": {},
+        "sequences": []
+      }
+    }
+  ]
+}
