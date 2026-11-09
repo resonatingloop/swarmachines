@@ -123,7 +123,6 @@ class AdapterResponse:
         latency_ms: float,
         diagnostics: ResponseDiagnostics | None = None,
         raw_response: Any = None,
-        # Backward-compatible constructor fields for PR-era call sites
         status: str | None = None,
         incomplete_reason: str | None = None,
     ) -> None:
@@ -132,7 +131,6 @@ class AdapterResponse:
         self.usage = usage
         self.latency_ms = latency_ms
         self.raw_response = raw_response
-        # Support both new-style (diagnostics) and old-style (status/incomplete_reason) construction
         if diagnostics is not None:
             self.diagnostics = diagnostics
         else:
@@ -146,7 +144,6 @@ class AdapterResponse:
                 model_matches_selected=True,
             )
 
-    # Convenience properties for model_policy.py compatibility
     @property
     def status(self) -> str | None:
         return self.diagnostics.status if self.diagnostics else None
