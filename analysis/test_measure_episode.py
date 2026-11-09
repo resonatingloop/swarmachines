@@ -3,10 +3,16 @@
 import copy
 import hashlib
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+# Dual-mode imports: add runtime/ to path for script mode
+_RUNTIME_PATH = str(Path(__file__).parents[1] / "runtime")
+if _RUNTIME_PATH not in sys.path:
+    sys.path.insert(0, _RUNTIME_PATH)
 
 from adaption_adapter import AdapterResponse, AdapterUsage
 from freight_world import FreightWorld
