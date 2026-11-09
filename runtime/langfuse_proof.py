@@ -31,6 +31,7 @@ from runtime.tracer import (
     RunStatus,
     TraceConfig,
     Tracer,
+    _bounded_json_object,
     create_langfuse_client,
 )
 
@@ -100,16 +101,20 @@ _SAFE_ASSERTION_NAMES = {
     "exact_observation_count",
     "expected_hashes_present",
     "generation_hash_only_io",
+    "generation_input_object",
     "generation_mask_marker_safe",
     "generation_metadata_allowlisted",
+    "generation_output_object",
     "generation_shape",
     "model_is_synthetic_unknown",
     "model_not_resolved",
     "no_sensitive_values",
     "release_matches",
     "root_hash_only_io",
+    "root_input_object",
     "root_mask_marker_safe",
     "root_metadata_allowlisted",
+    "root_output_object",
     "root_shape",
     "terminal_metadata_safe",
     "trace_ids_match",
@@ -209,15 +214,11 @@ def _field(observation: dict[str, Any], snake: str, camel: str) -> Any:
     return observation.get(camel)
 
 
-def _json_object(value: Any) -> dict[str, Any]:
-    if isinstance(value, str):
-        try:
-            value = json.loads(value)
-        except (TypeError, ValueError) as error:
-            raise ProofFailure("readback_shape_failed") from error
-    if not isinstance(value, dict):
-        raise ProofFailure("readback_shape_failed")
-    return value
+def _json_object(value: Any) -> tuple[dict[str, Any], bool]:
+    payload = _bounded_json_object(value)
+    if payload is None:
+        return {}, False
+    return payload, True
 
 
 def _response_data(response: Any) -> tuple[list[dict[str, Any]], str | None]:
@@ -262,7 +263,7 @@ def _contains_sensitive_value(
 ) -> bool:
     try:
         serialized = json.dumps(observations, sort_keys=True, ensure_ascii=False)
-    except (TypeError, ValueError, OverflowError):
+    except (TypeError, ValueError, OverflowError, RecursionError):
         return True
     forbidden_values = {
         fixture.run_id,
@@ -282,7 +283,11 @@ def _contains_sensitive_value(
         return True
     if _ABSOLUTE_PATH_PATTERN.search(serialized):
         return True
-    for scalar in _all_scalars(observations):
+    try:
+        scalars = _all_scalars(observations)
+    except RecursionError:
+        return True
+    for scalar in scalars:
         lowered = scalar.lower()
         if lowered.startswith(("exception.", "error.")):
             return True
@@ -349,10 +354,10 @@ def _validate_readback(
         _GENERATION_METADATA_KEYS
     )
 
-    root_input = _json_object(root.get("input"))
-    root_output = _json_object(root.get("output"))
-    generation_input = _json_object(generation.get("input"))
-    generation_output = _json_object(generation.get("output"))
+    root_input, root_input_object = _json_object(root.get("input"))
+    root_output, root_output_object = _json_object(root.get("output"))
+    generation_input, generation_input_object = _json_object(generation.get("input"))
+    generation_output, generation_output_object = _json_object(generation.get("output"))
 
     assertions = {
         "exact_observation_count": len(observations) == 2,
@@ -379,6 +384,10 @@ def _validate_readback(
         "generation_mask_marker_safe": _safe_mask_marker(
             generation_metadata.get(MASKING_MARKER_KEY)
         ),
+        "root_input_object": root_input_object,
+        "root_output_object": root_output_object,
+        "generation_input_object": generation_input_object,
+        "generation_output_object": generation_output_object,
         "release_matches": all(item.get("release") == release for item in observations),
         "environment_matches": all(
             item.get("environment") == ENVIRONMENT for item in observations

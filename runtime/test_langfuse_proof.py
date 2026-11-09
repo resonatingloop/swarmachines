@@ -540,6 +540,78 @@ def test_metadata_allowlist_failure_is_named_without_remote_values(
     assert remote_value not in encoded
 
 
+def test_malformed_io_names_fixed_fields_without_remote_values(
+    credential_file: Path,
+) -> None:
+    remote_value = "remote-private-io-value"
+
+    def corrupt_io(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            {**item, "input": None}
+            if item["name"] == ROOT_NAME
+            else {**item, "output": [remote_value]}
+            for item in observations
+        ]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": corrupt_io},
+    )
+
+    encoded = json.dumps(receipt, sort_keys=True)
+    assert receipt["status"] == "failed"
+    assert receipt["failure_category"] == "readback_privacy_failed"
+    assert receipt["failed_assertions"] == [
+        "generation_hash_only_io",
+        "generation_output_object",
+        "root_hash_only_io",
+        "root_input_object",
+    ]
+    assert remote_value not in encoded
+
+
+@pytest.mark.parametrize(
+    "hostile_output",
+    [
+        '{"response_sha256":"remote-private-io-value","response_sha256":"'
+        + "a" * 64
+        + '"}',
+        "[" * 2000 + '"remote-private-io-value"' + "]" * 2000,
+        {"response_sha256": float("nan")},
+        {"response_sha256": {"nested": "remote-private-io-value"}},
+    ],
+)
+def test_hostile_json_io_names_fixed_fields_without_remote_values(
+    credential_file: Path,
+    hostile_output: Any,
+) -> None:
+    def corrupt_io(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            {**item, "output": hostile_output}
+            if item["name"] == GENERATION_NAME
+            else item
+            for item in observations
+        ]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": corrupt_io},
+    )
+
+    encoded = json.dumps(receipt, sort_keys=True)
+    assert receipt["status"] == "failed"
+    assert receipt["failure_category"] == "readback_privacy_failed"
+    assert receipt["failed_assertions"] == [
+        "generation_hash_only_io",
+        "generation_output_object",
+    ]
+    assert "remote-private-io-value" not in encoded
+
+
 def test_malformed_remote_total_cost_is_categorical_and_never_escapes(
     credential_file: Path,
 ) -> None:
