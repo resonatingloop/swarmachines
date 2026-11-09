@@ -14,7 +14,7 @@ test('turn end aligns unequal sequences and excludes future evidence',()=>{
  assert.equal(atTurn(left,1).state.reportedSummary,null);
 });
 test('same identifiers stay independent and counts retain exact contributors',()=>{
- const sent=event(0,1,'message.sent',{message_id:'m',from:'a',to:'b',body_ref:'unavailable'});
+ const sent=event(0,1,'message.sent',{message_id:'m',from:'a',to:'b',body:{type:'report',content:'status from a'}});
  const left=parse([sent,event(1,1,'message.delivered',{message_id:'m',to:'b',status:'delivered'})]);
  const right=parse([sent,event(1,1,'message.delivered',{message_id:'m',to:'b',status:'undelivered'})]);
  assert.equal(atTurn(left,1).counts.delivered.length,1);assert.equal(atTurn(right,1).counts.delivered.length,0);

@@ -42,6 +42,52 @@ or [the project brief](PROJECT_BRIEF.md) for the purpose and open choices.
 
 **job evidence:** [offline measurements](analysis/README.md) reconcile versioned roster, completion and terminal records. unsupported measures remain explicit; independent review is pending.
 
+## generate an episode (60 seconds)
+
+episodes are deterministic, self-contained event logs — every message body
+is inline, so the log alone is the complete record. python 3.10+ required
+(`SyntaxError` during pytest means your `python3` is older — use 3.10+).
+
+```sh
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt pytest
+.venv/bin/python -m pytest -q                 # expect: all passed
+.venv/bin/python -m runtime.runner --seed 42 --topology mesh --turns 16 \
+    --world freight --policy route-gossip-v1 \
+    --disturbance "peer-mute:8:c" --output episode.jsonl
+```
+
+expected output:
+
+```
+Wrote 415 events to episode.jsonl
+
+=== Episode summary ===
+run run-seed0042 | seed 42 | topology mesh | policy route-gossip-v1
+turns: 16 | agents: a, b, c, d | events: 415
+messages: 71 sent | 51 delivered | 20 undelivered | 51 seen | 0 acted on
+actions: 4 committed | 0 rejected
+seal: 29f74bdedbed36b7… (run.seal)
+output: episode.jsonl
+verify: python -m runtime.verify_events episode.jsonl
+```
+
+message bodies are inline and observation-derived (route-gossip-v1) or
+sender-deterministic status reports (legacy policy):
+
+```json
+{"message_id": "m-a001", "from": "a", "to": "d",
+ "body": {"type": "route_report", "sender": "a", "turn": 1,
+          "location": "west", "routes": {"west->east": "open", "west->south": "open"}}}
+```
+
+- same seed + config → byte-identical log (verified by checksum)
+- `message.sent` events carry the full `body` inline — no external store
+- tamper with any event and `runtime.verify_events` reports `chain_mismatch`
+- open `viewer/index.html` to replay the episode turn by turn
+
+note (macOS): the control-plane path checks refuse symlinked journal files,
+not symlinked *ancestors* — macOS `/var` -> `/private/var` tempdirs work.
+
 ## first successful use
 
 you need a modern browser. for the local http path below, also have python 3

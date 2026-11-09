@@ -520,9 +520,7 @@ class Agent:
                 body = {"type": "report", "content": f"status from {self.agent_id}"}
                 if self.policy == POLICY:
                     body = make_report(self.observation, self.agent_id)
-                body_ref = message_store.store(
-                    message_id, self.agent_id, other.agent_id, body
-                )
+                message_store.store(message_id, self.agent_id, other.agent_id, body)
 
                 log.append(
                     turn=turn,
@@ -532,7 +530,7 @@ class Agent:
                         "message_id": message_id,
                         "from": self.agent_id,
                         "to": other.agent_id,
-                        "body_ref": body_ref,
+                        "body": body,
                     },
                 )
                 lifecycle.mark_sent(message_id, turn)
@@ -1346,6 +1344,49 @@ def main():
 
     output_path.write_text(output + "\n")
     print(f"Wrote {len(runner.log.events)} events to {output_path}")
+
+    # Human-readable episode summary, derived only from the event log.
+    counts: dict[str, int] = {}
+    for event in runner.log.events:
+        counts[event["type"]] = counts.get(event["type"], 0) + 1
+    delivered = sum(
+        1
+        for event in runner.log.events
+        if event["type"] == "message.delivered"
+        and event.get("payload", {}).get("status") == "delivered"
+    )
+    undelivered = counts.get("message.delivered", 0) - delivered
+    committed = counts.get("action.committed", 0)
+    rejected = counts.get("action.rejected", 0)
+    config = next(
+        (
+            event["payload"]
+            for event in runner.log.events
+            if event["type"] == "run.config"
+        ),
+        {},
+    )
+    seal = runner.log.events[-1]
+    seal_head = ""
+    if seal["type"] == "run.seal":
+        seal_head = str(seal.get("payload", {}).get("chain", ""))[:16]
+    agents = ", ".join(config.get("agents", []))
+    print(
+        "\n=== Episode summary ===\n"
+        f"run {config.get('run_id', runner.log.run_id)} | "
+        f"seed {config.get('seed', args.seed)} | "
+        f"topology {config.get('comm_topology', args.topology)} | "
+        f"policy {config.get('policy', args.policy or 'scripted')}\n"
+        f"turns: {args.turns} | agents: {agents or 'n/a'} | events: {len(runner.log.events)}\n"
+        f"messages: {counts.get('message.sent', 0)} sent | {delivered} delivered | "
+        f"{undelivered} undelivered | {counts.get('message.seen', 0)} seen | "
+        f"{counts.get('message.acted_on', 0)} acted on\n"
+        f"actions: {committed} committed | {rejected} rejected\n"
+        f"seal: {seal_head or 'none (legacy log)'}"
+        + ("… (run.seal)" if seal_head else "")
+        + f"\noutput: {output_path}\n"
+        f"verify: python -m runtime.verify_events {output_path}"
+    )
 
     # Flush trace data if tracing was enabled
     if tracer is not None:

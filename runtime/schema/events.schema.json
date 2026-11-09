@@ -28,11 +28,11 @@
   "allOf": [
     {
       "if": { "properties": { "type": { "const": "message.sent" } } },
-      "then": { "properties": { "payload": { "required": ["message_id", "from", "to", "body_ref"], "properties": {
+      "then": { "properties": { "payload": { "required": ["message_id", "from", "to", "body"], "properties": {
         "message_id": { "type": "string" },
         "from": { "type": "string" },
         "to": { "type": "string", "description": "recipient agent id; router may redirect or drop per topology" },
-        "body_ref": { "type": "string", "description": "pointer into the run's message store, not the body itself" }
+        "body": { "type": "object", "description": "full message body, inline; the log is self-contained — no external store lookups" }
       } } } }
     },
     {

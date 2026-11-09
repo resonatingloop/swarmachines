@@ -11,7 +11,7 @@ cursor. reload forgets the episode. failed imports retain the previous episode
 and cursor, paused.
 
 the bundled sample comes from `runtime/sample-run.jsonl` at bb3f870 and is
-scripted scaffolding, not a completed freight experiment. `body_ref` is shown
+scripted scaffolding, not a completed freight experiment. Message bodies are shown inline
 as text and never resolved. the viewer validates envelopes and lifecycle
 fields, not the complete runtime json schema; unknown types remain inspectable.
 

@@ -223,10 +223,16 @@ def project(row, policy=None, binding=None):
 
 
 def inspect_path(directory):
-    """Require private owned files, no symlink ancestors, and rollback journal mode."""
+    """Require private owned files, no symlinked journal, and rollback journal mode.
+
+    Ancestor symlinks (e.g. macOS ``/var`` -> ``/private/var`` tempdirs) are
+    allowed: the journal directory itself and its ``queue.sqlite3`` must not
+    be symlinks, and the sqlite file is opened ``O_NOFOLLOW`` so a swapped
+    final component is refused at open time.
+    """
     directory = Path(os.path.abspath(directory))
     path = directory / "queue.sqlite3"
-    for part in (path, *path.parents):
+    for part in (directory, path):
         if part.is_symlink():
             raise ValueError("symlink refused")
     for item, expected in ((directory, stat.S_ISDIR), (path, stat.S_ISREG)):

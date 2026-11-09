@@ -36,7 +36,10 @@ function render() {
     card.append(node('p', `${message.id} / ${message.from ?? 'unknown sender'} → ${message.to ?? 'unknown recipient'}`));
     const sent = message.transitions.find(t => t.type === 'message.sent');
     const body = sent?.event.payload.body;
-    card.append(node('p', typeof body === 'string' ? body : `body unavailable${message.bodyRef !== null ? ` / reference: ${message.bodyRef}` : ''}`, 'note'));
+    const bodyText = body && typeof body === 'object'
+      ? (typeof body.content === 'string' ? body.content : JSON.stringify(body))
+      : 'body unavailable';
+    card.append(node('p', bodyText, 'note'));
     let delivered = false, seen = false, hasSent = false;
     const warnings = [];
     for (const t of message.transitions) {

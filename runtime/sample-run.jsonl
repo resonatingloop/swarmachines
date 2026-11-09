@@ -6,15 +6,15 @@
 {"run_id":"run-seed0007","seq":5,"turn":1,"agent_id":"b","type":"observation.recorded","ts":"2026-11-07T14:30:05Z","payload":{"visible":{"queue":3,"requests":[{"freight":"med-kit","dest":"south"}],"known_closures":[],"roads_in_view":["east-bridge"]}}}
 {"run_id":"run-seed0007","seq":6,"turn":1,"agent_id":"c","type":"observation.recorded","ts":"2026-11-07T14:30:06Z","payload":{"visible":{"queue":3,"requests":[{"freight":"med-kit","dest":"south"}],"known_closures":[],"roads_in_view":["east-bridge"]}}}
 {"run_id":"run-seed0007","seq":7,"turn":1,"agent_id":"d","type":"observation.recorded","ts":"2026-11-07T14:30:07Z","payload":{"visible":{"queue":0,"requests":[{"freight":"med-kit","dest":"south"}],"known_closures":[],"roads_in_view":["east-bridge"]}}}
-{"run_id":"run-seed0007","seq":8,"turn":1,"agent_id":"b","type":"message.sent","ts":"2026-11-07T14:30:00Z","payload":{"message_id":"m-b001","from":"b","to":"a","body_ref":"messages/m-b001.txt"}}
+{"run_id":"run-seed0007","seq":8,"turn":1,"agent_id":"b","type":"message.sent","ts":"2026-11-07T14:30:00Z","payload":{"message_id":"m-b001","from":"b","to":"a","body":{"type":"report","content":"status from b"}}}
 {"run_id":"run-seed0007","seq":9,"turn":1,"agent_id":"a","type":"message.delivered","ts":"2026-11-07T14:30:01Z","payload":{"message_id":"m-b001","to":"a","status":"delivered"}}
 {"run_id":"run-seed0007","seq":10,"turn":1,"agent_id":"a","type":"message.seen","ts":"2026-11-07T14:30:02Z","payload":{"message_id":"m-b001","in_context_at_turn":1}}
 {"run_id":"run-seed0007","seq":11,"turn":1,"agent_id":"a","type":"message.acted_on","ts":"2026-11-07T14:30:03Z","payload":{"message_id":"m-b001","relation":"informed"}}
-{"run_id":"run-seed0007","seq":12,"turn":1,"agent_id":"b","type":"message.sent","ts":"2026-11-07T14:30:04Z","payload":{"message_id":"m-b002","from":"b","to":"c","body_ref":"messages/m-b002.txt"}}
+{"run_id":"run-seed0007","seq":12,"turn":1,"agent_id":"b","type":"message.sent","ts":"2026-11-07T14:30:04Z","payload":{"message_id":"m-b002","from":"b","to":"c","body":{"type":"report","content":"status from b"}}}
 {"run_id":"run-seed0007","seq":13,"turn":1,"agent_id":"c","type":"message.delivered","ts":"2026-11-07T14:30:05Z","payload":{"message_id":"m-b002","to":"c","status":"delivered"}}
 {"run_id":"run-seed0007","seq":14,"turn":1,"agent_id":"c","type":"message.seen","ts":"2026-11-07T14:30:06Z","payload":{"message_id":"m-b002","in_context_at_turn":1}}
 {"run_id":"run-seed0007","seq":15,"turn":1,"agent_id":"c","type":"message.acted_on","ts":"2026-11-07T14:30:07Z","payload":{"message_id":"m-b002","relation":"informed"}}
-{"run_id":"run-seed0007","seq":16,"turn":1,"agent_id":"c","type":"message.sent","ts":"2026-11-07T14:30:08Z","payload":{"message_id":"m-c001","from":"c","to":"d","body_ref":"messages/m-c001.txt"}}
+{"run_id":"run-seed0007","seq":16,"turn":1,"agent_id":"c","type":"message.sent","ts":"2026-11-07T14:30:08Z","payload":{"message_id":"m-c001","from":"c","to":"d","body":{"type":"report","content":"status from c"}}}
 {"run_id":"run-seed0007","seq":17,"turn":1,"agent_id":"d","type":"message.delivered","ts":"2026-11-07T14:30:09Z","payload":{"message_id":"m-c001","to":"d","status":"delivered"}}
 {"run_id":"run-seed0007","seq":18,"turn":1,"agent_id":"d","type":"message.seen","ts":"2026-11-07T14:30:10Z","payload":{"message_id":"m-c001","in_context_at_turn":1}}
 {"run_id":"run-seed0007","seq":19,"turn":1,"agent_id":"d","type":"message.acted_on","ts":"2026-11-07T14:30:11Z","payload":{"message_id":"m-c001","relation":"informed"}}
@@ -27,13 +27,13 @@
 {"run_id":"run-seed0007","seq":26,"turn":2,"agent_id":"b","type":"observation.recorded","ts":"2026-11-07T14:30:14Z","payload":{"visible":{"queue":2,"requests":[],"known_closures":[],"roads_in_view":["east-bridge"]}}}
 {"run_id":"run-seed0007","seq":27,"turn":2,"agent_id":"c","type":"observation.recorded","ts":"2026-11-07T14:30:15Z","payload":{"visible":{"queue":1,"requests":[],"known_closures":[],"roads_in_view":[]}}}
 {"run_id":"run-seed0007","seq":28,"turn":2,"agent_id":"d","type":"observation.recorded","ts":"2026-11-07T14:30:16Z","payload":{"visible":{"queue":0,"requests":[{"freight":"med-kit","dest":"south"}],"known_closures":[],"roads_in_view":["east-bridge"]}}}
-{"run_id":"run-seed0007","seq":29,"turn":2,"agent_id":"a","type":"message.sent","ts":"2026-11-07T14:30:12Z","payload":{"message_id":"m-a001","from":"a","to":"b","body_ref":"messages/m-a001.txt"}}
+{"run_id":"run-seed0007","seq":29,"turn":2,"agent_id":"a","type":"message.sent","ts":"2026-11-07T14:30:12Z","payload":{"message_id":"m-a001","from":"a","to":"b","body":{"type":"report","content":"status from a"}}}
 {"run_id":"run-seed0007","seq":30,"turn":2,"agent_id":"b","type":"message.delivered","ts":"2026-11-07T14:30:13Z","payload":{"message_id":"m-a001","to":"b","status":"undelivered","reason":"agent unreachable"}}
-{"run_id":"run-seed0007","seq":31,"turn":2,"agent_id":"b","type":"message.sent","ts":"2026-11-07T14:30:14Z","payload":{"message_id":"m-b003","from":"b","to":"d","body_ref":"messages/m-b003.txt"}}
+{"run_id":"run-seed0007","seq":31,"turn":2,"agent_id":"b","type":"message.sent","ts":"2026-11-07T14:30:14Z","payload":{"message_id":"m-b003","from":"b","to":"d","body":{"type":"report","content":"status from b"}}}
 {"run_id":"run-seed0007","seq":32,"turn":2,"agent_id":"d","type":"message.delivered","ts":"2026-11-07T14:30:15Z","payload":{"message_id":"m-b003","to":"d","status":"delivered"}}
 {"run_id":"run-seed0007","seq":33,"turn":2,"agent_id":"d","type":"message.seen","ts":"2026-11-07T14:30:16Z","payload":{"message_id":"m-b003","in_context_at_turn":2}}
 {"run_id":"run-seed0007","seq":34,"turn":2,"agent_id":"d","type":"message.acted_on","ts":"2026-11-07T14:30:17Z","payload":{"message_id":"m-b003","relation":"informed"}}
-{"run_id":"run-seed0007","seq":35,"turn":2,"agent_id":"d","type":"message.sent","ts":"2026-11-07T14:30:18Z","payload":{"message_id":"m-d001","from":"d","to":"c","body_ref":"messages/m-d001.txt"}}
+{"run_id":"run-seed0007","seq":35,"turn":2,"agent_id":"d","type":"message.sent","ts":"2026-11-07T14:30:18Z","payload":{"message_id":"m-d001","from":"d","to":"c","body":{"type":"report","content":"status from d"}}}
 {"run_id":"run-seed0007","seq":36,"turn":2,"agent_id":"c","type":"message.delivered","ts":"2026-11-07T14:30:19Z","payload":{"message_id":"m-d001","to":"c","status":"delivered"}}
 {"run_id":"run-seed0007","seq":37,"turn":2,"agent_id":"c","type":"message.seen","ts":"2026-11-07T14:30:20Z","payload":{"message_id":"m-d001","in_context_at_turn":2}}
 {"run_id":"run-seed0007","seq":38,"turn":2,"agent_id":"a","type":"action.proposed","ts":"2026-11-07T14:30:17Z","payload":{"action_id":"act-a02","kind":"route_freight","freight":"med-kit","via":"west->south"}}
@@ -50,9 +50,9 @@
 {"run_id":"run-seed0007","seq":49,"turn":3,"agent_id":"b","type":"observation.recorded","ts":"2026-11-07T14:30:28Z","payload":{"visible":{"queue":2,"requests":[],"known_closures":[],"roads_in_view":[]}}}
 {"run_id":"run-seed0007","seq":50,"turn":3,"agent_id":"c","type":"observation.recorded","ts":"2026-11-07T14:30:29Z","payload":{"visible":{"queue":2,"requests":[],"known_closures":[],"roads_in_view":["east-bridge"]}}}
 {"run_id":"run-seed0007","seq":51,"turn":3,"agent_id":"d","type":"observation.recorded","ts":"2026-11-07T14:30:30Z","payload":{"visible":{"queue":0,"requests":[{"freight":"med-kit","dest":"south"}],"known_closures":[],"roads_in_view":["east-bridge"]}}}
-{"run_id":"run-seed0007","seq":52,"turn":3,"agent_id":"a","type":"message.sent","ts":"2026-11-07T14:30:21Z","payload":{"message_id":"m-a002","from":"a","to":"b","body_ref":"messages/m-a002.txt"}}
+{"run_id":"run-seed0007","seq":52,"turn":3,"agent_id":"a","type":"message.sent","ts":"2026-11-07T14:30:21Z","payload":{"message_id":"m-a002","from":"a","to":"b","body":{"type":"report","content":"status from a"}}}
 {"run_id":"run-seed0007","seq":53,"turn":3,"agent_id":"b","type":"message.delivered","ts":"2026-11-07T14:30:22Z","payload":{"message_id":"m-a002","to":"b","status":"undelivered","reason":"agent unreachable"}}
-{"run_id":"run-seed0007","seq":54,"turn":3,"agent_id":"c","type":"message.sent","ts":"2026-11-07T14:30:23Z","payload":{"message_id":"m-c002","from":"c","to":"b","body_ref":"messages/m-c002.txt"}}
+{"run_id":"run-seed0007","seq":54,"turn":3,"agent_id":"c","type":"message.sent","ts":"2026-11-07T14:30:23Z","payload":{"message_id":"m-c002","from":"c","to":"b","body":{"type":"report","content":"status from c"}}}
 {"run_id":"run-seed0007","seq":55,"turn":3,"agent_id":"b","type":"message.delivered","ts":"2026-11-07T14:30:24Z","payload":{"message_id":"m-c002","to":"b","status":"delivered"}}
 {"run_id":"run-seed0007","seq":56,"turn":3,"agent_id":"b","type":"message.seen","ts":"2026-11-07T14:30:25Z","payload":{"message_id":"m-c002","in_context_at_turn":3}}
 {"run_id":"run-seed0007","seq":57,"turn":3,"agent_id":"a","type":"action.proposed","ts":"2026-11-07T14:30:31Z","payload":{"action_id":"act-a03","kind":"route_freight","freight":"med-kit","via":"west->south"}}

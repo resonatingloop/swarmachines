@@ -29,8 +29,9 @@ function parseEpisode(text) {
     }
     const p = event.payload;
     if (LIFECYCLE.has(event.type)) {
-      const fields = event.type === 'message.sent' ? ['message_id', 'from', 'to', 'body_ref'] : event.type === 'message.delivered' ? ['message_id', 'to', 'status'] : ['message_id'];
+      const fields = event.type === 'message.sent' ? ['message_id', 'from', 'to'] : event.type === 'message.delivered' ? ['message_id', 'to', 'status'] : ['message_id'];
       if (fields.some(key => typeof p[key] !== 'string')) fail('invalid message payload');
+      if (event.type === 'message.sent' && !object(p.body)) fail('message.sent must carry an inline body object');
       if (event.type === 'message.delivered' && !['delivered', 'undelivered'].includes(p.status)) fail('invalid delivery status');
     }
     if (runId !== null && event.run_id !== runId) fail('multiple runs in one episode');
@@ -75,7 +76,7 @@ function snapshot(episode, cursor) {
       if (event.type === 'message.sent') {
         message.from = typeof payload.from === 'string' ? payload.from : null;
         message.to = typeof payload.to === 'string' ? payload.to : null;
-        message.bodyRef = typeof payload.body_ref === 'string' ? payload.body_ref : null;
+        message.body = object(payload.body) ? payload.body : null;
       }
       message.transitions.push({ type: event.type, status: payload.status ?? null, event });
     }
