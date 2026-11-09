@@ -4,3 +4,6 @@ adaption>=0.1.0
 
 # Schema validation for e2e tests
 jsonschema>=4.0.0
+
+# Langfuse tracing (offline by default; keys required for live traces)
+langfuse>=5.0.0,<6.0.0

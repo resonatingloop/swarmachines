@@ -32,7 +32,12 @@ class IncompleteResponseError(RuntimeError):
     output_text "". The adapter previously discarded the diagnostic fields
     (status, incomplete_details, usage breakdown), so the failure was
     silent by construction. This error makes it loud by design.
+
+    The ``diagnostics`` attribute carries the captured fields so a
+    single sealer can emit ONE canonical source-linked failure event.
     """
+
+    diagnostics: dict[str, Any] | None = None
 
 
 @dataclass
@@ -71,13 +76,20 @@ class AdapterResponse:
         """
         text = (self.output_text or "").strip()
         if self.status != "completed" or not text:
-            raise IncompleteResponseError(
+            err = IncompleteResponseError(
                 f"incomplete model response: status={self.status!r} "
                 f"incomplete_reason={self.incomplete_reason!r} "
                 f"output_text_len={len(self.output_text or '')} "
                 f"reasoning_tokens={self.usage.reasoning_tokens} "
                 f"output_tokens={self.usage.output_tokens}"
             )
+            err.diagnostics = {
+                "status": self.status,
+                "incomplete_reason": self.incomplete_reason,
+                "reasoning_tokens": self.usage.reasoning_tokens,
+                "output_tokens": self.usage.output_tokens,
+            }
+            raise err
         return self
 
 

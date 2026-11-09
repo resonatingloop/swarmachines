@@ -33,6 +33,7 @@ from runtime.runner import EventLog
 from .budget import CreditBudget
 from .configs import TaskInstanceConfig
 from .langfuse_wiring import (
+    langfuse_state,
     shutdown_langfuse,
     trace_failure,
     trace_generation,
@@ -125,6 +126,7 @@ class RunMetadata:
         status: Run status ("completed", "failed", "dry-run")
         calls_count: Number of model calls made
         config_hash: Hash of the task config
+        langfuse_state: Langfuse wiring state (enabled/disabled/reason).
     """
 
     run_id: str
@@ -141,10 +143,11 @@ class RunMetadata:
     failure_type: str | None = None
     calls_count: int = 0
     config_hash: str = ""
+    langfuse_state: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
-        return {
+        result = {
             "run_id": self.run_id,
             "instance_id": self.instance_id,
             "seed": self.seed,
@@ -160,6 +163,9 @@ class RunMetadata:
             "calls_count": self.calls_count,
             "config_hash": self.config_hash,
         }
+        if self.langfuse_state is not None:
+            result["langfuse_state"] = self.langfuse_state
+        return result
 
 
 def _model_call_payload(
@@ -190,7 +196,7 @@ class _ModelCaptureEventLog(EventLog):
         self,
         run_id: str,
         base_ts: str,
-        capture: Callable[[int, str | None, str, dict], CallRecord | None],
+        capture: Callable[[int, str | None, str, dict, int], CallRecord | None],
     ):
         super().__init__(run_id, base_ts)
         self._capture = capture
@@ -201,7 +207,7 @@ class _ModelCaptureEventLog(EventLog):
         super().append(turn, agent_id, event_type, payload)
         source_seq = self.events[-1]["seq"]
         try:
-            record = self._capture(turn, agent_id, event_type, payload)
+            record = self._capture(turn, agent_id, event_type, payload, source_seq)
         except Exception as cap_err:
             # or6 contract: a failed model call must reach the SEALED log,
             # not just call_records — the source event is already sealed,
@@ -232,6 +238,7 @@ class _ModelCaptureEventLog(EventLog):
         agent_id: str | None,
         source_event_type: str,
         failure_payload: dict,
+        source_event_seq: int | None = None,
     ) -> None:
         """Seal a model.call.failed event for a call that raised after capture.
 
@@ -241,12 +248,20 @@ class _ModelCaptureEventLog(EventLog):
             source_event_type: The event type that triggered the call.
             failure_payload: Diagnostics (status, incomplete_reason,
                 reasoning_tokens, error text) to seal.
+            source_event_seq: The source event sequence number (required for
+                canonical failed-call event format).
         """
+        payload: dict[str, Any] = {
+            "source_event_type": source_event_type,
+            **failure_payload,
+        }
+        if source_event_seq is not None:
+            payload["source_event_seq"] = source_event_seq
         super().append(
             turn,
             agent_id,
             "model.call.failed",
-            {"source_event_type": source_event_type, **failure_payload},
+            payload,
         )
 
 
@@ -463,8 +478,10 @@ class GovernedRunner:
         runner.log = _ModelCaptureEventLog(
             runner.run_id,
             runner.base_ts,
-            lambda turn, agent_id, event_type, payload: self._capture_live_event(
-                adapter, turn, agent_id, event_type, payload
+            lambda turn, agent_id, event_type, payload, source_event_seq: (
+                self._capture_live_event(
+                    adapter, turn, agent_id, event_type, payload, source_event_seq
+                )
             ),
         )
 
@@ -483,6 +500,7 @@ class GovernedRunner:
         agent_id: str | None,
         event_type: str,
         payload: dict,
+        source_event_seq: int,
     ) -> CallRecord | None:
         """capture one model transcript before the runner seals its log."""
         role = agent_id or "system"
@@ -557,6 +575,7 @@ class GovernedRunner:
                             "reasoning_tokens": model_response.usage.reasoning_tokens,
                             "error": f"{type(ve).__name__}: {ve}",
                         },
+                        source_event_seq=source_event_seq,
                     )
                 raise
         except Exception as prov_err:
@@ -836,6 +855,7 @@ class GovernedRunner:
             failure_type=self.failure_type,
             calls_count=len(self.call_records),
             config_hash=self.config.config_hash(),
+            langfuse_state=langfuse_state(),
         )
         run_json_path = self.run_dir / "run.json"
         with open(run_json_path, "w", encoding="utf-8") as f:
@@ -913,6 +933,7 @@ def run_governed_run(
 
 if __name__ == "__main__":
     import sys
+    import tempfile
 
     from .configs import get_task_configs
 
@@ -925,7 +946,7 @@ if __name__ == "__main__":
     try:
         result = run_governed_run(
             config=test_config,
-            base_dir="/tmp/dataset-pack-test",
+            base_dir=tempfile.mkdtemp(prefix="dataset-pack-test-"),
             dry_run=True,
         )
         print(f"Run completed: {result['run_id']}")

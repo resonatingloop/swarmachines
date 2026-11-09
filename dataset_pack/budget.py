@@ -29,8 +29,11 @@ class CreditBudget:
     # or6 evidence (2026-11-08 probe): glm-53-flash spent the entire 256-token
     # budget on reasoning before any visible text (reasoning_tokens == 256,
     # status "incomplete"). Governing contract (cc1, 2026-11-08): 4096
-    # visible-response ceiling. Full-matrix cost stays small:
-    # 512 calls x 4096 x 0.50/M ~= 1.05 credits.
+    # visible-response ceiling. Full-matrix cost uses COMPLETE reservation
+    # (12,288-token input envelope + 4,096 output ceiling):
+    # per-call: 0.0038912 credits; 512 calls: 1.9922944 credits;
+    # 1,920 calls: 7.4711040 credits (hard 10-credit boundary safe).
+    # The 1.048576 figure is OUTPUT-token cost ONLY — not the full reservation.
     MAX_OUTPUT_TOKENS = 4096
 
     def __init__(self, ceiling_credits: str, max_calls: int):

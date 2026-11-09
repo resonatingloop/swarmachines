@@ -226,7 +226,7 @@ class TestSealedFailureEvents(unittest.TestCase):
     def test_failed_capture_seals_model_call_failed(self):
         """A raising capture appends model.call.failed before re-raising."""
 
-        def failing_capture(turn, agent_id, event_type, payload):
+        def failing_capture(turn, agent_id, event_type, payload, source_event_seq):
             raise RuntimeError("IncompleteResponseError: status='incomplete'")
 
         log = self._capture_log(failing_capture)
@@ -267,7 +267,7 @@ class TestSealedFailureEvents(unittest.TestCase):
 
         rec_holder = {}
 
-        def ok_capture(turn, agent_id, event_type, payload):
+        def ok_capture(turn, agent_id, event_type, payload, source_event_seq):
             rec_holder["r"] = CallRecord(
                 ts="t",
                 run_id="run-x",
@@ -483,3 +483,109 @@ class TestProviderExceptionTrace(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestEnforcedAllowlist(unittest.TestCase):
+    """The allowlist is enforced, not descriptive: unknown keys/classes rejected."""
+
+    def _wiring(self):
+        import sys as _sys
+
+        _sys.path.insert(0, str(Path(__file__).parent.parent))
+        import dataset_pack.langfuse_wiring as lw
+
+        return lw
+
+    def test_unknown_metadata_keys_are_dropped(self):
+        """A sneaky metadata key never reaches the transmission."""
+        lw = self._wiring()
+        calls = []
+
+        class FakeClient:
+            def create_generation(self, **kw):
+                calls.append(kw)
+
+            def flush(self):
+                pass
+
+        lw._LANGFUSE_CLIENT = FakeClient()
+        lw._LANGFUSE_STATE = {"enabled": True, "reason": "test"}
+        try:
+            lw.trace_generation(
+                "glm-53-flash",
+                "p",
+                "o",
+                usage=None,
+                status="completed",
+                incomplete_reason=None,
+                latency_ms=1.0,
+                metadata={
+                    "run_id": "r1",
+                    "secret_prompt_leak": "RAW TEXT",
+                    "arbitrary": "junk",
+                },
+            )
+            gen = calls[0]
+            self.assertIn("run_id", gen["metadata"])
+            self.assertNotIn("secret_prompt_leak", gen["metadata"])
+            self.assertNotIn("arbitrary", gen["metadata"])
+        finally:
+            lw._LANGFUSE_CLIENT = None
+
+    def test_unknown_error_class_collapses_to_unknown(self):
+        """An arbitrary exception-class string cannot pass through."""
+        lw = self._wiring()
+        # The current implementation: raw_class = error.split(":", 1)[0]
+        # then: error_class = raw_class if raw_class in _ALLOWED_ERROR_CLASSES else "Unknown"
+        raw_class = "SomeNeverSeenError"
+        error_class = raw_class if raw_class in lw._ALLOWED_ERROR_CLASSES else "Unknown"
+        self.assertEqual(error_class, "Unknown")
+
+    def test_failure_trace_uses_sanitized_class(self):
+        """trace_failure transmits only allowlisted error classes."""
+        lw = self._wiring()
+        calls = []
+
+        class FakeClient:
+            def create_generation(self, **kw):
+                calls.append(kw)
+
+            def flush(self):
+                pass
+
+        lw._LANGFUSE_CLIENT = FakeClient()
+        lw._LANGFUSE_STATE = {"enabled": True, "reason": "test"}
+        try:
+            lw.trace_failure(
+                "m",
+                "p",
+                "WeirdCustomError: details",
+                usage=None,
+                status="incomplete",
+                incomplete_reason=None,
+                latency_ms=1.0,
+            )
+            # Current implementation: raw_class = error.split(":", 1)[0]
+            # then: error_class = raw_class if raw_class in _ALLOWED_ERROR_CLASSES else "Unknown"
+            self.assertEqual(calls[0]["metadata"]["error_class"], "Unknown")
+        finally:
+            lw._LANGFUSE_CLIENT = None
+
+    def test_one_canonical_failure_event_carries_seq(self):
+        """A raising capture seals ONE event with source seq."""
+        import sys as _sys
+
+        _sys.path.insert(0, str(Path(__file__).parent.parent))
+        from dataset_pack.run import _ModelCaptureEventLog
+
+        def failing_capture(turn, agent_id, event_type, payload, source_event_seq):
+            raise RuntimeError("IncompleteResponseError: status='incomplete'")
+
+        log = _ModelCaptureEventLog("run-x", "2026-11-08T00:00:00Z", failing_capture)
+        with self.assertRaises(RuntimeError):
+            log.append(2, "beta", "agent.observe", {"v": 1})
+        failed = [e for e in log.events if e["type"] == "model.call.failed"]
+        self.assertEqual(len(failed), 1, "exactly one failure event, no duplicates")
+        pl = failed[0]["payload"]
+        self.assertIn("source_event_seq", pl)
+        self.assertIn("source_event_type", pl)

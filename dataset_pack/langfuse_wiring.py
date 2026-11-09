@@ -22,6 +22,34 @@ from typing import Any
 _LANGFUSE_CLIENT: Any = None
 _LANGFUSE_STATE: dict[str, Any] = {"enabled": False, "reason": "not initialized"}
 
+# Finite allowlists for Langfuse metadata (cc1 privacy contract)
+_ALLOWED_ERROR_CLASSES = frozenset(
+    [
+        "IncompleteResponseError",
+        "ValidationError",
+        "TimeoutError",
+        "ConnectionError",
+        "AuthenticationError",
+        "RateLimitError",
+        "ProviderError",
+        "Unknown",
+    ]
+)
+_ALLOWED_METADATA_KEYS = frozenset(
+    [
+        "status",
+        "incomplete_reason",
+        "failed",
+        "error_class",
+        "error_sha256",
+        "call_id",
+        "source_event_seq",
+        "source_event_type",
+        "reasoning_tokens",
+        "run_id",
+    ]
+)
+
 
 def _init_langfuse() -> Any:
     """Initialize the Langfuse client once; None when not configured.
@@ -45,11 +73,6 @@ def _init_langfuse() -> Any:
         )
         return None
     try:
-        import sys
-
-        site = "/opt/data/.local/lib/python3.14/site-packages"
-        if site not in sys.path:
-            sys.path.insert(0, site)
         from langfuse import Langfuse
 
         _LANGFUSE_CLIENT = Langfuse(public_key=public_key, secret_key=secret_key)
@@ -105,6 +128,12 @@ def trace_generation(
     client = _init_langfuse()
     if client is None:
         return False
+    # Filter metadata to only allowlisted keys (reject unknown)
+    filtered_metadata: dict[str, Any] = {}
+    if metadata:
+        for key in _ALLOWED_METADATA_KEYS:
+            if key in metadata:
+                filtered_metadata[key] = metadata[key]
     try:
         client.create_generation(
             name="adapter.chat",
@@ -121,7 +150,7 @@ def trace_generation(
             metadata={
                 "status": status,
                 "incomplete_reason": incomplete_reason,
-                **(metadata or {}),
+                **filtered_metadata,
             },
         )
         client.flush()
@@ -158,7 +187,9 @@ def trace_failure(
     Returns:
         True when recorded and flushed; False when offline.
     """
-    error_class = error.split(":", 1)[0] if ":" in error else error[:60]
+    # Extract error class and enforce allowlist
+    raw_class = error.split(":", 1)[0] if ":" in error else error[:60]
+    error_class = raw_class if raw_class in _ALLOWED_ERROR_CLASSES else "Unknown"
     return trace_generation(
         model=model,
         prompt=prompt,
@@ -186,7 +217,7 @@ def trace_provider_exception(
     The or6 contract: provider-level failures (connection, auth, rate
     limit) emit a failure trace too — not only validation failures.
     Usage is unknown (zeros); the error class name is allowlisted,
-    the message hashed.
+    the message hashed. NO RAW MESSAGE IS TRANSMITTED.
 
     Args:
         model: Model id.
@@ -197,18 +228,22 @@ def trace_provider_exception(
     Returns:
         True when recorded and flushed; False when offline.
     """
+    error_class = type(error).__name__
+    if error_class not in _ALLOWED_ERROR_CLASSES:
+        error_class = "Unknown"
+    error_text = str(error)
     return trace_generation(
         model=model,
         prompt=prompt,
-        output_text=str(error),
+        output_text=error_text,  # hashed locally, never transmitted raw
         usage=None,
         status="provider-error",
         incomplete_reason=None,
         latency_ms=latency_ms,
         metadata={
             "failed": True,
-            "error_class": type(error).__name__,
-            "error_sha256": _sha256(str(error)),
+            "error_class": error_class,
+            "error_sha256": _sha256(error_text),
         },
     )
 
