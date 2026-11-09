@@ -705,6 +705,306 @@
       "if": {
         "properties": {
           "type": {
+            "const": "model.call"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "source_event_seq",
+              "source_event_type",
+              "call_id",
+              "model",
+              "prompt",
+              "response",
+              "tokens_in",
+              "tokens_out",
+              "receipt_ref",
+              "provenance",
+              "response_status",
+              "response_id_sha256",
+              "output_item_type_counts",
+              "message_content_type_counts",
+              "visible_response_chars",
+              "total_tokens",
+              "reasoning_tokens",
+              "cached_input_tokens",
+              "model_matches_selected",
+              "latency_ms",
+              "categorical_error"
+            ],
+            "properties": {
+              "source_event_seq": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source_event_type": {
+                "enum": [
+                  "observation.recorded",
+                  "policy.decision",
+                  "disturbance.applied"
+                ]
+              },
+              "call_id": {
+                "type": "string",
+                "pattern": "^call-[0-9]{4,}$"
+              },
+              "model": {
+                "const": "glm-53-flash"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "response": {
+                "type": "string",
+                "minLength": 1
+              },
+              "tokens_in": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tokens_out": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "receipt_ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "provenance": {
+                "const": "model-generated"
+              },
+              "response_status": {
+                "const": "completed"
+              },
+              "response_id_sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "output_item_type_counts": {
+                "type": "object",
+                "maxProperties": 8,
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "message_content_type_counts": {
+                "type": "object",
+                "maxProperties": 3,
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "visible_response_chars": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "total_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "reasoning_tokens": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "cached_input_tokens": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "model_matches_selected": {
+                "const": true
+              },
+              "latency_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "categorical_error": {
+                "type": "null"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "model.call.failed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "source_event_seq",
+              "source_event_type",
+              "call_id",
+              "model",
+              "prompt",
+              "tokens_in",
+              "tokens_out",
+              "receipt_ref",
+              "provenance",
+              "response_status",
+              "incomplete_reason",
+              "response_id_sha256",
+              "output_item_type_counts",
+              "message_content_type_counts",
+              "visible_response_chars",
+              "total_tokens",
+              "reasoning_tokens",
+              "cached_input_tokens",
+              "model_matches_selected",
+              "latency_ms",
+              "categorical_error"
+            ],
+            "properties": {
+              "source_event_seq": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source_event_type": {
+                "enum": [
+                  "observation.recorded",
+                  "policy.decision"
+                ]
+              },
+              "call_id": {
+                "type": "string",
+                "pattern": "^call-[0-9]{4,}$"
+              },
+              "model": {
+                "const": "glm-53-flash"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "tokens_in": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tokens_out": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "receipt_ref": {
+                "type": "string",
+                "minLength": 1
+              },
+              "provenance": {
+                "const": "model-generated"
+              },
+              "response_status": {
+                "enum": [
+                  "completed",
+                  "incomplete",
+                  "failed",
+                  "cancelled",
+                  "queued",
+                  "in_progress",
+                  "other"
+                ]
+              },
+              "incomplete_reason": {
+                "enum": [
+                  "max_output_tokens",
+                  "content_filter",
+                  "other",
+                  null
+                ]
+              },
+              "response_id_sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "output_item_type_counts": {
+                "type": "object",
+                "maxProperties": 8,
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "message_content_type_counts": {
+                "type": "object",
+                "maxProperties": 3,
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "visible_response_chars": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "reasoning_tokens": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "cached_input_tokens": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "model_matches_selected": {
+                "type": "boolean"
+              },
+              "latency_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "categorical_error": {
+                "enum": [
+                  "model_mismatch",
+                  "response_not_completed",
+                  "empty_visible_response",
+                  "malformed_usage",
+                  "malformed_output_text",
+                  "provider_transport_error"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
             "const": "policy.decision"
           }
         }
@@ -925,9 +1225,7 @@
                       "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                     },
                     "release_turn": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "maximum": 100
+                      "const": 0
                     }
                   },
                   "required": [
