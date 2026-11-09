@@ -92,15 +92,40 @@ _SAFE_FAILURE_CATEGORIES = {
     "synthetic_trace_failed",
     "unsupported_sdk_version",
 }
+_SAFE_ASSERTION_NAMES = {
+    "environment_matches",
+    "exact_observation_count",
+    "expected_hashes_present",
+    "generation_hash_only_io",
+    "generation_shape",
+    "model_is_synthetic_unknown",
+    "model_not_resolved",
+    "no_sensitive_values",
+    "release_matches",
+    "root_hash_only_io",
+    "root_shape",
+    "terminal_metadata_safe",
+    "trace_ids_match",
+    "zero_cost",
+    "zero_usage",
+}
 
 
 class ProofFailure(RuntimeError):
     """a fixed-category proof failure without provider-controlled text."""
 
-    def __init__(self, category: str):
+    def __init__(
+        self,
+        category: str,
+        *,
+        failed_assertions: tuple[str, ...] = (),
+    ):
         if category not in _SAFE_FAILURE_CATEGORIES:
             category = "synthetic_trace_failed"
         self.category = category
+        self.failed_assertions = tuple(
+            name for name in failed_assertions if name in _SAFE_ASSERTION_NAMES
+        )
         super().__init__(category)
 
 
@@ -275,6 +300,10 @@ def _zero_map(value: Any) -> bool:
     )
 
 
+def _empty_status(value: Any) -> bool:
+    return value is None or value == ""
+
+
 def _validate_readback(
     observations: list[dict[str, Any]],
     *,
@@ -371,10 +400,10 @@ def _validate_readback(
             generation_metadata.get("status") == "completed"
             and generation_metadata.get("terminal_state") == "completed"
             and generation_metadata.get("categorical_error") is None
-            and root.get("status_message") is None
-            and root.get("statusMessage") is None
-            and generation.get("status_message") is None
-            and generation.get("statusMessage") is None
+            and _empty_status(root.get("status_message"))
+            and _empty_status(root.get("statusMessage"))
+            and _empty_status(generation.get("status_message"))
+            and _empty_status(generation.get("statusMessage"))
         ),
         "no_sensitive_values": not _contains_sensitive_value(
             observations,
@@ -384,7 +413,12 @@ def _validate_readback(
         ),
     }
     if not all(assertions.values()):
-        raise ProofFailure("readback_privacy_failed")
+        raise ProofFailure(
+            "readback_privacy_failed",
+            failed_assertions=tuple(
+                sorted(name for name, passed in assertions.items() if not passed)
+            ),
+        )
 
     summaries = [
         {
@@ -500,6 +534,7 @@ def _safe_receipt_base(release: str, started_at: datetime) -> dict[str, Any]:
         "auth": {"attempted": False, "passed": False},
         "synthetic": {"attempted": False, "passed": False},
         "failure_category": None,
+        "failed_assertions": [],
     }
 
 
@@ -638,6 +673,7 @@ def execute_proof(
         receipt["status"] = "passed"
     except ProofFailure as error:
         receipt["failure_category"] = error.category
+        receipt["failed_assertions"] = list(error.failed_assertions)
     finally:
         if client is not None:
             try:

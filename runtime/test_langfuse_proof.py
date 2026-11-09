@@ -7,11 +7,13 @@ import json
 import stat
 from collections.abc import Callable
 from copy import deepcopy
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from langfuse.api.commons.types.observation_v2 import ObservationV2
 
 from runtime.langfuse_proof import (
     ENVIRONMENT,
@@ -19,6 +21,7 @@ from runtime.langfuse_proof import (
     OBSERVATION_FIELDS,
     READBACK_TIMEOUT_SECONDS,
     ROOT_NAME,
+    _plain,
     execute_proof,
     write_receipt,
 )
@@ -393,6 +396,64 @@ def test_privacy_or_contract_mismatch_fails_closed(
 
     assert receipt["status"] == "failed"
     assert receipt["failure_category"] == "readback_privacy_failed"
+
+
+def test_empty_status_message_is_safe_unset_value(
+    credential_file: Path,
+) -> None:
+    def normalize_unset_status(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [{**item, "statusMessage": ""} for item in observations]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": normalize_unset_status},
+    )
+
+    assert receipt["status"] == "passed"
+    assert receipt["failed_assertions"] == []
+
+
+def test_sdk_observation_serialization_preserves_empty_camel_status() -> None:
+    observation = ObservationV2(
+        id="1",
+        trace_id="0" * 32,
+        start_time=datetime(2026, 11, 9, tzinfo=UTC),
+        end_time=None,
+        project_id="project",
+        parent_observation_id=None,
+        type="SPAN",
+        name=ROOT_NAME,
+        status_message="",
+    )
+
+    plain = _plain(observation)
+
+    assert plain["statusMessage"] == ""
+    assert "status_message" not in plain
+
+
+def test_failure_receipt_contains_only_fixed_assertion_names(
+    credential_file: Path,
+) -> None:
+    remote_release = "b" * 40
+
+    def change_release(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [{**item, "release": remote_release} for item in observations]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": change_release},
+    )
+
+    encoded = json.dumps(receipt, sort_keys=True)
+    assert receipt["status"] == "failed"
+    assert receipt["failure_category"] == "readback_privacy_failed"
+    assert receipt["failed_assertions"] == ["release_matches"]
+    assert remote_release not in encoded
 
 
 def test_malformed_remote_total_cost_is_categorical_and_never_escapes(
