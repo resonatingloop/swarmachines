@@ -5,8 +5,8 @@
   "source_commit": "46d54a31f45b43ec6c190a5e7badfad29a2d076c",
   "source_path": "runtime/freight-episode.jsonl",
   "fixture": "freight-candidate.jsonl",
-  "sha256": "d1ba6ea983cb60cc942377c58a76b63ec32143f9ba288e51849b6e63d3d4309c",
-  "sha256_note": "repinned after message bodies were inlined (body_ref removal)",
+  "sha256": "d5d7cc17fcf8d41aca3e8e91fd368eb06f738f6866a0745bed24b7ef31cddfd3",
+  "sha256_note": "repinned after inline bodies were restored in their authentic legacy-policy shape (sender-deterministic status reports)",
   "records": 394,
   "rerun": {
     "command": "python3 runtime/runner.py --seed 42 --turns 16 --topology mesh --disturbance relay-loss:8:c --output reproduced.jsonl",

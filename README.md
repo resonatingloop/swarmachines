@@ -51,22 +51,32 @@ is inline, so the log alone is the complete record. python 3.10+ required.
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt pytest
 .venv/bin/python -m pytest -q                 # expect: all passed
 .venv/bin/python -m runtime.runner --seed 42 --topology mesh --turns 16 \
-    --world freight --disturbance "peer-mute:8:c" --output episode.jsonl
+    --world freight --policy route-gossip-v1 \
+    --disturbance "peer-mute:8:c" --output episode.jsonl
 ```
 
 expected output:
 
 ```
-Wrote 407 events to episode.jsonl
+Wrote 415 events to episode.jsonl
 
 === Episode summary ===
-run run-seed0042 | seed 42 | topology mesh | policy legacy
-turns: 16 | agents: a, b, c, d | events: 407
-messages: 71 sent | 51 delivered | 20 undelivered | 51 seen | 23 acted on
-actions: 30 committed | 0 rejected
-seal: a00a216cdd08748e… (run.seal)
+run run-seed0042 | seed 42 | topology mesh | policy route-gossip-v1
+turns: 16 | agents: a, b, c, d | events: 415
+messages: 71 sent | 51 delivered | 20 undelivered | 51 seen | 0 acted on
+actions: 4 committed | 0 rejected
+seal: 29f74bdedbed36b7… (run.seal)
 output: episode.jsonl
 verify: python -m runtime.verify_events episode.jsonl
+```
+
+message bodies are inline and observation-derived (route-gossip-v1) or
+sender-deterministic status reports (legacy policy):
+
+```json
+{"message_id": "m-a001", "from": "a", "to": "d",
+ "body": {"type": "route_report", "sender": "a", "turn": 1,
+          "location": "west", "routes": {"west->east": "open", "west->south": "open"}}}
 ```
 
 - same seed + config → byte-identical log (verified by checksum)
