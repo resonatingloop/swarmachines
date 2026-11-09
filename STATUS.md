@@ -120,7 +120,7 @@ runs 005–015, packaging, upload, publication, or merge.
 - pr state: `gh pr list --repo resonatingloop/swarmachines --state open`
 - data pack: `data/runs/gen-full-20261108/` — logs/calls.jsonl, receipts/, run.json
 - report skeleton: `docs/report/report-skeleton.md` — mirrors official Apart template
-- TASKS.md: RETIRED 2026-11-08 — beads is sole tracker; do not edit or recreate
+- TASKS.md: removed from tree 2026-11-08 — retired 2026-11-08; beads is sole tracker; historical archive kept in owner notes outside the repo; do not recreate
 
 ## provenance
 
