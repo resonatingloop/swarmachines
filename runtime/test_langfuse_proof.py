@@ -368,7 +368,7 @@ def test_extra_observation_or_cursor_fails_closed(credential_file: Path) -> None
             for item in observations
         ],
         lambda observations: [
-            {**item, "status_message": "/tmp/private-error"}
+            {**item, "status_message": "/home/private-error"}
             if item["name"] == GENERATION_NAME
             else item
             for item in observations
