@@ -38,19 +38,7 @@ def write_new_file(path, content):
     Path(path).write_text(content)
 
 
-def track_response(response):
-    """Track API call metrics."""
-    global call_count, total_input_tokens, total_output_tokens
-    call_count += 1
-    total_input_tokens += response.usage.input_tokens
-    total_output_tokens += response.usage.output_tokens
-    print(
-        f"  [Call {call_count}] Tokens: {response.usage.input_tokens} in + {response.usage.output_tokens} out = {response.usage.total_tokens} total"
-    )
-    return response
-
-
-def generate_prompts(adapter):
+def generate_prompts():
     """Generate pilot prompt pack for 4 freight roles under mesh and ring topologies."""
     print("\n=== GENERATING PROMPTS ===")
 
@@ -122,11 +110,9 @@ team-authored seed material prepared without API access (0 calls); NOT model-gen
     return prompts_generated
 
 
-def generate_scenarios(adapter):
+def generate_scenarios():
     """Generate 2-3 candidate scenario seeds/configs."""
     print("\n=== GENERATING SCENARIOS ===")
-
-    scenarios = []
 
     # Scenario 1: Basic relay-loss disruption
     scenario1 = {
@@ -277,7 +263,7 @@ def generate_scenarios(adapter):
     return scenarios_written, scenarios
 
 
-def generate_coordination_example(adapter):
+def generate_coordination_example():
     """Generate one short model-composed coordination example exchange."""
     print("\n=== GENERATING COORDINATION EXAMPLE ===")
 
@@ -550,16 +536,14 @@ def main():
     # Content is authored based on hackathon spec requirements
     # All files carry provenance: "team-authored seed material prepared without API access (0 calls); NOT model-generated and NOT observed experimental evidence"
 
-    adapter = None  # Not used - content is spec-based
-
     # Generate prompts (static templates based on spec)
-    prompts = generate_prompts(adapter)
+    prompts = generate_prompts()
 
     # Generate scenarios (static configs based on spec)
-    scenarios_files, scenarios = generate_scenarios(adapter)
+    scenarios_files, scenarios = generate_scenarios()
 
     # Generate coordination example (static example based on spec)
-    example = generate_coordination_example(adapter)
+    example = generate_coordination_example()
 
     # Validate scenarios
     validations = validate_scenarios(scenarios)
