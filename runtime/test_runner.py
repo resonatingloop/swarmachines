@@ -1387,6 +1387,111 @@ def test_verify_seal_patterns():
     )
 
 
+def test_act_phase_no_op_labeling():
+    """Regression test for PR #38: legal no-ops must be action.committed, not action.rejected.
+
+    Background:
+    - Pre-#38 bug: apply_action(success=True, event_payload=None) was mislabeled as action.rejected
+    - Fixed code: success=True → action.committed with {"result": "no-op"}
+
+    This test FAILS on pre-#38 code and PASSES on master.
+
+    Acceptance criteria:
+    1. Legal no-op (freight_id='none') → action.committed with result='no-op', NEVER action.rejected
+    2. Illegal move → action.rejected and NEVER also action.committed
+    """
+    print("Test: act-phase no-op labeling (PR #38 regression)...")
+
+    # Import directly for unit testing
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parent))
+    try:
+        from freight_world import FreightWorld
+        from runner import Agent, EventLog
+    except ImportError:
+        from .freight_world import FreightWorld
+        from .runner import Agent, EventLog
+
+    # Test 1: apply_action with no-op returns (True, "", None)
+    fw = FreightWorld(seed=42)
+    no_op_action = {"kind": "route_freight", "freight_id": "none"}
+    success, reason, event_payload = fw.apply_action(no_op_action, "test")
+
+    if success is not True:
+        return False, f"No-op should return success=True, got {success}"
+    if reason != "":
+        return False, f"No-op should return reason='', got '{reason}'"
+    if event_payload is not None:
+        return False, f"No-op should return event_payload=None, got {event_payload}"
+
+    # Test 2: _commit_proposal labels no-op as action.committed (CRITICAL)
+    log = EventLog("test-run", "2026-11-08T00:00:00Z")
+    agent = Agent("test", base_seed=42, agent_index=0)
+
+    no_op_action_full = {
+        "action_id": "act-test00",
+        "kind": "route_freight",
+        "freight_id": "none",
+    }
+    agent._commit_proposal(no_op_action_full, turn=1, log=log, freight_world=fw)
+
+    events = log.events
+    committed = [e for e in events if e["type"] == "action.committed"]
+    rejected = [e for e in events if e["type"] == "action.rejected"]
+
+    # CRITICAL: No-op must be committed, NOT rejected
+    if not committed:
+        return False, (
+            "FAIL: Legal no-op was NOT committed. "
+            "Pre-#38 bug: success=True, event_payload=None was mislabeled as action.rejected."
+        )
+
+    # CRITICAL: Committed no-op must have result='no-op'
+    no_op_committed = [e for e in committed if e["payload"].get("result") == "no-op"]
+    if not no_op_committed:
+        return False, (
+            "FAIL: Committed action missing result='no-op'. "
+            "Fixed code adds {{'result': 'no-op'}} when event_payload is None."
+        )
+
+    # CRITICAL: No action.rejected for the no-op
+    if rejected:
+        return False, (
+            f"FAIL: Legal no-op was also rejected: {[e['payload'] for e in rejected]}. "
+            "Pre-#38 bug: legal no-ops were mislabeled as action.rejected."
+        )
+
+    # Test 3: Illegal actions are rejected (not committed)
+    log2 = EventLog("test-run2", "2026-11-08T00:00:00Z")
+    agent2 = Agent("test2", base_seed=42, agent_index=1)
+
+    illegal_action = {
+        "action_id": "act-test01",
+        "kind": "route_freight",
+        "freight_id": "nonexistent",
+        "via": "west->east",
+    }
+    agent2._commit_proposal(illegal_action, turn=1, log=log2, freight_world=fw)
+
+    events2 = log2.events
+    committed2 = [e for e in events2 if e["type"] == "action.committed"]
+    rejected2 = [e for e in events2 if e["type"] == "action.rejected"]
+
+    if committed2:
+        return (
+            False,
+            f"Illegal action should NOT be committed: {[e['payload'] for e in committed2]}",
+        )
+    if not rejected2:
+        return False, "Illegal action should be rejected"
+
+    return True, (
+        f"OK: no-op committed with result='no-op' ({len(committed)} committed, "
+        f"{len(rejected)} rejected), illegal rejected ({len(rejected2)} rejected)"
+    )
+
+
 def main():
     """Run all tests."""
     print("=" * 60)
@@ -1418,6 +1523,7 @@ def main():
         ("freight_supplies_conservation", test_freight_supplies_conservation),
         ("freight_capacity_check", test_freight_capacity_check),
         ("freight_determinism", test_freight_determinism),
+        ("act_phase_no_op_labeling", test_act_phase_no_op_labeling),
         ("sealed_log_shape", test_sealed_log_shape),
         ("chain_recomputable", test_chain_recomputable_from_log),
         ("seal_blocks_append", test_seal_blocks_append),
