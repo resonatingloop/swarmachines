@@ -45,7 +45,8 @@ or [the project brief](PROJECT_BRIEF.md) for the purpose and open choices.
 ## generate an episode (60 seconds)
 
 episodes are deterministic, self-contained event logs — every message body
-is inline, so the log alone is the complete record. python 3.10+ required.
+is inline, so the log alone is the complete record. python 3.10+ required
+(`SyntaxError` during pytest means your `python3` is older — use 3.10+).
 
 ```sh
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt pytest
