@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import jsonschema
+import pytest
 
 # Load schema
 schema_path = Path(__file__).parent / "schema/events.schema.json"
@@ -55,13 +56,9 @@ def test_run_config_rejects_extra():
             "unknown_field": "should fail",
         },
     }
-    try:
+    with pytest.raises(jsonschema.ValidationError):
         validate_event(event)
-        print("✗ test_run_config_rejects_extra: FAILED (should have raised)")
-        return False
-    except jsonschema.ValidationError:
-        print("✓ test_run_config_rejects_extra: PASSED")
-        return True
+    print("✓ test_run_config_rejects_extra: PASSED")
 
 
 def test_run_end_valid():
@@ -95,13 +92,9 @@ def test_run_end_rejects_extra():
             "unknown_field": "should fail",
         },
     }
-    try:
+    with pytest.raises(jsonschema.ValidationError):
         validate_event(event)
-        print("✗ test_run_end_rejects_extra: FAILED (should have raised)")
-        return False
-    except jsonschema.ValidationError:
-        print("✓ test_run_end_rejects_extra: PASSED")
-        return True
+    print("✓ test_run_end_rejects_extra: PASSED")
 
 
 def test_existing_logs_validate():
@@ -126,19 +119,14 @@ def test_sample_run_validate():
 
 if __name__ == "__main__":
     print("Running schema validation tests...\n")
-    all_passed = True
 
     test_run_config_valid()
-    all_passed &= test_run_config_rejects_extra()
+    test_run_config_rejects_extra()
     test_run_end_valid()
-    all_passed &= test_run_end_rejects_extra()
+    test_run_end_rejects_extra()
     test_existing_logs_validate()
     test_sample_run_validate()
 
     print("\n" + "=" * 50)
-    if all_passed:
-        print("All tests PASSED")
-        sys.exit(0)
-    else:
-        print("Some tests FAILED")
-        sys.exit(1)
+    print("All tests PASSED")
+    sys.exit(0)
