@@ -18,6 +18,7 @@ from langfuse.api.commons.types.observation_v2 import ObservationV2
 from runtime.langfuse_proof import (
     ENVIRONMENT,
     GENERATION_NAME,
+    MASKING_MARKER_KEY,
     OBSERVATION_FIELDS,
     READBACK_TIMEOUT_SECONDS,
     ROOT_NAME,
@@ -454,6 +455,89 @@ def test_failure_receipt_contains_only_fixed_assertion_names(
     assert receipt["failure_category"] == "readback_privacy_failed"
     assert receipt["failed_assertions"] == ["release_matches"]
     assert remote_release not in encoded
+
+
+def test_masking_marker_is_allowlisted_only_when_true(
+    credential_file: Path,
+) -> None:
+    def add_marker(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                **item,
+                "metadata": {
+                    **(item.get("metadata") or {}),
+                    MASKING_MARKER_KEY: True,
+                },
+            }
+            for item in observations
+        ]
+
+    passed, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": add_marker},
+    )
+    assert passed["status"] == "passed"
+
+    def corrupt_marker(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        marked = add_marker(observations)
+        return [
+            {
+                **item,
+                "metadata": {
+                    **(item.get("metadata") or {}),
+                    MASKING_MARKER_KEY: False,
+                },
+            }
+            for item in marked
+        ]
+
+    failed, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": corrupt_marker},
+    )
+    assert failed["status"] == "failed"
+    assert failed["failed_assertions"] == [
+        "generation_mask_marker_safe",
+        "root_mask_marker_safe",
+    ]
+
+
+def test_metadata_allowlist_failure_is_named_without_remote_values(
+    credential_file: Path,
+) -> None:
+    remote_key = "remote_private_key"
+    remote_value = "remote-private-value"
+
+    def add_remote_metadata(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                **item,
+                "metadata": {
+                    **(item.get("metadata") or {}),
+                    remote_key: remote_value,
+                },
+            }
+            if item["name"] == GENERATION_NAME
+            else item
+            for item in observations
+        ]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": add_remote_metadata},
+    )
+
+    encoded = json.dumps(receipt, sort_keys=True)
+    assert receipt["status"] == "failed"
+    assert receipt["failed_assertions"] == ["generation_metadata_allowlisted"]
+    assert remote_key not in encoded
+    assert remote_value not in encoded
 
 
 def test_malformed_remote_total_cost_is_categorical_and_never_escapes(

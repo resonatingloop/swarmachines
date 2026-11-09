@@ -16,6 +16,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 LANGFUSE_REQUEST_TIMEOUT_SECONDS = 10
+MASKING_MARKER_KEY = "swarmachines.masking_applied"
 
 
 class RunStatus(Enum):
@@ -533,7 +534,7 @@ def _mask_otel_spans(*, params: Any) -> Any:
         if delete_attributes:
             patches[identifier] = OtelSpanPatch(
                 delete_attributes=delete_attributes,
-                set_attributes={"swarmachines.masking_applied": True},
+                set_attributes={MASKING_MARKER_KEY: True},
             )
     return MaskOtelSpansResult(span_patches=patches)
 

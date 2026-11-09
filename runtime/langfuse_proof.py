@@ -27,6 +27,7 @@ from typing import Any
 
 from runtime.tracer import (
     LANGFUSE_REQUEST_TIMEOUT_SECONDS,
+    MASKING_MARKER_KEY,
     RunStatus,
     TraceConfig,
     Tracer,
@@ -53,6 +54,7 @@ _ROOT_METADATA_KEYS = {
     "schema_version",
     "seed",
     "type",
+    MASKING_MARKER_KEY,
 }
 _GENERATION_METADATA_KEYS = {
     "agent_id",
@@ -75,6 +77,7 @@ _GENERATION_METADATA_KEYS = {
     "topology",
     "turn",
     "visible_response_chars",
+    MASKING_MARKER_KEY,
 }
 _SAFE_FAILURE_CATEGORIES = {
     "auth_check_failed",
@@ -97,12 +100,16 @@ _SAFE_ASSERTION_NAMES = {
     "exact_observation_count",
     "expected_hashes_present",
     "generation_hash_only_io",
+    "generation_mask_marker_safe",
+    "generation_metadata_allowlisted",
     "generation_shape",
     "model_is_synthetic_unknown",
     "model_not_resolved",
     "no_sensitive_values",
     "release_matches",
     "root_hash_only_io",
+    "root_mask_marker_safe",
+    "root_metadata_allowlisted",
     "root_shape",
     "terminal_metadata_safe",
     "trace_ids_match",
@@ -304,6 +311,10 @@ def _empty_status(value: Any) -> bool:
     return value is None or value == ""
 
 
+def _safe_mask_marker(value: Any) -> bool:
+    return value is None or value is True
+
+
 def _validate_readback(
     observations: list[dict[str, Any]],
     *,
@@ -333,10 +344,10 @@ def _validate_readback(
     generation_metadata = generation.get("metadata") or {}
     if not isinstance(root_metadata, dict) or not isinstance(generation_metadata, dict):
         raise ProofFailure("readback_shape_failed")
-    if not set(root_metadata).issubset(_ROOT_METADATA_KEYS):
-        raise ProofFailure("readback_privacy_failed")
-    if not set(generation_metadata).issubset(_GENERATION_METADATA_KEYS):
-        raise ProofFailure("readback_privacy_failed")
+    root_metadata_allowlisted = set(root_metadata).issubset(_ROOT_METADATA_KEYS)
+    generation_metadata_allowlisted = set(generation_metadata).issubset(
+        _GENERATION_METADATA_KEYS
+    )
 
     root_input = _json_object(root.get("input"))
     root_output = _json_object(root.get("output"))
@@ -359,6 +370,14 @@ def _validate_readback(
             == root_id
             and _field(generation, "is_root_observation", "isRootObservation")
             is not True
+        ),
+        "root_metadata_allowlisted": root_metadata_allowlisted,
+        "generation_metadata_allowlisted": generation_metadata_allowlisted,
+        "root_mask_marker_safe": _safe_mask_marker(
+            root_metadata.get(MASKING_MARKER_KEY)
+        ),
+        "generation_mask_marker_safe": _safe_mask_marker(
+            generation_metadata.get(MASKING_MARKER_KEY)
         ),
         "release_matches": all(item.get("release") == release for item in observations),
         "environment_matches": all(
