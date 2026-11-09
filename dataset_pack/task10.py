@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from runtime.runner import TurnSeamRunner, verify_seal
+from runtime.tracer import TraceConfig, Tracer
 
 from .budget import CreditBudget
 from .configs import TaskInstanceConfig, get_task_configs, validate_configs
@@ -63,7 +64,11 @@ def verify_matrix_offline(configs: list[TaskInstanceConfig]) -> dict[str, Any]:
     return {"instances": evidence, "all_passed": True}
 
 
-def preflight(ceiling_credits: str = "10") -> dict[str, Any]:
+def preflight(
+    ceiling_credits: str = "10",
+    *,
+    langfuse_credentials: Path | None = None,
+) -> dict[str, Any]:
     """return provider-free proof for the exact task-10 matrix and envelope."""
     ceiling = Decimal(ceiling_credits)
     if ceiling > TASK_CEILING:
@@ -74,7 +79,8 @@ def preflight(ceiling_credits: str = "10") -> dict[str, Any]:
     return {
         "matrix": verify_matrix_offline(configs),
         "budget": budget.preflight(planned_calls),
-        "credential_configured": bool(os.environ.get("ADAPTION_API_KEY")),
+        "adaption_credential_configured": bool(os.environ.get("ADAPTION_API_KEY")),
+        "langfuse_credential_path_supplied": langfuse_credentials is not None,
         "provider_calls": 0,
     }
 
@@ -120,6 +126,7 @@ def execute_batch(
     repo: Path,
     ceiling_credits: str,
     confirmation: str,
+    langfuse_credentials: Path,
 ) -> dict[str, Any]:
     """execute the authorized one-drop batch and package it without uploading."""
     if confirmation != CONFIRMATION:
@@ -130,11 +137,20 @@ def execute_batch(
     _require_new_directory(runs_dir)
     _require_new_directory(pack_dir)
 
-    proof = preflight(ceiling_credits)
+    proof = preflight(
+        ceiling_credits,
+        langfuse_credentials=langfuse_credentials,
+    )
     configs = get_task_configs()
     planned_calls = planned_call_count(configs)
     budget = CreditBudget(ceiling_credits, max_calls=planned_calls)
     generation_commit = _repo_commit(repo)
+    trace_config = TraceConfig.from_file(
+        langfuse_credentials,
+        release=generation_commit,
+        strict=True,
+    )
+    tracer = Tracer(trace_config)
     receipt_path = runs_dir / "BATCH-RECEIPT.json"
     receipt: dict[str, Any] = {
         "schema": "task10-batch-receipt-v1",
@@ -155,6 +171,7 @@ def execute_batch(
                 str(runs_dir),
                 dry_run=False,
                 budget=budget,
+                tracer=tracer,
             )
             receipt["completed_instances"].append(
                 {
@@ -191,6 +208,8 @@ def execute_batch(
         )
         _write_receipt(receipt_path, receipt)
         raise
+    finally:
+        tracer.flush()
 
 
 def main() -> int:
@@ -200,13 +219,20 @@ def main() -> int:
     parser.add_argument("--confirm")
     parser.add_argument("--runs-dir", type=Path)
     parser.add_argument("--pack-dir", type=Path)
+    parser.add_argument("--langfuse-credentials", type=Path)
     args = parser.parse_args()
 
     if not args.live:
         print(json.dumps(preflight(args.credit_ceiling), indent=2))
         return 0
-    if args.runs_dir is None or args.pack_dir is None:
-        parser.error("--live requires --runs-dir and --pack-dir")
+    if (
+        args.runs_dir is None
+        or args.pack_dir is None
+        or args.langfuse_credentials is None
+    ):
+        parser.error(
+            "--live requires --runs-dir, --pack-dir, and --langfuse-credentials"
+        )
 
     receipt = execute_batch(
         runs_dir=args.runs_dir.resolve(),
@@ -214,6 +240,7 @@ def main() -> int:
         repo=Path.cwd().resolve(),
         ceiling_credits=args.credit_ceiling,
         confirmation=args.confirm or "",
+        langfuse_credentials=args.langfuse_credentials,
     )
     print(json.dumps(receipt, indent=2))
     return 0

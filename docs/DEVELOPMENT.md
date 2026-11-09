@@ -167,6 +167,50 @@ requests or retries. call 1 still aborts on failure; later failures retain all
 result rows and expose the first error at top level for the CLI. provider
 configuration and retry policy are unchanged by this accounting fix.
 
+## task10 response and trace repair
+
+the accepted repair under
+[`openspec/changes/repair-task10-observability/`](../openspec/changes/repair-task10-observability/)
+uses adaption `0.19.x` and langfuse `5.x`. install them into an isolated
+environment from `requirements.txt`; do not install from a host-specific sdk
+directory.
+
+the provider-free matrix and budget proof is:
+
+```sh
+python -m dataset_pack.task10 --credit-ceiling 10
+```
+
+it must report 1,920 planned calls, a 4,096-token per-call ceiling, no provider
+calls, and a maximum reservation below 10 credits. the focused offline tests
+are:
+
+```sh
+pytest -q runtime/test_task10_observability.py dataset_pack/test_run.py \
+  dataset_pack/test_task10.py runtime/test_tracer.py
+```
+
+live task10 execution additionally requires
+`--langfuse-credentials <private-file>`. the file is read directly rather
+than sourced and must be an owner-owned, non-symlink regular file with mode
+`0600`; it contains exactly `LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY`,
+and `LANGFUSE_SECRET_KEY`. do not print it or add its values to process-wide
+environment variables. there is intentionally no repo-relative credential
+default: the owner accepted an explicit external private-file argument, and
+the cli must not guess a host path or seek secrets inside the repository.
+
+tracing exports hashes and bounded metadata only. every provider attempt owns
+one generation, flushes before the next paid call, and stops the batch if trace
+creation or export fails. a response becomes a sealed `model.call` only when
+status is `completed` and visible output is nonempty. a rejected attempt
+instead becomes exactly one source-linked `model.call.failed` event, and the
+failed partial run is sealed before capture. package creation recomputes every
+persisted event seal before it writes a manifest or copies raw runs.
+
+offline success does not authorize langfuse authentication, synthetic export,
+an adaption diagnostic call, runs 005–015, packaging, upload, or publication.
+those gates remain explicit and sequential.
+
 ## e2e pipeline test
 
 `python3 runtime/test_e2e_pipeline.py` exercises the full pipeline from a fresh

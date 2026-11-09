@@ -16,6 +16,7 @@ Provenance contract:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 import sys
@@ -28,9 +29,24 @@ from typing import Any
 # Add parent to path for runtime import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from runtime.runner import EventLog
+from runtime.tracer import Tracer
 
 from .budget import CreditBudget
 from .configs import TaskInstanceConfig
+
+
+def _validate_model_call_events(events: list[dict[str, Any]]) -> None:
+    """validate each completed or failed provider event against the schema."""
+    from jsonschema import Draft202012Validator
+
+    schema_path = (
+        Path(__file__).parent.parent / "runtime" / "schema" / "events.schema.json"
+    )
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema)
+    for event in events:
+        if event.get("type") in {"model.call", "model.call.failed"}:
+            validator.validate(event)
 
 
 @dataclass
@@ -68,6 +84,18 @@ class CallRecord:
     receipt_ref: str
     credits_estimated: str = "0"
     provenance: str = "model-generated"
+    response_status: str = "completed"
+    incomplete_reason: str | None = None
+    response_id_sha256: str | None = None
+    output_item_type_counts: dict[str, int] | None = None
+    message_content_type_counts: dict[str, int] | None = None
+    visible_response_chars: int = 0
+    total_tokens: int = 0
+    reasoning_tokens: int | None = None
+    cached_input_tokens: int | None = None
+    model_matches_selected: bool = True
+    latency_ms: float = 0.0
+    categorical_error: str | None = None
 
     def to_jsonl_line(self) -> str:
         """Serialize to a JSONL line."""
@@ -87,6 +115,18 @@ class CallRecord:
                 "receipt_ref": self.receipt_ref,
                 "credits_estimated": self.credits_estimated,
                 "provenance": self.provenance,
+                "response_status": self.response_status,
+                "incomplete_reason": self.incomplete_reason,
+                "response_id_sha256": self.response_id_sha256,
+                "output_item_type_counts": self.output_item_type_counts or {},
+                "message_content_type_counts": self.message_content_type_counts or {},
+                "visible_response_chars": self.visible_response_chars,
+                "total_tokens": self.total_tokens,
+                "reasoning_tokens": self.reasoning_tokens,
+                "cached_input_tokens": self.cached_input_tokens,
+                "model_matches_selected": self.model_matches_selected,
+                "latency_ms": self.latency_ms,
+                "categorical_error": self.categorical_error,
             },
             separators=(",", ":"),
             ensure_ascii=False,
@@ -149,10 +189,30 @@ class RunMetadata:
         }
 
 
+def _trace_usage(usage: Any) -> dict[str, int]:
+    """map provider usage into non-overlapping langfuse buckets."""
+    reasoning = usage.reasoning_tokens or 0
+    visible_output = usage.output_tokens - reasoning
+    details = {
+        "input": usage.input_tokens,
+        "output": visible_output,
+        "total": usage.total_tokens,
+    }
+    if reasoning:
+        details["output_reasoning_tokens"] = reasoning
+    if usage.cached_input_tokens:
+        details["input_cached_tokens"] = usage.cached_input_tokens
+    return details
+
+
 def _model_call_payload(
     record: CallRecord, source_seq: int, source_event_type: str
 ) -> dict[str, Any]:
     """build the sealed event payload paired with one persisted call record."""
+    if record.response_status != "completed" or not record.response_full.strip():
+        raise ValueError(
+            "only completed nonempty responses may become model.call events"
+        )
     return {
         "source_event_seq": source_seq,
         "source_event_type": source_event_type,
@@ -164,6 +224,50 @@ def _model_call_payload(
         "tokens_out": record.tokens_out,
         "receipt_ref": record.receipt_ref,
         "provenance": record.provenance,
+        "response_status": record.response_status,
+        "response_id_sha256": record.response_id_sha256,
+        "output_item_type_counts": record.output_item_type_counts or {},
+        "message_content_type_counts": record.message_content_type_counts or {},
+        "visible_response_chars": record.visible_response_chars,
+        "total_tokens": record.total_tokens,
+        "reasoning_tokens": record.reasoning_tokens,
+        "cached_input_tokens": record.cached_input_tokens,
+        "model_matches_selected": record.model_matches_selected,
+        "latency_ms": record.latency_ms,
+        "categorical_error": record.categorical_error,
+    }
+
+
+def _model_call_failed_payload(
+    record: CallRecord, source_seq: int, source_event_type: str
+) -> dict[str, Any]:
+    """build one source-linked failure event without inventing a response."""
+    if record.response_full:
+        raise ValueError("failed model call events require an empty persisted response")
+    if record.categorical_error is None:
+        raise ValueError("failed model call events require a categorical error")
+    return {
+        "source_event_seq": source_seq,
+        "source_event_type": source_event_type,
+        "call_id": record.call_id,
+        "model": record.model,
+        "prompt": record.prompt_full,
+        "tokens_in": record.tokens_in,
+        "tokens_out": record.tokens_out,
+        "receipt_ref": record.receipt_ref,
+        "provenance": record.provenance,
+        "response_status": record.response_status,
+        "incomplete_reason": record.incomplete_reason,
+        "response_id_sha256": record.response_id_sha256,
+        "output_item_type_counts": record.output_item_type_counts or {},
+        "message_content_type_counts": record.message_content_type_counts or {},
+        "visible_response_chars": record.visible_response_chars,
+        "total_tokens": record.total_tokens,
+        "reasoning_tokens": record.reasoning_tokens,
+        "cached_input_tokens": record.cached_input_tokens,
+        "model_matches_selected": record.model_matches_selected,
+        "latency_ms": record.latency_ms,
+        "categorical_error": record.categorical_error,
     }
 
 
@@ -175,16 +279,34 @@ class _ModelCaptureEventLog(EventLog):
         run_id: str,
         base_ts: str,
         capture: Callable[[int, str | None, str, dict], CallRecord | None],
+        call_records: list[CallRecord],
     ):
         super().__init__(run_id, base_ts)
         self._capture = capture
+        self._call_records = call_records
 
     def append(
         self, turn: int, agent_id: str | None, event_type: str, payload: dict
     ) -> None:
         super().append(turn, agent_id, event_type, payload)
         source_seq = self.events[-1]["seq"]
-        record = self._capture(turn, agent_id, event_type, payload)
+        prior_call_count = len(self._call_records)
+        try:
+            record = self._capture(turn, agent_id, event_type, payload)
+        except BaseException:
+            if len(self._call_records) == prior_call_count + 1:
+                failed_record = self._call_records[-1]
+                super().append(
+                    turn,
+                    agent_id,
+                    "model.call.failed",
+                    _model_call_failed_payload(
+                        failed_record,
+                        source_seq,
+                        event_type,
+                    ),
+                )
+            raise
         if record is None:
             return
         super().append(
@@ -193,6 +315,10 @@ class _ModelCaptureEventLog(EventLog):
             "model.call",
             _model_call_payload(record, source_seq, event_type),
         )
+
+    def seal(self) -> None:
+        _validate_model_call_events(self.events)
+        super().seal()
 
 
 class GovernedRunner:
@@ -214,6 +340,7 @@ class GovernedRunner:
         config: TaskInstanceConfig,
         dry_run: bool = True,
         budget: CreditBudget | None = None,
+        tracer: Tracer | None = None,
     ):
         self.base_dir = Path(base_dir)
         self.config = config
@@ -221,6 +348,7 @@ class GovernedRunner:
         if not dry_run and budget is None:
             raise ValueError("live governed runs require an explicit credit budget")
         self.budget = budget
+        self.tracer = tracer
         self.status = "prepared"
         self.failure_type: str | None = None
         self.run_id = f"run-{config.instance_id}"
@@ -286,6 +414,11 @@ class GovernedRunner:
         tokens_in: int = 0,
         tokens_out: int = 0,
         credits_estimated: str = "0",
+        diagnostics: dict[str, Any] | None = None,
+        total_tokens: int | None = None,
+        reasoning_tokens: int | None = None,
+        cached_input_tokens: int | None = None,
+        latency_ms: float = 0.0,
     ) -> CallRecord:
         """
         Generate a call record with full provenance and append to call_records.
@@ -309,6 +442,7 @@ class GovernedRunner:
         now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         receipt_ref = f"receipt-{self.run_id}-{self.call_counter:04d}"
 
+        diagnostic = diagnostics or {}
         record = CallRecord(
             ts=now,
             run_id=self.run_id,
@@ -324,6 +458,24 @@ class GovernedRunner:
             receipt_ref=receipt_ref,
             credits_estimated=credits_estimated,
             provenance="model-generated",
+            response_status=diagnostic.get("status", "completed"),
+            incomplete_reason=diagnostic.get("incomplete_reason"),
+            response_id_sha256=diagnostic.get("response_id_sha256"),
+            output_item_type_counts=diagnostic.get("output_item_type_counts", {}),
+            message_content_type_counts=diagnostic.get(
+                "message_content_type_counts", {}
+            ),
+            visible_response_chars=diagnostic.get(
+                "visible_response_chars", len(response)
+            ),
+            total_tokens=(
+                total_tokens if total_tokens is not None else tokens_in + tokens_out
+            ),
+            reasoning_tokens=reasoning_tokens,
+            cached_input_tokens=cached_input_tokens,
+            model_matches_selected=diagnostic.get("model_matches_selected", True),
+            latency_ms=latency_ms,
+            categorical_error=diagnostic.get("categorical_error"),
         )
         # N1 fix: Append the record so dry-run ships real calls/receipts/artifacts
         self.call_records.append(record)
@@ -384,6 +536,7 @@ class GovernedRunner:
             policy=runner_args.get("policy", "legacy"),
             world_graph=runner_args.get("world_graph"),
             job_set=runner_args.get("job_set"),
+            tracer=self.tracer,
         )
         # The dataset instance identity owns every layer of the persisted run.
         # TurnSeamRunner's seed-derived default is useful for standalone runs,
@@ -400,6 +553,7 @@ class GovernedRunner:
             lambda turn, agent_id, event_type, payload: self._capture_live_event(
                 adapter, turn, agent_id, event_type, payload
             ),
+            self.call_records,
         )
 
         # B1: Execute the genuine turn loop (observe→exchange→act→record)
@@ -439,41 +593,145 @@ class GovernedRunner:
 
         if self.budget is None:
             raise RuntimeError("live provider call attempted without credit budget")
+        if self.tracer is None:
+            raise RuntimeError("live provider call attempted without strict tracing")
         reservation = self.budget.begin(prompt)
-        try:
-            model_response = adapter.chat(
-                model="glm-53-flash",
-                messages=[{"role": "user", "content": prompt}],
-                max_output_tokens=self.budget.MAX_OUTPUT_TOKENS,
+        next_call_id = f"call-{self.call_counter + 1:04d}"
+        phase = "observe" if event_type == "observation.recorded" else "act"
+        from runtime.adaption_adapter import ResponseContractError
+
+        with self.tracer.generation(
+            call_id=next_call_id,
+            model_id="glm-53-flash",
+            prompt=prompt,
+            metadata={
+                "turn": turn,
+                "phase": phase,
+                "agent_id": role,
+                "source_event_type": event_type,
+                "condition": (
+                    ",".join(sorted(self.config.disturbance_schedule)) or "none"
+                ),
+                "topology": self.config.topology,
+                "seed": self.config.seed,
+            },
+        ) as generation:
+            request_args: dict[str, Any] = {
+                "instructions": (
+                    "answer directly in at most 120 visible words. return a useful "
+                    "plain-text answer; do not expose private reasoning."
+                ),
+                "max_output_tokens": self.budget.MAX_OUTPUT_TOKENS,
+                "tools": [],
+                "tool_choice": "none",
+                "agentic_memory": False,
+                "store": False,
+            }
+            if generation.traceparent is not None:
+                request_args["traceparent"] = generation.traceparent
+            try:
+                model_response = adapter.chat(
+                    model="glm-53-flash",
+                    messages=[{"role": "user", "content": prompt}],
+                    **request_args,
+                )
+            except ResponseContractError as error:
+                self.budget.fail(reservation)
+                self._generate_call_record(
+                    role=role,
+                    prompt=prompt,
+                    response="",
+                    artifact=artifact,
+                    diagnostics=error.diagnostics.to_dict(),
+                )
+                raise
+            except BaseException:
+                self.budget.fail(reservation)
+                self._generate_call_record(
+                    role=role,
+                    prompt=prompt,
+                    response="",
+                    artifact=artifact,
+                    diagnostics={
+                        "status": "other",
+                        "visible_response_chars": 0,
+                        "model_matches_selected": True,
+                        "categorical_error": "provider_transport_error",
+                    },
+                )
+                raise
+
+            provider_credits = getattr(
+                getattr(model_response, "raw_response", None),
+                "estimated_credits_consumed",
+                None,
             )
-        except Exception:
-            self.budget.fail(reservation)
-            raise
-        try:
+            diagnostic = model_response.diagnostics.to_dict()
+            try:
+                model_response.validate_complete()
+            except ResponseContractError:
+                credits = self.budget.finish_failed(
+                    reservation,
+                    input_tokens=model_response.usage.input_tokens,
+                    output_tokens=model_response.usage.output_tokens,
+                    provider_credits=provider_credits,
+                )
+                diagnostic = model_response.diagnostics.to_dict()
+                record = self._generate_call_record(
+                    role=role,
+                    prompt=prompt,
+                    response="",
+                    artifact=artifact,
+                    tokens_in=model_response.usage.input_tokens,
+                    tokens_out=model_response.usage.output_tokens,
+                    credits_estimated=format(credits, "f"),
+                    diagnostics=diagnostic,
+                    total_tokens=model_response.usage.total_tokens,
+                    reasoning_tokens=model_response.usage.reasoning_tokens,
+                    cached_input_tokens=model_response.usage.cached_input_tokens,
+                    latency_ms=model_response.latency_ms,
+                )
+                generation.complete(
+                    response_sha256=None,
+                    diagnostics=diagnostic,
+                    usage_details=_trace_usage(model_response.usage),
+                    cost_details={"total": float(credits)},
+                    latency_ms=model_response.latency_ms,
+                    terminal_state="rejected",
+                )
+                raise
+
             credits = self.budget.finish(
                 reservation,
                 input_tokens=model_response.usage.input_tokens,
                 output_tokens=model_response.usage.output_tokens,
-                provider_credits=getattr(
-                    getattr(model_response, "raw_response", None),
-                    "estimated_credits_consumed",
-                    None,
-                ),
+                provider_credits=provider_credits,
             )
-        except Exception:
-            self.budget.fail(reservation)
-            raise
-        response = model_response.output_text
-        return self._generate_call_record(
-            role=role,
-            prompt=prompt,
-            response=response,
-            model="glm-53-flash",
-            artifact=artifact,
-            tokens_in=model_response.usage.input_tokens,
-            tokens_out=model_response.usage.output_tokens,
-            credits_estimated=format(credits, "f"),
-        )
+            response = model_response.output_text
+            record = self._generate_call_record(
+                role=role,
+                prompt=prompt,
+                response=response,
+                model="glm-53-flash",
+                artifact=artifact,
+                tokens_in=model_response.usage.input_tokens,
+                tokens_out=model_response.usage.output_tokens,
+                credits_estimated=format(credits, "f"),
+                diagnostics=diagnostic,
+                total_tokens=model_response.usage.total_tokens,
+                reasoning_tokens=model_response.usage.reasoning_tokens,
+                cached_input_tokens=model_response.usage.cached_input_tokens,
+                latency_ms=model_response.latency_ms,
+            )
+            generation.complete(
+                response_sha256=hashlib.sha256(response.encode("utf-8")).hexdigest(),
+                diagnostics=diagnostic,
+                usage_details=_trace_usage(model_response.usage),
+                cost_details={"total": float(credits)},
+                latency_ms=model_response.latency_ms,
+                terminal_state="completed",
+            )
+            return record
 
     def _append_dry_model_call(
         self,
@@ -641,6 +899,7 @@ class GovernedRunner:
 
         # Seal the event log
         if self.event_log:
+            _validate_model_call_events(self.event_log.events)
             self.event_log.seal()
 
     def capture(self) -> dict[str, Any]:
@@ -679,6 +938,18 @@ class GovernedRunner:
                 "tokens_out": record.tokens_out,
                 "credits_estimated": record.credits_estimated,
                 "ts": record.ts,
+                "response_status": record.response_status,
+                "incomplete_reason": record.incomplete_reason,
+                "response_id_sha256": record.response_id_sha256,
+                "output_item_type_counts": record.output_item_type_counts or {},
+                "message_content_type_counts": record.message_content_type_counts or {},
+                "visible_response_chars": record.visible_response_chars,
+                "total_tokens": record.total_tokens,
+                "reasoning_tokens": record.reasoning_tokens,
+                "cached_input_tokens": record.cached_input_tokens,
+                "model_matches_selected": record.model_matches_selected,
+                "latency_ms": record.latency_ms,
+                "categorical_error": record.categorical_error,
             }
             with open(receipt_path, "w", encoding="utf-8") as f:
                 json.dump(receipt_data, f, indent=2, ensure_ascii=False)
@@ -733,6 +1004,9 @@ class GovernedRunner:
         except BaseException as error:
             self.status = "failed"
             self.failure_type = type(error).__name__
+            if self.event_log is not None and not self.event_log.sealed:
+                _validate_model_call_events(self.event_log.events)
+                self.event_log.seal()
             self.capture()
             raise
 
@@ -758,6 +1032,7 @@ def run_governed_run(
     base_dir: str,
     dry_run: bool = True,
     budget: CreditBudget | None = None,
+    tracer: Tracer | None = None,
 ) -> dict[str, Any]:
     """
     Convenience function to run a full governed workflow.
@@ -771,12 +1046,19 @@ def run_governed_run(
     Returns:
         Dict with workflow results.
     """
-    runner = GovernedRunner(base_dir, config, dry_run=dry_run, budget=budget)
+    runner = GovernedRunner(
+        base_dir,
+        config,
+        dry_run=dry_run,
+        budget=budget,
+        tracer=tracer,
+    )
     return runner.run_full_workflow()
 
 
 if __name__ == "__main__":
     import sys
+    import tempfile
 
     from .configs import get_task_configs
 
@@ -787,16 +1069,17 @@ if __name__ == "__main__":
     print(f"Testing governed run for {test_config.instance_id} (dry-run)...")
 
     try:
-        result = run_governed_run(
-            config=test_config,
-            base_dir="/tmp/dataset-pack-test",
-            dry_run=True,
-        )
-        print(f"Run completed: {result['run_id']}")
-        print(f"  Calls: {result['calls_written']}")
-        print(f"  Receipts: {result['receipts_written']}")
-        print(f"  Run JSON: {result['run_json']}")
-        print(f"  Calls JSONL: {result['calls_jsonl']}")
+        with tempfile.TemporaryDirectory(prefix="swarmachines-dataset-pack-") as root:
+            result = run_governed_run(
+                config=test_config,
+                base_dir=root,
+                dry_run=True,
+            )
+            print(f"Run completed: {result['run_id']}")
+            print(f"  Calls: {result['calls_written']}")
+            print(f"  Receipts: {result['receipts_written']}")
+            print(f"  Run JSON: {result['run_json']}")
+            print(f"  Calls JSONL: {result['calls_jsonl']}")
     except (RuntimeError, OSError, json.JSONDecodeError) as e:
         print(f"Run failed: {e}", file=sys.stderr)
         sys.exit(1)

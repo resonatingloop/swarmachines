@@ -9,6 +9,7 @@ Tests per spec (specs/001-hackathon-plan.md step 5):
 - Assert no-op path when unconfigured
 """
 
+import hashlib
 import sys
 from pathlib import Path
 
@@ -65,7 +66,8 @@ def test_trace_start_end():
 
     # Check trace has correct metadata
     trace = exporter.traces[0]
-    assert trace["id"] == "test-run-123", f"Wrong trace id: {trace['id']}"
+    expected_id = hashlib.sha256(b"test-run-123").hexdigest()
+    assert trace["metadata"]["run_id_sha256"] == expected_id
     assert trace["metadata"]["condition"] == "ring-mute"
     assert trace["metadata"]["seed"] == 42
 
@@ -151,14 +153,14 @@ def test_usage_recorded_or_unknown():
     tracer.end_trace(RunStatus.COMPLETED)
 
     # Check model call spans
-    model_spans = [s for s in exporter.spans if s["name"].startswith("model:")]
+    model_spans = exporter.get_spans_by_name("model-call")
     assert len(model_spans) >= 2, (
         f"Expected at least 2 model spans, got {len(model_spans)}"
     )
 
     # Check first span: prompt_tokens present, others should be 'unknown'
     span1 = model_spans[0]
-    usage1 = span1.get("usage", {})
+    usage1 = span1.get("metadata", {})
     assert usage1.get("prompt_tokens") == 100, (
         f"Expected prompt_tokens=100, got {usage1.get('prompt_tokens')}"
     )
@@ -171,7 +173,7 @@ def test_usage_recorded_or_unknown():
 
     # Check second span: all usage should be 'unknown'
     span2 = model_spans[1]
-    usage2 = span2.get("usage", {})
+    usage2 = span2.get("metadata", {})
     assert usage2.get("prompt_tokens") == "unknown", (
         f"Expected prompt_tokens='unknown', got {usage2.get('prompt_tokens')}"
     )
@@ -253,18 +255,21 @@ def test_fake_exporter_captures_events():
     )
 
     # Check model call span
-    model_spans = exporter.get_spans_by_name("model:glm-53-flash")
+    model_spans = exporter.get_spans_by_name("model-call")
     assert len(model_spans) >= 1, "Expected model span"
     model_span = model_spans[0]
-    assert model_span["usage"]["prompt_tokens"] == 50
-    assert model_span["usage"]["completion_tokens"] == 100
-    assert model_span["usage"]["total_tokens"] == 150
+    assert model_span["metadata"]["prompt_tokens"] == 50
+    assert model_span["metadata"]["completion_tokens"] == 100
+    assert model_span["metadata"]["total_tokens"] == 150
 
     # Check tool call span
-    tool_spans = exporter.get_spans_by_name("tool:browser_exec")
+    tool_spans = exporter.get_spans_by_name("tool-call")
     assert len(tool_spans) >= 1, "Expected tool span"
     tool_span = tool_spans[0]
-    assert tool_span["metadata"]["args"]["code"] == "print('hi')"
+    assert (
+        tool_span["metadata"]["args_sha256"]
+        == hashlib.sha256(b'{"code":"print(\'hi\')"}').hexdigest()
+    )
 
     return True, f"OK: fake exporter captured {len(exporter.spans)} spans in-memory"
 
@@ -380,7 +385,7 @@ def test_turnseam_runner_with_fake_exporter():
     )
 
     # Assert every turn span's parent_id == run trace id
-    trace_id = runner.run_id  # "run-seed0042"
+    trace_id = tracer.current_trace_id
     for span in turn_spans:
         assert span.get("parent_id") == trace_id, (
             f"Turn span {span['name']} has parent_id {span.get('parent_id')}, expected {trace_id}"

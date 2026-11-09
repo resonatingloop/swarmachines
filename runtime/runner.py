@@ -1100,10 +1100,14 @@ class TurnSeamRunner:
         finally:
             if self.tracer is not None:
                 status = RunStatus.FAILED if run_error else RunStatus.COMPLETED
-                self.tracer.end_trace(
-                    status=status,
-                    reason=repr(run_error) if run_error else None,
-                )
+                try:
+                    self.tracer.end_trace(
+                        status=status,
+                        reason="runner_error" if run_error else None,
+                    )
+                except BaseException:
+                    if run_error is None:
+                        raise
 
         # run.end - omit fabricated delivery stats entirely (absent is better than lying)
         self.log.append(
@@ -1246,7 +1250,12 @@ def main():
         "--trace",
         action="store_true",
         default=False,
-        help="enable execution tracing (spans exported when LANGFUSE_* env configured; no-op otherwise)",
+        help="enable execution tracing using an explicit private credential file",
+    )
+    parser.add_argument(
+        "--langfuse-credentials",
+        type=Path,
+        help="private LANGFUSE_* credential file; required with --trace",
     )
 
     parser.add_argument(
@@ -1308,14 +1317,14 @@ def main():
 
     tracer = None
     if create_tracer is not None and getattr(args, "trace", False):
-        import os
-
-        os.environ["TRACE_ENABLED"] = "true"
-        tracer, _trace_exporter = create_tracer(
-            run_id=f"run-seed{args.seed:04d}",
-            condition=(delivery_map or {}).get("condition"),
-            seed=args.seed,
+        if args.langfuse_credentials is None:
+            parser.error("--trace requires --langfuse-credentials")
+        config = TraceConfig.from_file(
+            args.langfuse_credentials,
+            release="standalone-uncommitted",
+            strict=True,
         )
+        tracer = Tracer(config)
 
     runner = TurnSeamRunner(
         seed=args.seed,

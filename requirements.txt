@@ -1,6 +1,9 @@
 # Adaption SDK for model inference
 # https://docs.adaptionlabs.ai/
-adaption>=0.1.0
+adaption>=0.19,<0.20
+
+# Current OpenTelemetry-based tracing surface; task10 requires cloud-compatible v5.
+langfuse>=5,<6
 
 # Schema validation for e2e tests
 jsonschema>=4.0.0
