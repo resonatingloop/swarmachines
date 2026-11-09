@@ -8,17 +8,17 @@
     "properties": {
         "run_id": {
             "type": "string",
-            "description": "stable identifier for one episode",
+            "description": "stable identifier for one episode"
         },
         "seq": {
             "type": "integer",
             "minimum": 0,
-            "description": "append-order index, unique with run_id",
+            "description": "append-order index, unique with run_id"
         },
         "turn": {"type": "integer", "minimum": 0},
         "agent_id": {
             "type": ["string", "null"],
-            "description": "null for world-level events",
+            "description": "null for world-level events"
         },
         "type": {
             "enum": [
@@ -44,23 +44,23 @@
                 "policy.report",
                 "jobs.initialized",
                 "job.completed",
-                "run.seal",
+                "run.seal"
             ]
         },
         "chain": {
             "type": "string",
             "pattern": "^[0-9a-f]{64}$",
-            "description": "sha256 chain hash binding this record to its predecessor; present on every runner-appended record",
+            "description": "sha256 chain hash binding this record to its predecessor; present on every runner-appended record"
         },
         "ts": {
             "type": "string",
             "format": "date-time",
-            "description": "wall-clock at append time; logical time lives in turn/seq",
+            "description": "wall-clock at append time; logical time lives in turn/seq"
         },
         "payload": {
             "type": "object",
-            "description": "type-specific fields; see examples/sample-episode.jsonl",
-        },
+            "description": "type-specific fields; see examples/sample-episode.jsonl"
+        }
     },
     "allOf": [
         {
@@ -74,16 +74,16 @@
                             "from": {"type": "string"},
                             "to": {
                                 "type": "string",
-                                "description": "recipient agent id; router may redirect or drop per topology",
+                                "description": "recipient agent id; router may redirect or drop per topology"
                             },
                             "body_ref": {
                                 "type": "string",
-                                "description": "pointer into the run's message store, not the body itself",
-                            },
-                        },
+                                "description": "pointer into the run's message store, not the body itself"
+                            }
+                        }
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "message.delivered"}}},
@@ -96,12 +96,12 @@
                             "to": {"type": "string"},
                             "status": {
                                 "enum": ["delivered", "undelivered"],
-                                "description": "undelivered must carry a reason (unreachable, filtered)",
-                            },
-                        },
+                                "description": "undelivered must carry a reason (unreachable, filtered)"
+                            }
+                        }
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "action.rejected"}}},
@@ -111,11 +111,11 @@
                         "required": ["action_id", "reason"],
                         "properties": {
                             "action_id": {"type": "string"},
-                            "reason": {"type": "string"},
-                        },
+                            "reason": {"type": "string"}
+                        }
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "disturbance.applied"}}},
@@ -129,12 +129,12 @@
                             },
                             "detail": {
                                 "type": "object",
-                                "description": "for relay-loss: {agent, until}; for stale-report: {message_id, claimed_state, actual_state}; for peer-mute: {agent}",
-                            },
-                        },
+                                "description": "for relay-loss: {agent, until}; for stale-report: {message_id, claimed_state, actual_state}; for peer-mute: {agent}"
+                            }
+                        }
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "model.call"}}},
@@ -163,7 +163,7 @@
                             "cached_input_tokens",
                             "model_matches_selected",
                             "latency_ms",
-                            "categorical_error",
+                            "categorical_error"
                         ],
                         "properties": {
                             "source_event_seq": {"type": "integer", "minimum": 0},
@@ -171,12 +171,12 @@
                                 "enum": [
                                     "observation.recorded",
                                     "policy.decision",
-                                    "disturbance.applied",
+                                    "disturbance.applied"
                                 ]
                             },
                             "call_id": {
                                 "type": "string",
-                                "pattern": "^call-[0-9]{4,}$",
+                                "pattern": "^call-[0-9]{4}$"
                             },
                             "model": {"const": "glm-53-flash"},
                             "prompt": {"type": "string", "minLength": 1},
@@ -188,42 +188,42 @@
                             "response_status": {"const": "completed"},
                             "response_id_sha256": {
                                 "type": ["string", "null"],
-                                "pattern": "^[0-9a-f]{64}$",
+                                "pattern": "^[0-9a-f]{64}$"
                             },
                             "output_item_type_counts": {
                                 "type": "object",
                                 "maxProperties": 8,
                                 "additionalProperties": {
                                     "type": "integer",
-                                    "minimum": 0,
-                                },
+                                    "minimum": 0
+                                }
                             },
                             "message_content_type_counts": {
                                 "type": "object",
                                 "maxProperties": 3,
                                 "additionalProperties": {
                                     "type": "integer",
-                                    "minimum": 0,
-                                },
+                                    "minimum": 0
+                                }
                             },
                             "visible_response_chars": {"type": "integer", "minimum": 1},
                             "total_tokens": {"type": "integer", "minimum": 0},
                             "reasoning_tokens": {
                                 "type": ["integer", "null"],
-                                "minimum": 0,
+                                "minimum": 0
                             },
                             "cached_input_tokens": {
                                 "type": ["integer", "null"],
-                                "minimum": 0,
+                                "minimum": 0
                             },
                             "model_matches_selected": {"const": true},
                             "latency_ms": {"type": "number", "minimum": 0},
-                            "categorical_error": {"type": "null"},
+                            "categorical_error": {"type": "null"}
                         },
-                        "additionalProperties": false,
+                        "additionalProperties": false
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "model.call.failed"}}},
@@ -252,7 +252,7 @@
                             "cached_input_tokens",
                             "model_matches_selected",
                             "latency_ms",
-                            "categorical_error",
+                            "categorical_error"
                         ],
                         "properties": {
                             "source_event_seq": {"type": "integer", "minimum": 0},
@@ -261,7 +261,7 @@
                             },
                             "call_id": {
                                 "type": "string",
-                                "pattern": "^call-[0-9]{4,}$",
+                                "pattern": "^call-[0-9]{4}$"
                             },
                             "model": {"const": "glm-53-flash"},
                             "prompt": {"type": "string", "minLength": 1},
@@ -277,7 +277,7 @@
                                     "cancelled",
                                     "queued",
                                     "in_progress",
-                                    "other",
+                                    "other"
                                 ]
                             },
                             "incomplete_reason": {
@@ -285,38 +285,38 @@
                                     "max_output_tokens",
                                     "content_filter",
                                     "other",
-                                    null,
+                                    null
                                 ]
                             },
                             "response_id_sha256": {
                                 "type": ["string", "null"],
-                                "pattern": "^[0-9a-f]{64}$",
+                                "pattern": "^[0-9a-f]{64}$"
                             },
                             "output_item_type_counts": {
                                 "type": "object",
                                 "maxProperties": 8,
                                 "additionalProperties": {
                                     "type": "integer",
-                                    "minimum": 0,
-                                },
+                                    "minimum": 0
+                                }
                             },
                             "message_content_type_counts": {
                                 "type": "object",
                                 "maxProperties": 3,
                                 "additionalProperties": {
                                     "type": "integer",
-                                    "minimum": 0,
-                                },
+                                    "minimum": 0
+                                }
                             },
                             "visible_response_chars": {"type": "integer", "minimum": 0},
                             "total_tokens": {"type": "integer", "minimum": 0},
                             "reasoning_tokens": {
                                 "type": ["integer", "null"],
-                                "minimum": 0,
+                                "minimum": 0
                             },
                             "cached_input_tokens": {
                                 "type": ["integer", "null"],
-                                "minimum": 0,
+                                "minimum": 0
                             },
                             "model_matches_selected": {"type": "boolean"},
                             "latency_ms": {"type": "number", "minimum": 0},
@@ -327,14 +327,14 @@
                                     "empty_visible_response",
                                     "malformed_usage",
                                     "malformed_output_text",
-                                    "provider_transport_error",
+                                    "provider_transport_error"
                                 ]
-                            },
+                            }
                         },
-                        "additionalProperties": false,
+                        "additionalProperties": false
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "policy.decision"}}},
@@ -354,7 +354,7 @@
                             "decision_id",
                             "observation_seq",
                             "action_id",
-                            "opportunity",
+                            "opportunity"
                         ],
                         "properties": {
                             "policy": {"const": "route-gossip-v1"},
@@ -362,9 +362,9 @@
                                 "anyOf": [
                                     {
                                         "type": "string",
-                                        "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                        "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                                     },
-                                    {"type": "null"},
+                                    {"type": "null"}
                                 ]
                             },
                             "path": {
@@ -372,16 +372,16 @@
                                 "maxItems": 1025,
                                 "items": {
                                     "type": "string",
-                                    "pattern": "^[a-zA-Z0-9_-]{1,64}$",
-                                },
+                                    "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+                                }
                             },
                             "next_hop": {
                                 "anyOf": [
                                     {
                                         "type": "string",
-                                        "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                        "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                                     },
-                                    {"type": "null"},
+                                    {"type": "null"}
                                 ]
                             },
                             "reason": {
@@ -390,7 +390,7 @@
                                     "at_destination",
                                     "no_known_path",
                                     "no_visible_freight",
-                                    "no_action_opportunity",
+                                    "no_action_opportunity"
                                 ]
                             },
                             "consumed_message_ids": {
@@ -399,39 +399,39 @@
                                 "uniqueItems": true,
                                 "items": {
                                     "type": "string",
-                                    "pattern": "^[a-zA-Z0-9_-]{1,64}$",
-                                },
+                                    "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+                                }
                             },
                             "local_only_next_hop": {
                                 "anyOf": [
                                     {
                                         "type": "string",
-                                        "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                        "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                                     },
-                                    {"type": "null"},
+                                    {"type": "null"}
                                 ]
                             },
                             "choice_changed": {"type": "boolean"},
                             "decision_id": {
                                 "type": "string",
-                                "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                             },
                             "observation_seq": {"type": "integer", "minimum": 0},
                             "action_id": {
                                 "anyOf": [
                                     {
                                         "type": "string",
-                                        "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                        "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                                     },
-                                    {"type": "null"},
+                                    {"type": "null"}
                                 ]
                             },
-                            "opportunity": {"type": "boolean"},
+                            "opportunity": {"type": "boolean"}
                         },
-                        "additionalProperties": false,
+                        "additionalProperties": false
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "policy.report"}}},
@@ -445,22 +445,22 @@
                             "admitted",
                             "reason",
                             "observed_turn",
-                            "routes",
+                            "routes"
                         ],
                         "properties": {
                             "message_id": {
                                 "type": "string",
-                                "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                             },
                             "sender": {
                                 "type": "string",
-                                "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                             },
                             "admitted": {"type": "boolean"},
                             "reason": {"type": ["string", "null"], "maxLength": 64},
                             "observed_turn": {
                                 "type": ["integer", "null"],
-                                "minimum": 1,
+                                "minimum": 1
                             },
                             "routes": {
                                 "type": "object",
@@ -468,13 +468,13 @@
                                 "propertyNames": {
                                     "pattern": "^[a-zA-Z0-9_-]{1,64}->[a-zA-Z0-9_-]{1,64}$"
                                 },
-                                "additionalProperties": {"enum": ["open", "closed"]},
-                            },
+                                "additionalProperties": {"enum": ["open", "closed"]}
+                            }
                         },
-                        "additionalProperties": false,
+                        "additionalProperties": false
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "jobs.initialized"}}},
@@ -491,26 +491,26 @@
                                     "properties": {
                                         "job_id": {
                                             "type": "string",
-                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                                         },
                                         "freight_id": {
                                             "type": "string",
-                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                                         },
                                         "state": {"const": "pending"},
                                         "origin": {
                                             "type": "string",
-                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                                         },
                                         "destination": {
                                             "type": "string",
-                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                                         },
                                         "release_turn": {
                                             "type": "integer",
                                             "minimum": 0,
-                                            "maximum": 100,
-                                        },
+                                            "maximum": 100
+                                        }
                                     },
                                     "required": [
                                         "job_id",
@@ -518,17 +518,17 @@
                                         "state",
                                         "origin",
                                         "destination",
-                                        "release_turn",
+                                        "release_turn"
                                     ],
-                                    "additionalProperties": false,
-                                },
+                                    "additionalProperties": false
+                                }
                             }
                         },
                         "required": ["jobs"],
-                        "additionalProperties": false,
+                        "additionalProperties": false
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "job.completed"}}},
@@ -539,22 +539,22 @@
                         "properties": {
                             "job_id": {
                                 "type": "string",
-                                "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                             },
                             "freight_id": {
                                 "type": "string",
-                                "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                             },
                             "action_id": {
                                 "type": "string",
-                                "pattern": "^[a-zA-Z0-9_-]{1,64}$",
-                            },
+                                "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+                            }
                         },
                         "required": ["job_id", "freight_id", "action_id"],
-                        "additionalProperties": false,
+                        "additionalProperties": false
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "run.end"}}},
@@ -566,7 +566,7 @@
                             "recovery_interval_turns": {
                                 "type": "integer",
                                 "minimum": 1,
-                                "maximum": 100,
+                                "maximum": 100
                             },
                             "jobs": {
                                 "type": "array",
@@ -576,46 +576,46 @@
                                     "properties": {
                                         "job_id": {
                                             "type": "string",
-                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                                         },
                                         "freight_id": {
                                             "type": "string",
-                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                            "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                                         },
                                         "state": {
                                             "enum": [
                                                 "pending",
                                                 "in-transit",
                                                 "delivered",
-                                                "stuck",
+                                                "stuck"
                                             ]
-                                        },
+                                        }
                                     },
                                     "required": ["job_id", "freight_id", "state"],
-                                    "additionalProperties": false,
-                                },
+                                    "additionalProperties": false
+                                }
                             },
                             "termination": {"const": "completed"},
                             "horizon_turns": {
                                 "type": "integer",
                                 "minimum": 1,
-                                "maximum": 100,
+                                "maximum": 100
                             },
                             "deliveries_completed": {
                                 "type": "integer",
                                 "minimum": 0,
-                                "description": "legacy run.end field preserved for backward compatibility",
+                                "description": "legacy run.end field preserved for backward compatibility"
                             },
                             "deliveries_stuck": {
                                 "type": "integer",
                                 "minimum": 0,
-                                "description": "legacy run.end field preserved for backward compatibility",
-                            },
+                                "description": "legacy run.end field preserved for backward compatibility"
+                            }
                         },
-                        "additionalProperties": false,
+                        "additionalProperties": false
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "run.config"}}},
@@ -628,15 +628,15 @@
                             "comm_topology": {"type": "string"},
                             "delivery_config_sha": {
                                 "type": "string",
-                                "pattern": "^[0-9a-f]{16}$",
+                                "pattern": "^[0-9a-f]{16}$"
                             },
                             "disturbance_schedule": {"type": "object"},
                             "agents": {
                                 "type": "array",
                                 "items": {
                                     "type": "string",
-                                    "pattern": "^[a-zA-Z0-9_-]{1,64}$",
-                                },
+                                    "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+                                }
                             },
                             "policy": {"enum": ["route-gossip-v1", "model-route-v1"]},
                             "world": {"const": "freight"},
@@ -644,7 +644,7 @@
                             "horizon_turns": {
                                 "type": "integer",
                                 "minimum": 1,
-                                "maximum": 100,
+                                "maximum": 100
                             },
                             "model": {
                                 "enum": [
@@ -654,17 +654,17 @@
                                     "glm-5.2",
                                     "glm-53-flash",
                                     "qwen3.5-397b",
-                                    "qwen3.8-27b",
+                                    "qwen3.8-27b"
                                 ]
                             },
                             "world_regime": {
                                 "enum": ["local-sufficient", "peer-required"]
-                            },
+                            }
                         },
-                        "additionalProperties": false,
+                        "additionalProperties": false
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "run.seal"}}},
@@ -676,12 +676,12 @@
                         "properties": {
                             "chain": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
                             "events": {"type": "integer", "minimum": 0},
-                            "alg": {"const": "eventlog-seal-v1"},
+                            "alg": {"const": "eventlog-seal-v1"}
                         },
-                        "additionalProperties": false,
+                        "additionalProperties": false
                     }
                 }
-            },
+            }
         },
         {
             "if": {"properties": {"type": {"const": "model.decision"}}},
@@ -706,22 +706,22 @@
                             "reserved_microcredits",
                             "charged_microcredits",
                             "cost_basis",
-                            "available_message_ids",
+                            "available_message_ids"
                         ],
                         "properties": {
                             "policy": {"const": "model-route-v1"},
                             "decision_id": {
                                 "type": "string",
-                                "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                             },
                             "observation_seq": {"type": "integer", "minimum": 0},
                             "action_id": {
                                 "anyOf": [
                                     {
                                         "type": "string",
-                                        "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+                                        "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                                     },
-                                    {"type": "null"},
+                                    {"type": "null"}
                                 ]
                             },
                             "status": {
@@ -734,7 +734,7 @@
                                     "input_rejected",
                                     "evidence_failed",
                                     "provider_failed",
-                                    "budget_stopped",
+                                    "budget_stopped"
                                 ]
                             },
                             "reason": {
@@ -751,13 +751,13 @@
                                     "input_limit",
                                     "private_evidence_failed",
                                     "provider_failed",
-                                    "budget_stopped",
+                                    "budget_stopped"
                                 ]
                             },
                             "attempt_id": {
                                 "anyOf": [
                                     {"type": "string", "pattern": "^[0-9a-f]{32}$"},
-                                    {"type": "null"},
+                                    {"type": "null"}
                                 ]
                             },
                             "model": {
@@ -768,23 +768,23 @@
                                     "glm-5.2",
                                     "glm-53-flash",
                                     "qwen3.5-397b",
-                                    "qwen3.8-27b",
+                                    "qwen3.8-27b"
                                 ]
                             },
                             "input_hash": {
                                 "type": "string",
-                                "pattern": "^[0-9a-f]{64}$",
+                                "pattern": "^[0-9a-f]{64}$"
                             },
                             "response_hash": {
                                 "anyOf": [
                                     {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-                                    {"type": "null"},
+                                    {"type": "null"}
                                 ]
                             },
                             "input_tokens": {"type": ["integer", "null"], "minimum": 0},
                             "output_tokens": {
                                 "type": ["integer", "null"],
-                                "minimum": 0,
+                                "minimum": 0
                             },
                             "latency_ms": {"type": ["number", "null"], "minimum": 0},
                             "reserved_microcredits": {"type": "integer", "minimum": 0},
@@ -792,14 +792,14 @@
                             "cost_basis": {
                                 "enum": [
                                     "published_rate_estimate",
-                                    "fixed_conservative_reservation",
+                                    "fixed_conservative_reservation"
                                 ]
                             },
                             "output_contract": {"const": "json-or-single-fence-v2"},
                             "max_output_tokens": {
                                 "type": "integer",
                                 "minimum": 1,
-                                "maximum": 2048,
+                                "maximum": 2048
                             },
                             "available_message_ids": {
                                 "type": "array",
@@ -807,22 +807,22 @@
                                 "uniqueItems": true,
                                 "items": {
                                     "type": "string",
-                                    "pattern": "^[a-zA-Z0-9_-]{1,64}$",
-                                },
+                                    "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+                                }
                             },
                             "provider_status": {
                                 "type": ["string", "null"],
-                                "maxLength": 32,
+                                "maxLength": 32
                             },
                             "incomplete_reason": {
                                 "type": ["string", "null"],
-                                "maxLength": 64,
-                            },
+                                "maxLength": 64
+                            }
                         },
-                        "additionalProperties": false,
+                        "additionalProperties": false
                     }
                 }
-            },
-        },
-    ],
+            }
+        }
+    ]
 }
