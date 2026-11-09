@@ -2,8 +2,13 @@
 
 > status: accepted — the owner accepted this exact 4096-token visible-response
 > and langfuse contract on 2026-11-08 and authorized bounded implementation.
-> paid provider calls, upload, publication, and continuation of runs `005–015`
+> paid provider calls, upload, publication, and any fresh provider batch
 > remain separately gated.
+>
+> telemetry clarification accepted 2026-11-08: sealed local logs and receipts
+> are authoritative. synthetic readback gates live work, while terminal remote
+> reconciliation gates upload/publication; sdk flush is not represented as an
+> independently observable delivery receipt.
 
 ## why
 
@@ -77,9 +82,20 @@ only:
 
 do not export raw prompts, completions, reasoning, artifacts, source, command
 output, paths, exception text, credentials, or local receipt bodies. apply an
-export-stage masking hook as defense in depth. flush explicitly at each run
-terminal and batch terminal. tracing failure is recorded locally and stops the
-live experiment before another provider call; it never repeats a paid call.
+export-stage masking hook as defense in depth. attempt an explicit flush before
+the next paid call and at each run and batch terminal. trace creation failures,
+locally surfaced export exceptions, and bounded transport failures are recorded
+and stop live execution without repeating a paid call.
+
+langfuse sdk `5.x` does not expose a per-flush delivery receipt to application
+code: its public flush drains queued work but does not make exporter success an
+independently testable return value. do not relabel a non-raising flush as proof
+that the remote observation exists. the sealed local event log, calls, receipts,
+and hashes are the authoritative experiment record. one fictional trace must be
+read back before paid work begins, and the live cohort's remote observations
+must be reconciled before upload or publication. a missing remote observation
+marks observability incomplete; it does not erase an otherwise valid sealed
+local run or authorize a retry of a paid call.
 
 ### 4. credentials and external proof
 
@@ -103,7 +119,11 @@ is staged:
 3. one separately owner-authorized adaption diagnostic call with tracing;
 4. read back the generation and reconcile it with the local receipt.
 
-none of these steps authorizes runs `005–015`, packaging, upload, publication,
+for any later owner-authorized batch, remote reconciliation is a terminal
+publication gate. it is not a pretext to repeat a paid call or rewrite the
+sealed local record.
+
+none of these steps authorizes a fresh provider batch, packaging, upload, publication,
 or reuse of runs `001–004` as analytically complete results.
 
 ## preserved evidence
@@ -118,8 +138,8 @@ backfilled, or relabeled. the prior receipt remains an aborted-partial record.
   completed output, incomplete max-token output, refusal, malformed usage,
   timeout, and provider exception;
 - fake langfuse proof covers current-sdk observation nesting, allowlist,
-  export-stage masking, explicit flush, exporter failure, and zero-network
-  default;
+  export-stage masking, explicit flush, observations-v2 readback, categorical
+  failure, and zero-network default;
 - event schema rejects empty completed responses before sealing and preserves
   one canonical source-linked `model.call.failed` event for rejected attempts;
 - trace-off paths remain byte-identical and provider-call counts do not change;

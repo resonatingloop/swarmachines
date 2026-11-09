@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+LANGFUSE_REQUEST_TIMEOUT_SECONDS = 10
+
 
 class RunStatus(Enum):
     COMPLETED = "completed"
@@ -101,6 +103,26 @@ class TraceConfig:
             strict=strict,
             release=release,
         )
+
+
+def create_langfuse_client(config: TraceConfig) -> Any:
+    """construct the current sdk client from an already validated config."""
+    if not (
+        config.enabled and config.public_key and config.secret_key and config.base_url
+    ):
+        raise ValueError("langfuse trace config is incomplete")
+
+    from langfuse import Langfuse
+
+    return Langfuse(
+        public_key=config.public_key,
+        secret_key=config.secret_key,
+        base_url=config.base_url,
+        release=config.release,
+        environment=config.environment,
+        timeout=LANGFUSE_REQUEST_TIMEOUT_SECONDS,
+        mask_otel_spans=_mask_otel_spans,
+    )
 
 
 class FakeExporter:
@@ -553,16 +575,7 @@ class Tracer:
             self._failure("trace_config_incomplete")
             return False
         try:
-            from langfuse import Langfuse
-
-            self._client = Langfuse(
-                public_key=self.config.public_key,
-                secret_key=self.config.secret_key,
-                base_url=self.config.base_url,
-                release=self.config.release,
-                environment=self.config.environment,
-                mask_otel_spans=_mask_otel_spans,
-            )
+            self._client = create_langfuse_client(self.config)
         except Exception as error:  # noqa: BLE001
             self._failure("trace_init_failed", error)
             return False
