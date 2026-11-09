@@ -8,6 +8,7 @@ import stat
 from collections.abc import Callable
 from copy import deepcopy
 from datetime import UTC, datetime
+from importlib.metadata import version
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -33,6 +34,22 @@ from runtime.tracer import (
 )
 
 RELEASE = "a" * 40
+SERVICE_INSTANCE_ID = "0d6b16c8-a178-4e53-a7e2-f9177cc968ab"
+
+
+def _otel_metadata(public_key: str) -> dict[str, Any]:
+    return {
+        "scope.name": "langfuse-sdk",
+        "scope.version": version("langfuse"),
+        "scope.attributes": {"public_key": public_key},
+        "resource.attributes.service.instance.id": SERVICE_INSTANCE_ID,
+        "resource.attributes.service.name": "unknown_service:python",
+        "resource.attributes.telemetry.sdk.language": "python",
+        "resource.attributes.telemetry.sdk.name": "opentelemetry",
+        "resource.attributes.telemetry.sdk.version": version("opentelemetry-sdk"),
+        "resource.dropped_attributes_count": 0,
+        "resource.schema_url": "",
+    }
 
 
 class FakeObservation:
@@ -40,7 +57,11 @@ class FakeObservation:
         self.record = record
 
     def update(self, **values: Any) -> None:
-        self.record.update(deepcopy(values))
+        copied = deepcopy(values)
+        metadata = copied.pop("metadata", None)
+        self.record.update(copied)
+        if isinstance(metadata, dict):
+            self.record["metadata"].update(metadata)
         cost_details = values.get("cost_details")
         if isinstance(cost_details, dict):
             self.record["total_cost"] = cost_details.get("total")
@@ -59,6 +80,8 @@ class FakeObservationContext:
             parent["trace_id"] if parent is not None else None
         )
         index = len(self.client.observations) + 1
+        metadata = deepcopy(self.values.get("metadata")) or {}
+        metadata.update(_otel_metadata(self.client.public_key))
         record = {
             "id": f"{index:016x}",
             "trace_id": trace_id,
@@ -70,7 +93,7 @@ class FakeObservationContext:
             "release": self.client.release,
             "input": deepcopy(self.values.get("input")),
             "output": None,
-            "metadata": deepcopy(self.values.get("metadata")),
+            "metadata": metadata,
             "model": self.values.get("model"),
             "internal_model_id": None,
             "model_id": None,
@@ -125,6 +148,7 @@ class FakeLangfuse:
     ):
         self.release = config.release
         self.environment = config.environment
+        self.public_key = config.public_key
         self.authenticated = authenticated
         self.auth_exception = auth_exception
         self.empty_reads = empty_reads
@@ -416,6 +440,66 @@ def test_empty_status_message_is_safe_unset_value(
     assert receipt["failed_assertions"] == []
 
 
+def test_server_generated_parent_and_model_ids_are_bounded_system_fields(
+    credential_file: Path,
+) -> None:
+    def add_server_fields(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            {**item, "parent_observation_id": "b" * 16}
+            if item["name"] == ROOT_NAME
+            else {
+                **item,
+                "internal_model_id": "55cddea8-c176-41fd-ae37-fb9b8b0422ed",
+            }
+            for item in observations
+        ]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": add_server_fields},
+    )
+
+    assert receipt["status"] == "passed"
+    assert receipt["synthetic"]["observations"][0]["parent_observation_id"] == (
+        "b" * 16
+    )
+
+
+@pytest.mark.parametrize(
+    ("root_parent", "internal_model_id", "failed_assertion"),
+    [
+        ("not-a-span", None, "root_shape"),
+        (None, "model-id-with-private-tail", "model_resolution_safe"),
+    ],
+)
+def test_unbounded_server_generated_ids_fail_closed(
+    credential_file: Path,
+    root_parent: str | None,
+    internal_model_id: str | None,
+    failed_assertion: str,
+) -> None:
+    def corrupt_server_fields(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            {**item, "parent_observation_id": root_parent}
+            if item["name"] == ROOT_NAME
+            else {**item, "internal_model_id": internal_model_id}
+            for item in observations
+        ]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": corrupt_server_fields},
+    )
+
+    assert receipt["status"] == "failed"
+    assert failed_assertion in receipt["failed_assertions"]
+    assert "private-tail" not in json.dumps(receipt)
+
+
 def test_sdk_observation_serialization_preserves_empty_camel_status() -> None:
     observation = ObservationV2(
         id="1",
@@ -538,6 +622,202 @@ def test_metadata_allowlist_failure_is_named_without_remote_values(
     assert receipt["failed_assertions"] == ["generation_metadata_allowlisted"]
     assert remote_key not in encoded
     assert remote_value not in encoded
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("scope.version", "999.0.0"),
+        ("resource.schema_url", "https://private.invalid/schema"),
+        ("resource.attributes.service.name", "/home/private-service"),
+    ],
+)
+def test_corrupt_otel_envelope_fails_closed(
+    credential_file: Path,
+    key: str,
+    value: str,
+) -> None:
+    def corrupt_system_metadata(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                **item,
+                "metadata": {
+                    **(item.get("metadata") or {}),
+                    key: value,
+                },
+            }
+            for item in observations
+        ]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": corrupt_system_metadata},
+    )
+
+    encoded = json.dumps(receipt, sort_keys=True)
+    assert receipt["status"] == "failed"
+    assert {
+        "generation_metadata_allowlisted",
+        "root_metadata_allowlisted",
+    }.issubset(receipt["failed_assertions"])
+    assert value not in encoded
+
+
+@pytest.mark.parametrize("credential_field", ["secret_key", "base_url"])
+def test_secret_material_in_scope_attributes_is_rejected_and_not_persisted(
+    credential_file: Path,
+    credential_field: str,
+) -> None:
+    private_value = {
+        "secret_key": "sk-synthetic-proof",
+        "base_url": "https://example.invalid",
+    }[credential_field]
+
+    def add_secret_to_scope(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                **item,
+                "metadata": {
+                    **(item.get("metadata") or {}),
+                    "scope.attributes": {
+                        "public_key": "pk-synthetic-proof",
+                        credential_field: private_value,
+                    },
+                },
+            }
+            for item in observations
+        ]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": add_secret_to_scope},
+    )
+
+    encoded = json.dumps(receipt, sort_keys=True)
+    assert receipt["status"] == "failed"
+    assert receipt["failed_assertions"] == [
+        "generation_metadata_allowlisted",
+        "no_sensitive_values",
+        "root_metadata_allowlisted",
+    ]
+    assert private_value not in encoded
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("condition", "pk-synthetic-proof"),
+        ("resource.attributes.service.name", "pk-synthetic-proof"),
+    ],
+)
+def test_public_key_is_accepted_only_as_scope_routing_metadata(
+    credential_file: Path,
+    key: str,
+    value: str,
+) -> None:
+    def move_public_key(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                **item,
+                "metadata": {
+                    **(item.get("metadata") or {}),
+                    key: value,
+                },
+            }
+            for item in observations
+        ]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": move_public_key},
+    )
+
+    assert receipt["status"] == "failed"
+    assert receipt["failed_assertions"] == [
+        "generation_metadata_allowlisted",
+        "no_sensitive_values",
+        "root_metadata_allowlisted",
+    ]
+    assert value not in json.dumps(receipt, sort_keys=True)
+
+
+def test_public_key_cannot_masquerade_as_receipt_bound_observation_id(
+    credential_file: Path,
+) -> None:
+    def move_public_key_to_ids(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        public_key = "pk-synthetic-proof"
+        return [
+            {**item, "id": public_key}
+            if item["name"] == ROOT_NAME
+            else {**item, "parent_observation_id": public_key}
+            for item in observations
+        ]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": move_public_key_to_ids},
+    )
+
+    assert receipt["status"] == "failed"
+    assert receipt["failure_category"] == "readback_shape_failed"
+    assert "pk-synthetic-proof" not in json.dumps(receipt, sort_keys=True)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("user_id", "pk-synthetic-proof"),
+        ("id", "0" * 16),
+    ],
+)
+def test_unchecked_top_level_public_key_and_zero_span_id_fail_closed(
+    credential_file: Path,
+    field: str,
+    value: str,
+) -> None:
+    def corrupt_root(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            {**item, field: value} if item["name"] == ROOT_NAME else item
+            for item in observations
+        ]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": corrupt_root},
+    )
+
+    assert receipt["status"] == "failed"
+    assert value not in json.dumps(receipt, sort_keys=True)
+
+
+def test_zero_ambient_parent_is_rejected(credential_file: Path) -> None:
+    def add_zero_parent(
+        observations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            {**item, "parent_observation_id": "0" * 16}
+            if item["name"] == ROOT_NAME
+            else item
+            for item in observations
+        ]
+
+    receipt, _client, _clock = _run(
+        credential_file,
+        client_options={"mutator": add_zero_parent},
+    )
+
+    assert receipt["status"] == "failed"
+    assert receipt["failed_assertions"] == ["root_shape"]
 
 
 def test_malformed_io_names_fixed_fields_without_remote_values(

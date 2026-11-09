@@ -234,7 +234,13 @@ python -m runtime.langfuse_proof \
 the command authenticates before it emits anything, then sends exactly one
 fictional metadata-only trace. it accepts delivery only after a bounded
 observations-v2 readback finds the exact root span and child generation and
-passes the hashes-only privacy assertions. the readback deadline is 90 seconds,
+passes the hashes-only privacy assertions. langfuse's standard otel envelope is
+accepted only in its fixed resource/scope shapes: the public project key must
+appear solely as the expected scope routing identifier; the secret key and base
+url remain forbidden. an otel ambient 16-hex parent span and a server-generated
+internal model uuid are accepted only with the langfuse root flag, exact child
+relationship, synthetic `unknown` model, and absent public model id. arbitrary
+metadata or malformed system fields still fail closed. the readback deadline is 90 seconds,
 and each observations-v2 readback request uses the remaining deadline up to 10
 seconds with sdk retries disabled. authentication and otlp export retain their
 sdk-managed retry behavior under the shared 10-second transport timeout. the

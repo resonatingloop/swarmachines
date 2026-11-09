@@ -47,6 +47,11 @@ SYNTHETIC_CONDITION = "synthetic-proof"
 
 _RELEASE_PATTERN = re.compile(r"[0-9a-f]{40}")
 _TRACE_ID_PATTERN = re.compile(r"[0-9a-f]{32}")
+_SPAN_ID_PATTERN = re.compile(r"[0-9a-f]{16}")
+_UUID_PATTERN = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+)
+_SERVICE_NAME_PATTERN = re.compile(r"[A-Za-z0-9_.:-]{1,128}")
 _ABSOLUTE_PATH_PATTERN = re.compile(r"(?:^|[\s\"'])(?:/home/|/tmp/|file://)")
 
 _ROOT_METADATA_KEYS = {
@@ -80,6 +85,37 @@ _GENERATION_METADATA_KEYS = {
     "visible_response_chars",
     MASKING_MARKER_KEY,
 }
+_OTEL_SCOPE_FLAT_KEYS = {
+    "scope.name",
+    "scope.version",
+    "scope.attributes",
+}
+_OTEL_RESOURCE_LEAF_KEYS = {
+    "resource.attributes.service.instance.id",
+    "resource.attributes.service.name",
+    "resource.attributes.telemetry.sdk.language",
+    "resource.attributes.telemetry.sdk.name",
+    "resource.attributes.telemetry.sdk.version",
+    "resource.dropped_attributes_count",
+    "resource.schema_url",
+}
+_OTEL_RESOURCE_CONTAINER_KEYS = {
+    "resource.attributes",
+    "resource.dropped_attributes_count",
+    "resource.schema_url",
+}
+_OTEL_NESTED_KEYS = {"resourceAttributes", "scope"}
+_OTEL_RESOURCE_ATTRIBUTE_KEYS = {
+    "service.instance.id",
+    "service.name",
+    "telemetry.sdk.language",
+    "telemetry.sdk.name",
+    "telemetry.sdk.version",
+}
+_OTEL_RESOURCE_CONTEXT_KEYS = {
+    "langfuse.environment",
+    "langfuse.release",
+}
 _SAFE_FAILURE_CATEGORIES = {
     "auth_check_failed",
     "auth_check_rejected",
@@ -107,7 +143,7 @@ _SAFE_ASSERTION_NAMES = {
     "generation_output_object",
     "generation_shape",
     "model_is_synthetic_unknown",
-    "model_not_resolved",
+    "model_resolution_safe",
     "no_sensitive_values",
     "release_matches",
     "root_hash_only_io",
@@ -261,8 +297,34 @@ def _contains_sensitive_value(
     config: TraceConfig,
     credential_path: Path,
 ) -> bool:
+    scrubbed_observations: list[dict[str, Any]] = []
+    for observation in observations:
+        scrubbed = dict(observation)
+        metadata = observation.get("metadata")
+        if isinstance(metadata, dict):
+            scrubbed_metadata = dict(metadata)
+            flat_scope = _bounded_json_object(metadata.get("scope.attributes"))
+            if flat_scope == {"public_key": config.public_key}:
+                scrubbed_metadata["scope.attributes"] = {
+                    "public_key": "expected-public-routing-key"
+                }
+            nested_scope = metadata.get("scope")
+            if isinstance(nested_scope, dict):
+                nested_attributes = _bounded_json_object(nested_scope.get("attributes"))
+                if nested_attributes == {"public_key": config.public_key}:
+                    scrubbed_scope = dict(nested_scope)
+                    scrubbed_scope["attributes"] = {
+                        "public_key": "expected-public-routing-key"
+                    }
+                    scrubbed_metadata["scope"] = scrubbed_scope
+            scrubbed["metadata"] = scrubbed_metadata
+        scrubbed_observations.append(scrubbed)
     try:
-        serialized = json.dumps(observations, sort_keys=True, ensure_ascii=False)
+        serialized = json.dumps(
+            scrubbed_observations,
+            sort_keys=True,
+            ensure_ascii=False,
+        )
     except (TypeError, ValueError, OverflowError, RecursionError):
         return True
     forbidden_values = {
@@ -276,6 +338,9 @@ def _contains_sensitive_value(
         "LANGFUSE_SECRET_KEY",
         "LANGFUSE_BASE_URL",
     }
+    # langfuse injects the public project key into scope.attributes after the
+    # masking callback. only that exact validated location was scrubbed above;
+    # any second occurrence remains forbidden and cannot enter a receipt.
     for value in (config.public_key, config.secret_key, config.base_url):
         if value:
             forbidden_values.add(value)
@@ -320,6 +385,190 @@ def _safe_mask_marker(value: Any) -> bool:
     return value is None or value is True
 
 
+def _installed_version(distribution: str) -> str | None:
+    try:
+        return version(distribution)
+    except PackageNotFoundError:
+        return None
+
+
+def _safe_scope(
+    *,
+    name: Any,
+    sdk_version: Any,
+    attributes: Any,
+    config: TraceConfig,
+) -> bool:
+    scope_attributes = _bounded_json_object(attributes)
+    return (
+        name == "langfuse-sdk"
+        and sdk_version == _installed_version("langfuse")
+        and scope_attributes == {"public_key": config.public_key}
+    )
+
+
+def _safe_resource_attributes(
+    attributes: Any,
+    *,
+    config: TraceConfig,
+    release: str,
+) -> bool:
+    if not isinstance(attributes, dict):
+        return False
+    keys = set(attributes)
+    if keys != _OTEL_RESOURCE_ATTRIBUTE_KEYS and keys != (
+        _OTEL_RESOURCE_ATTRIBUTE_KEYS | _OTEL_RESOURCE_CONTEXT_KEYS
+    ):
+        return False
+    instance_id = attributes.get("service.instance.id")
+    service_name = attributes.get("service.name")
+    if not (
+        isinstance(instance_id, str)
+        and _UUID_PATTERN.fullmatch(instance_id)
+        and isinstance(service_name, str)
+        and _SERVICE_NAME_PATTERN.fullmatch(service_name)
+        and service_name != config.public_key
+        and attributes.get("telemetry.sdk.language") == "python"
+        and attributes.get("telemetry.sdk.name") == "opentelemetry"
+        and attributes.get("telemetry.sdk.version")
+        == _installed_version("opentelemetry-sdk")
+    ):
+        return False
+    if _OTEL_RESOURCE_CONTEXT_KEYS.issubset(keys):
+        return (
+            attributes.get("langfuse.environment") == ENVIRONMENT
+            and attributes.get("langfuse.release") == release
+        )
+    return True
+
+
+def _safe_resource_envelope(
+    *,
+    attributes: Any,
+    dropped_attributes_count: Any,
+    schema_url: Any,
+    config: TraceConfig,
+    release: str,
+) -> bool:
+    return (
+        _safe_resource_attributes(attributes, config=config, release=release)
+        and isinstance(dropped_attributes_count, int)
+        and not isinstance(dropped_attributes_count, bool)
+        and dropped_attributes_count == 0
+        and schema_url in {None, ""}
+    )
+
+
+def _system_metadata_safe(
+    metadata: dict[str, Any],
+    *,
+    custom_keys: set[str],
+    config: TraceConfig,
+    release: str,
+) -> bool:
+    custom_metadata = {
+        key: value for key, value in metadata.items() if key in custom_keys
+    }
+    try:
+        if config.public_key and any(
+            config.public_key in scalar for scalar in _all_scalars(custom_metadata)
+        ):
+            return False
+    except RecursionError:
+        return False
+    system_keys = set(metadata) - custom_keys
+    if system_keys == _OTEL_SCOPE_FLAT_KEYS | _OTEL_RESOURCE_LEAF_KEYS:
+        resource_attributes = {
+            key.removeprefix("resource.attributes."): metadata[key]
+            for key in _OTEL_RESOURCE_LEAF_KEYS
+            if key.startswith("resource.attributes.")
+        }
+        return _safe_scope(
+            name=metadata["scope.name"],
+            sdk_version=metadata["scope.version"],
+            attributes=metadata["scope.attributes"],
+            config=config,
+        ) and _safe_resource_envelope(
+            attributes=resource_attributes,
+            dropped_attributes_count=metadata["resource.dropped_attributes_count"],
+            schema_url=metadata["resource.schema_url"],
+            config=config,
+            release=release,
+        )
+
+    if system_keys == _OTEL_SCOPE_FLAT_KEYS | _OTEL_RESOURCE_CONTAINER_KEYS:
+        return _safe_scope(
+            name=metadata["scope.name"],
+            sdk_version=metadata["scope.version"],
+            attributes=metadata["scope.attributes"],
+            config=config,
+        ) and _safe_resource_envelope(
+            attributes=metadata["resource.attributes"],
+            dropped_attributes_count=metadata["resource.dropped_attributes_count"],
+            schema_url=metadata["resource.schema_url"],
+            config=config,
+            release=release,
+        )
+
+    if system_keys == _OTEL_NESTED_KEYS:
+        scope = metadata["scope"]
+        if not isinstance(scope, dict) or set(scope) != {
+            "name",
+            "version",
+            "attributes",
+        }:
+            return False
+        return _safe_scope(
+            name=scope["name"],
+            sdk_version=scope["version"],
+            attributes=scope["attributes"],
+            config=config,
+        ) and _safe_resource_attributes(
+            metadata["resourceAttributes"],
+            config=config,
+            release=release,
+        )
+    return False
+
+
+def _safe_ambient_parent(
+    value: Any,
+    *,
+    root_id: str,
+    generation_id: str,
+) -> bool:
+    return value is None or (
+        isinstance(value, str)
+        and bool(_SPAN_ID_PATTERN.fullmatch(value))
+        and value != "0" * 16
+        and value not in {root_id, generation_id}
+    )
+
+
+def _safe_span_id(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and bool(_SPAN_ID_PATTERN.fullmatch(value))
+        and value != "0" * 16
+    )
+
+
+def _safe_model_resolution(generation: dict[str, Any]) -> bool:
+    internal_model_id = _field(
+        generation,
+        "internal_model_id",
+        "internalModelId",
+    )
+    model_id = _field(generation, "model_id", "modelId")
+    return model_id is None and (
+        internal_model_id is None
+        or (
+            isinstance(internal_model_id, str)
+            and bool(_UUID_PATTERN.fullmatch(internal_model_id))
+        )
+    )
+
+
 def _validate_readback(
     observations: list[dict[str, Any]],
     *,
@@ -342,16 +591,28 @@ def _validate_readback(
 
     root_id = root.get("id")
     generation_id = generation.get("id")
-    if not isinstance(root_id, str) or not isinstance(generation_id, str):
+    if (
+        not _safe_span_id(root_id)
+        or not _safe_span_id(generation_id)
+        or root_id == generation_id
+    ):
         raise ProofFailure("readback_shape_failed")
 
     root_metadata = root.get("metadata") or {}
     generation_metadata = generation.get("metadata") or {}
     if not isinstance(root_metadata, dict) or not isinstance(generation_metadata, dict):
         raise ProofFailure("readback_shape_failed")
-    root_metadata_allowlisted = set(root_metadata).issubset(_ROOT_METADATA_KEYS)
-    generation_metadata_allowlisted = set(generation_metadata).issubset(
-        _GENERATION_METADATA_KEYS
+    root_metadata_allowlisted = _system_metadata_safe(
+        root_metadata,
+        custom_keys=_ROOT_METADATA_KEYS,
+        config=config,
+        release=release,
+    )
+    generation_metadata_allowlisted = _system_metadata_safe(
+        generation_metadata,
+        custom_keys=_GENERATION_METADATA_KEYS,
+        config=config,
+        release=release,
     )
 
     root_input, root_input_object = _json_object(root.get("input"))
@@ -359,6 +620,7 @@ def _validate_readback(
     generation_input, generation_input_object = _json_object(generation.get("input"))
     generation_output, generation_output_object = _json_object(generation.get("output"))
 
+    root_parent_id = _field(root, "parent_observation_id", "parentObservationId")
     assertions = {
         "exact_observation_count": len(observations) == 2,
         "trace_ids_match": all(
@@ -366,7 +628,11 @@ def _validate_readback(
         ),
         "root_shape": (
             root.get("type") == "SPAN"
-            and _field(root, "parent_observation_id", "parentObservationId") is None
+            and _safe_ambient_parent(
+                root_parent_id,
+                root_id=root_id,
+                generation_id=generation_id,
+            )
             and _field(root, "is_root_observation", "isRootObservation") is True
         ),
         "generation_shape": (
@@ -393,10 +659,7 @@ def _validate_readback(
             item.get("environment") == ENVIRONMENT for item in observations
         ),
         "model_is_synthetic_unknown": generation.get("model") == SYNTHETIC_MODEL,
-        "model_not_resolved": all(
-            generation.get(key) is None
-            for key in ("internal_model_id", "internalModelId", "model_id", "modelId")
-        ),
+        "model_resolution_safe": _safe_model_resolution(generation),
         "zero_usage": _zero_map(_field(generation, "usage_details", "usageDetails")),
         "zero_cost": (
             _zero_map(_field(generation, "cost_details", "costDetails"))
@@ -454,7 +717,7 @@ def _validate_readback(
             "trace_id": trace_id,
             "type": "SPAN",
             "name": ROOT_NAME,
-            "parent_observation_id": None,
+            "parent_observation_id": root_parent_id,
         },
         {
             "id": generation_id,
