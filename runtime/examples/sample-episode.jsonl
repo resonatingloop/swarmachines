@@ -3,7 +3,7 @@
 {"run_id":"demo-001","seq":2,"turn":1,"agent_id":null,"type":"turn.begin","ts":"2026-11-07T14:30:02Z","payload":{"phase_order":["observe","exchange","act","record"]}}
 {"run_id":"demo-001","seq":3,"turn":1,"agent_id":"c","type":"observation.recorded","ts":"2026-11-07T14:30:03Z","payload":{"visible":{"queue":2,"requests":[{"freight":"med-kit","dest":"south"}],"known_closures":[],"roads_in_view":["east-bridge"]}}}
 {"run_id":"demo-001","seq":4,"turn":1,"agent_id":"c","type":"world.changed","ts":"2026-11-07T14:30:04Z","payload":{"what":"east-bridge washed out","effect":"east->south route closed","visibility":"agent c only"}}
-{"run_id":"demo-001","seq":5,"turn":1,"agent_id":"c","type":"message.sent","ts":"2026-11-07T14:30:05Z","payload":{"message_id":"m-001","from":"c","to":"b","body_ref":"messages/m-001.txt"}}
+{"run_id":"demo-001","seq":5,"turn":1,"agent_id":"c","type":"message.sent","ts":"2026-11-07T14:30:05Z","payload":{"message_id":"m-001","from":"c","to":"b","body":{"type":"report","content":"status"}}}
 {"run_id":"demo-001","seq":6,"turn":1,"agent_id":"b","type":"message.delivered","ts":"2026-11-07T14:30:06Z","payload":{"message_id":"m-001","to":"b","status":"delivered"}}
 {"run_id":"demo-001","seq":7,"turn":1,"agent_id":"b","type":"message.seen","ts":"2026-11-07T14:30:07Z","payload":{"message_id":"m-001","in_context_at_turn":1}}
 {"run_id":"demo-001","seq":8,"turn":1,"agent_id":"b","type":"action.proposed","ts":"2026-11-07T14:30:08Z","payload":{"action_id":"act-001","kind":"route_freight","freight":"med-kit","via":"east->south"}}
@@ -12,10 +12,10 @@
 {"run_id":"demo-001","seq":11,"turn":1,"agent_id":"b","type":"action.committed","ts":"2026-11-07T14:30:11Z","payload":{"action_id":"act-001","result":"freight queued on east->south"}}
 {"run_id":"demo-001","seq":12,"turn":2,"agent_id":null,"type":"turn.begin","ts":"2026-11-07T14:30:12Z","payload":{}}
 {"run_id":"demo-001","seq":13,"turn":2,"agent_id":null,"type":"disturbance.applied","ts":"2026-11-07T14:30:13Z","payload":{"kind":"relay-loss","detail":{"agent":"a","until":"run-end"},"before":"a reachable by all","after":"a unreachable; mesh edges among b,c,d unchanged"}}
-{"run_id":"demo-001","seq":14,"turn":2,"agent_id":"b","type":"message.sent","ts":"2026-11-07T14:30:14Z","payload":{"message_id":"m-002","from":"b","to":"a","body_ref":"messages/m-002.txt"}}
+{"run_id":"demo-001","seq":14,"turn":2,"agent_id":"b","type":"message.sent","ts":"2026-11-07T14:30:14Z","payload":{"message_id":"m-002","from":"b","to":"a","body":{"type":"report","content":"status"}}}
 {"run_id":"demo-001","seq":15,"turn":2,"agent_id":"a","type":"message.delivered","ts":"2026-11-07T14:30:15Z","payload":{"message_id":"m-002","to":"a","status":"undelivered","reason":"agent unreachable since turn 2"}}
 {"run_id":"demo-001","seq":16,"turn":2,"agent_id":"b","type":"action.rejected","ts":"2026-11-07T14:30:16Z","payload":{"action_id":"act-002","reason":"east-bridge closed; route invalid"}}
-{"run_id":"demo-001","seq":17,"turn":2,"agent_id":"c","type":"message.sent","ts":"2026-11-07T14:30:17Z","payload":{"message_id":"m-003","from":"c","to":"d","body_ref":"messages/m-003.txt"}}
+{"run_id":"demo-001","seq":17,"turn":2,"agent_id":"c","type":"message.sent","ts":"2026-11-07T14:30:17Z","payload":{"message_id":"m-003","from":"c","to":"d","body":{"type":"report","content":"status"}}}
 {"run_id":"demo-001","seq":18,"turn":2,"agent_id":"d","type":"message.delivered","ts":"2026-11-07T14:30:18Z","payload":{"message_id":"m-003","to":"d","status":"delivered"}}
 {"run_id":"demo-001","seq":19,"turn":3,"agent_id":null,"type":"turn.begin","ts":"2026-11-07T14:30:19Z","payload":{}}
 {"run_id":"demo-001","seq":20,"turn":3,"agent_id":"b","type":"message.seen","ts":"2026-11-07T14:30:19Z","payload":{"message_id":"m-003","in_context_at_turn":3,"note":"repair begins: b,c,d coordinate directly, relay absent - specimen c seed"}}

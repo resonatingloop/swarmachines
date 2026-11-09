@@ -25,7 +25,7 @@ try {
  let ready=event('Page.loadEventFired');await send('Page.navigate',{url:new URL('./compare.html',import.meta.url).href});await ready;
  await ev(`globalThis.upload=async(slot,text)=>{const dt=new DataTransfer();dt.items.add(new File([text],slot+'.jsonl'));document.getElementById(slot+'-file').files=dt.files;await document.getElementById(slot+'-file').onchange();}`);
  const eventRow=(seq,turn,type='turn.begin',payload={})=>({run_id:'same',seq,turn,type,payload,agent_id:'a',ts:'2026-11-07T00:00:00Z'});
- const a=[eventRow(0,0,'run.config',{seed:1}),eventRow(1,1,'observation.recorded',{text:'<img src=x onerror=alert(1)>'}),eventRow(2,1,'message.sent',{message_id:'same',from:'a',to:'b',body_ref:'https://example.invalid/body'}),eventRow(3,3,'run.end')];
+ const a=[eventRow(0,0,'run.config',{seed:1}),eventRow(1,1,'observation.recorded',{text:'<img src=x onerror=alert(1)>'}),eventRow(2,1,'message.sent',{message_id:'same',from:'a',to:'b',body:{type:'report',content:'<img src=x onerror=alert(1)>'}}),eventRow(3,3,'run.end')];
  const b=[eventRow(0,0,'run.config',{seed:2}),eventRow(1,2),eventRow(2,3,'run.end')];
  await ev(`upload('left',${JSON.stringify(a.map(JSON.stringify).join('\n').replace(/\\n/g,'\n'))})`);
  assert(await ev(`document.getElementById('metrics').textContent.includes('unavailable')`),'one side has no deltas');

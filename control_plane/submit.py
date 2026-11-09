@@ -30,9 +30,15 @@ def identifier(value):
 
 
 def private_read(path, limit):
-    """Read a bounded owned private regular file, refusing symlink paths."""
+    """Read a bounded owned private regular file, refusing symlinked files.
+
+    Ancestor symlinks (macOS ``/var`` -> ``/private/var`` tempdirs) are
+    allowed; the final component is opened ``O_NOFOLLOW`` so a symlinked
+    or swapped file is refused at open time, and ownership/permissions
+    are enforced via ``fstat``.
+    """
     path = Path(os.path.abspath(path))
-    if any(p.is_symlink() for p in (path, *path.parents)):
+    if path.is_symlink():
         raise ValueError("symlink refused")
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     try:
