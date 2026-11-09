@@ -732,7 +732,9 @@
                       "pattern": "^[a-zA-Z0-9_-]{1,64}$"
                     },
                     "release_turn": {
-                      "const": 0
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100
                     }
                   },
                   "required": [
