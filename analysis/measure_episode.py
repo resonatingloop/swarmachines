@@ -267,7 +267,8 @@ def _jobs(events, config, commits):
         )
     require(type(p["job_evidence_version"]) is int, "evidence_version_type")
     require(
-        p.get("policy") == "route-gossip-v1" and p.get("world") == "freight",
+        p.get("policy") in ("route-gossip-v1", "model-route-v1")
+        and p.get("world") == "freight",
         "evidence_mode",
     )
     horizon = p.get("horizon_turns")
@@ -355,7 +356,9 @@ def _jobs(events, config, commits):
             (row["state"] == "delivered") == (jid in done),
             "terminal_completion_mismatch",
         )
-    count, total = len(done), len(roster)
+    released = {jid for jid, row in roster.items() if row["release_turn"] <= horizon}
+    require(set(done) <= released, "completion_before_release")
+    count, total = len(done), len(released)
     primary = {
         "status": "available" if total else "undefined",
         "numerator": count,
@@ -413,6 +416,55 @@ def _jobs(events, config, commits):
     }
 
 
+def _model_execution(events, config):
+    """summarize provider receipts without consulting private response bodies."""
+    if config["payload"].get("policy") != "model-route-v1":
+        return (
+            unavailable("no_usage_manifest"),
+            unavailable("no_execution_manifest"),
+            unavailable("no_fallback_telemetry"),
+        )
+    decisions = [event for event in events if event["type"] == "model.decision"]
+    horizon = config["payload"]["horizon_turns"]
+    agents = config["payload"].get("agents", [])
+    require(len(decisions) == horizon * len(agents), "model_decision_coverage")
+    statuses = Counter(event["payload"]["status"] for event in decisions)
+    calls = [event for event in decisions if event["payload"]["attempt_id"]]
+    usage = {
+        "status": "available",
+        "model": config["payload"]["model"],
+        "calls": len(calls),
+        "input_tokens": sum(event["payload"]["input_tokens"] or 0 for event in calls),
+        "output_tokens": sum(event["payload"]["output_tokens"] or 0 for event in calls),
+        "charged_microcredits": sum(
+            event["payload"]["charged_microcredits"] for event in decisions
+        ),
+        "latency_ms": sum(event["payload"]["latency_ms"] or 0 for event in calls),
+        "sequences": [event["seq"] for event in decisions],
+    }
+    non_success = {
+        key: value
+        for key, value in sorted(statuses.items())
+        if key not in ("completed", "null")
+    }
+    failures = {
+        "status": "available",
+        "counts": non_success,
+        "sequences": [
+            event["seq"]
+            for event in decisions
+            if event["payload"]["status"] not in ("completed", "null")
+        ],
+    }
+    fallbacks = {
+        "status": "available",
+        "value": 0,
+        "reason": "model policy has no fallback or automatic retry",
+        "sequences": [],
+    }
+    return usage, failures, fallbacks
+
+
 def analyze_bytes(raw):
     """Return validated measurements or a categorical invalid result.
 
@@ -428,6 +480,7 @@ def analyze_bytes(raw):
         commits, actions, traffic = _identities(events)
         completion, resumption = _jobs(events, config, commits)
         p = config["payload"]
+        provider_usage, failures, fallbacks = _model_execution(events, config)
         result.update(
             status="valid",
             run_id=config["run_id"],
@@ -435,16 +488,19 @@ def analyze_bytes(raw):
             schema="swarmachines/events/v1",
             evidence_version=p.get("job_evidence_version"),
             policy=p.get("policy"),
+            model=p.get("model"),
             topology=p.get("comm_topology"),
+            world_regime=p.get("world_regime"),
+            disturbance_schedule=p.get("disturbance_schedule"),
             seed=p.get("seed"),
             horizon=p.get("horizon_turns"),
             completion=completion,
             resumption=resumption,
             actions=actions,
             traffic=traffic,
-            provider_usage=unavailable("no_usage_manifest"),
-            failures=unavailable("no_execution_manifest"),
-            fallbacks=unavailable("no_fallback_telemetry"),
+            provider_usage=provider_usage,
+            failures=failures,
+            fallbacks=fallbacks,
         )
     except EvidenceError as error:
         result.update(status="invalid", reason=str(error))

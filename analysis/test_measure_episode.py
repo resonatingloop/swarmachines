@@ -8,6 +8,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from adaption_adapter import AdapterResponse, AdapterUsage
+from freight_world import FreightWorld
+from model_policy import BudgetLedger, ModelActionPolicy, estimate_microcredits
+from runner import TurnSeamRunner
+
 from analysis.measure_episode import analyze_bytes, main
 
 
@@ -87,7 +92,7 @@ def fixture(completed=None, empty=False):
             "jobs": [] if empty else [final],
             "termination": "completed",
             "horizon_turns": 16,
-            "recovery_interval_turns": 9,
+            "recovery_interval_turns": 999,
         },
     )
     return events
@@ -127,6 +132,47 @@ class MeasureTests(unittest.TestCase):
         self.assertEqual(r["completion"]["status"], "undefined")
         self.assertEqual(r["completion"]["denominator"], 0)
         self.assertIsNone(r["completion"]["value"])
+
+    def test_model_episode_counts_released_jobs_and_provider_usage(self):
+        class NullAdapter:
+            def chat(self, **_kwargs):
+                return AdapterResponse(
+                    model="gemma-4-26b-a4b-it",
+                    output_text='{"action":null,"reason":"wait"}',
+                    usage=AdapterUsage(100, 10, 110),
+                    latency_ms=5.0,
+                    raw_response=None,
+                    status="completed",
+                )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            model = "gemma-4-26b-a4b-it"
+            policy = ModelActionPolicy(
+                model=model,
+                adapter=NullAdapter(),
+                ledger=BudgetLedger(
+                    root / "ledger.json", estimate_microcredits(model) * 2
+                ),
+                evidence_dir=root / "raw",
+            )
+            episode = TurnSeamRunner(
+                seed=42,
+                comm_topology="mesh",
+                agents_config=["a"],
+                disturbance_schedule={},
+                use_freight_world=True,
+                policy="model-route-v1",
+                model_policy=policy,
+                release_turns=FreightWorld.RELEASE_TURNS,
+            ).run(2)
+        result = analyze_bytes((episode + "\n").encode())
+        self.assertEqual(result["status"], "valid")
+        self.assertEqual(result["completion"]["denominator"], 1)
+        self.assertEqual(result["provider_usage"]["calls"], 2)
+        self.assertEqual(result["provider_usage"]["input_tokens"], 200)
+        self.assertEqual(result["failures"]["counts"], {})
+        self.assertEqual(result["fallbacks"]["value"], 0)
 
     def test_partial_is_not_censored(self):
         r = analyze_bytes(raw(fixture(8)[:-1]))

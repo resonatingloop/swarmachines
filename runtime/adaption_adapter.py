@@ -112,8 +112,39 @@ class AdapterResponse:
     output_text: str
     usage: AdapterUsage
     latency_ms: float
-    diagnostics: ResponseDiagnostics
+    diagnostics: ResponseDiagnostics = field(repr=False)
     raw_response: Any = field(repr=False, default=None)
+
+    def __init__(
+        self,
+        model: str,
+        output_text: str,
+        usage: AdapterUsage,
+        latency_ms: float,
+        diagnostics: ResponseDiagnostics | None = None,
+        raw_response: Any = None,
+        # Backward-compatible constructor fields for PR-era call sites
+        status: str | None = None,
+        incomplete_reason: str | None = None,
+    ) -> None:
+        self.model = model
+        self.output_text = output_text
+        self.usage = usage
+        self.latency_ms = latency_ms
+        self.raw_response = raw_response
+        # Support both new-style (diagnostics) and old-style (status/incomplete_reason) construction
+        if diagnostics is not None:
+            self.diagnostics = diagnostics
+        else:
+            self.diagnostics = ResponseDiagnostics(
+                response_id_sha256=None,
+                status=status if status else "completed",
+                incomplete_reason=incomplete_reason,
+                output_item_type_counts={},
+                message_content_type_counts={},
+                visible_response_chars=len(output_text),
+                model_matches_selected=True,
+            )
 
     # Convenience properties for model_policy.py compatibility
     @property
