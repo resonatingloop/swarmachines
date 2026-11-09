@@ -52,6 +52,10 @@ def main():
         e["type"] == "run.config" and e["payload"].get("policy") == "route-gossip-v1"
         for e in events
     )
+    model_route = any(
+        e["type"] == "run.config" and e["payload"].get("policy") == "model-route-v1"
+        for e in events
+    )
     if route_gossip:
         # Waiting, no traffic, and no rejection can all be valid policy outcomes.
         # Influence markers are deliberately absent in this mode.
@@ -71,6 +75,22 @@ def main():
             return 1
         if "message.acted_on" in types:
             print("ERROR: legacy influence marker in route-gossip episode")
+            return 1
+    elif model_route:
+        # Model-route episodes use model.decision instead of policy.decision
+        required = {
+            "run.config",
+            "world.init",
+            "turn.begin",
+            "observation.recorded",
+            "model.decision",
+            "run.end",
+        }
+        source_count = sum(
+            bool(line.strip()) for line in event_path.read_text().splitlines()
+        )
+        if len(events) != source_count:
+            print("ERROR: policy episode contains invalid records")
             return 1
     missing = required - types
     if missing:

@@ -21,30 +21,51 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, ClassVar
 
-from freight_world import FreightWorld
-from job_evidence import roster
-from model_policy import (
-    ACCEPTED_MODELS,
-    MAX_CEILING_MICROCREDITS,
-    MAX_OUTPUT_TOKENS,
-    OUTPUT_CONTRACT,
-    BudgetLedger,
-    ModelActionPolicy,
-)
-from model_policy import POLICY as MODEL_POLICY
-from route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select
-
 try:  # package mode: runtime/ is importable as a package
+    from .freight_world import FreightWorld  # type: ignore
+    from .job_evidence import roster  # type: ignore
+    from .model_policy import (  # type: ignore
+        ACCEPTED_MODELS,
+        MAX_CEILING_MICROCREDITS,
+        MAX_OUTPUT_TOKENS,
+        OUTPUT_CONTRACT,
+        BudgetLedger,
+        ModelActionPolicy,
+    )
+    from .model_policy import (
+        POLICY as MODEL_POLICY,
+    )
+    from .route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select  # type: ignore
     from .tracer import RunStatus, TraceConfig, Tracer, create_tracer  # type: ignore
 except ImportError:  # script mode: python3 runtime/runner.py
     try:
+        from freight_world import FreightWorld  # type: ignore
+        from job_evidence import roster  # type: ignore
+        from model_policy import (  # type: ignore
+            ACCEPTED_MODELS,
+            MAX_CEILING_MICROCREDITS,
+            MAX_OUTPUT_TOKENS,
+            OUTPUT_CONTRACT,
+            BudgetLedger,
+            ModelActionPolicy,
+        )
+        from model_policy import (
+            POLICY as MODEL_POLICY,
+        )
+        from route_gossip import MAX_REPORTS, POLICY, admit_report, make_report, select  # type: ignore
         from tracer import (  # type: ignore
             RunStatus,
             TraceConfig,
             Tracer,
             create_tracer,
         )
-    except ImportError:  # tracer module missing: tracing unavailable
+    except ImportError:  # sibling modules missing: fall back gracefully
+        FreightWorld = roster = MAX_REPORTS = POLICY = admit_report = make_report = (
+            select
+        ) = None  # type: ignore
+        ACCEPTED_MODELS = MAX_CEILING_MICROCREDITS = MAX_OUTPUT_TOKENS = (
+            OUTPUT_CONTRACT
+        ) = BudgetLedger = ModelActionPolicy = MODEL_POLICY = None  # type: ignore
         RunStatus = TraceConfig = Tracer = create_tracer = None  # type: ignore
 
 

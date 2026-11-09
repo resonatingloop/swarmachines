@@ -705,7 +705,6 @@
                             "latency_ms",
                             "reserved_microcredits",
                             "charged_microcredits",
-                            "cost_basis",
                             "available_message_ids"
                         ],
                         "properties": {
