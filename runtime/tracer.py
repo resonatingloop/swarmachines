@@ -15,6 +15,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+LANGFUSE_REQUEST_TIMEOUT_SECONDS = 10
+MASKING_MARKER_KEY = "swarmachines.masking_applied"
+
 
 class RunStatus(Enum):
     COMPLETED = "completed"
@@ -74,11 +77,18 @@ class TraceConfig:
                 "LANGFUSE_BASE_URL",
             }:
                 raise ValueError("langfuse credential file has an invalid field")
-            if key in values or not value.strip():
+            value = value.strip()
+            starts_quoted = value.startswith(('"', "'"))
+            ends_quoted = value.endswith(('"', "'"))
+            if starts_quoted or ends_quoted:
+                if len(value) < 2 or value[0] != value[-1]:
+                    raise ValueError("langfuse credential file has invalid quoting")
+                value = value[1:-1]
+            if key in values or not value:
                 raise ValueError(
                     "langfuse credential file has a duplicate or empty field"
                 )
-            values[key] = value.strip()
+            values[key] = value
 
         required = {
             "LANGFUSE_PUBLIC_KEY",
@@ -101,6 +111,26 @@ class TraceConfig:
             strict=strict,
             release=release,
         )
+
+
+def create_langfuse_client(config: TraceConfig) -> Any:
+    """construct the current sdk client from an already validated config."""
+    if not (
+        config.enabled and config.public_key and config.secret_key and config.base_url
+    ):
+        raise ValueError("langfuse trace config is incomplete")
+
+    from langfuse import Langfuse
+
+    return Langfuse(
+        public_key=config.public_key,
+        secret_key=config.secret_key,
+        base_url=config.base_url,
+        release=config.release,
+        environment=config.environment,
+        timeout=LANGFUSE_REQUEST_TIMEOUT_SECONDS,
+        mask_otel_spans=_mask_otel_spans,
+    )
 
 
 class FakeExporter:
@@ -489,24 +519,147 @@ def _mask_otel_spans(*, params: Any) -> Any:
         "exception.",
         "error.",
     )
-    blocked_exact = {
-        "langfuse.observation.input",
-        "langfuse.observation.output",
-        "langfuse.observation.status_message",
-    }
+    blocked_exact = {"langfuse.observation.status_message"}
     patches = {}
     for identifier, span in params.spans.items():
         delete_attributes = tuple(
             key
             for key in span.attributes
-            if key in blocked_exact or key.startswith(blocked_prefixes)
-        )
-        if delete_attributes:
-            patches[identifier] = OtelSpanPatch(
-                delete_attributes=delete_attributes,
-                set_attributes={"swarmachines.masking_applied": True},
+            if key in blocked_exact
+            or key.startswith(blocked_prefixes)
+            or (
+                key
+                in {
+                    "langfuse.observation.input",
+                    "langfuse.observation.output",
+                }
+                and not _safe_observation_io_attribute(
+                    span.name,
+                    key,
+                    span.attributes[key],
+                )
             )
+        )
+        patches[identifier] = OtelSpanPatch(
+            delete_attributes=delete_attributes,
+            set_attributes={MASKING_MARKER_KEY: True},
+        )
     return MaskOtelSpansResult(span_patches=patches)
+
+
+def _reject_duplicate_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in payload:
+            raise ValueError("duplicate json key")
+        payload[key] = value
+    return payload
+
+
+def _reject_json_constant(_value: str) -> Any:
+    raise ValueError("non-finite json constant")
+
+
+def _bounded_json_object(
+    value: Any, *, maximum_chars: int = 4096
+) -> dict[str, Any] | None:
+    """parse one small strict json object without lossy duplicate-key collapse."""
+    if isinstance(value, str):
+        serialized = value
+    elif isinstance(value, dict):
+        if len(value) > 16 or not all(
+            isinstance(key, str)
+            and (item is None or isinstance(item, (str, int, float, bool)))
+            for key, item in value.items()
+        ):
+            return None
+        try:
+            serialized = json.dumps(
+                value,
+                ensure_ascii=False,
+                allow_nan=False,
+                separators=(",", ":"),
+            )
+        except (TypeError, ValueError, OverflowError, RecursionError):
+            return None
+    else:
+        return None
+    if len(serialized) > maximum_chars:
+        return None
+    try:
+        payload = json.loads(
+            serialized,
+            object_pairs_hook=_reject_duplicate_json_object,
+            parse_constant=_reject_json_constant,
+        )
+    except (TypeError, ValueError, OverflowError, RecursionError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload
+
+
+def _safe_observation_io_attribute(name: str, key: str, value: Any) -> bool:
+    """keep only the exact hashes-only observation io emitted by this tracer."""
+    payload = _bounded_json_object(value)
+    if payload is None:
+        return False
+
+    digest_pattern = r"[0-9a-f]{64}"
+    if name == "swarmachines-model-call":
+        if key == "langfuse.observation.input":
+            prompt_hash = payload.get("prompt_sha256")
+            return (
+                set(payload) == {"prompt_sha256"}
+                and isinstance(prompt_hash, str)
+                and bool(re.fullmatch(digest_pattern, prompt_hash))
+            )
+        response_hash = payload.get("response_sha256")
+        return set(payload) == {"response_sha256"} and (
+            response_hash is None
+            or (
+                isinstance(response_hash, str)
+                and bool(re.fullmatch(digest_pattern, response_hash))
+            )
+        )
+
+    if name == "swarmachines-run":
+        if key == "langfuse.observation.input":
+            run_hash = payload.get("run_id_sha256")
+            return (
+                set(payload) == {"run_id_sha256"}
+                and isinstance(run_hash, str)
+                and bool(re.fullmatch(digest_pattern, run_hash))
+            )
+        telemetry_error_count = payload.get("telemetry_error_count")
+        status = payload.get("status")
+        reason_category = payload.get("reason_category")
+        return (
+            set(payload) == {"status", "reason_category", "telemetry_error_count"}
+            and isinstance(status, str)
+            and status in {item.value for item in RunStatus}
+            and (
+                reason_category is None
+                or (
+                    isinstance(reason_category, str)
+                    and reason_category
+                    in {
+                        "budget_stopped",
+                        "cancelled",
+                        "provider_error",
+                        "runner_error",
+                        "schema_validation_error",
+                        "telemetry_error",
+                        "other",
+                    }
+                )
+            )
+            and isinstance(telemetry_error_count, int)
+            and not isinstance(telemetry_error_count, bool)
+            and 0 <= telemetry_error_count <= 100_000_000
+        )
+
+    return False
 
 
 class Tracer:
@@ -553,16 +706,7 @@ class Tracer:
             self._failure("trace_config_incomplete")
             return False
         try:
-            from langfuse import Langfuse
-
-            self._client = Langfuse(
-                public_key=self.config.public_key,
-                secret_key=self.config.secret_key,
-                base_url=self.config.base_url,
-                release=self.config.release,
-                environment=self.config.environment,
-                mask_otel_spans=_mask_otel_spans,
-            )
+            self._client = create_langfuse_client(self.config)
         except Exception as error:  # noqa: BLE001
             self._failure("trace_init_failed", error)
             return False

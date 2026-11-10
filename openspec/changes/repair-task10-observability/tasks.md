@@ -28,8 +28,9 @@
   metadata/hashes only.
 - [x] apply export-stage masking, explicit terminal flush, and local categorical
   telemetry failure evidence.
-- [x] stop before another provider call if trace creation/export fails; never
-  repeat the already-paid call.
+- [x] stop before another provider call when trace creation or export raises
+  locally; never repeat the already-paid call or treat flush return as a remote
+  delivery receipt.
 
 ## 4. offline proof
 
@@ -46,12 +47,15 @@
   read back the trace.
 - [ ] run one separately authorized adaption diagnostic call; reconcile local
   and remote metadata.
+- [ ] before upload/publication, reconcile the live cohort's remote observations
+  against the authoritative sealed local hashes; label remote gaps as incomplete
+  observability without rewriting or retrying local calls.
 - [ ] return the continuation contract for a new owner ruling. do not infer
-  authorization for runs `005–015`, packaging, upload, or publication.
+  authorization for a fresh provider batch, packaging, upload, or publication.
 
 ## offline evidence
 
-- `pytest -q`: 189 passed, 201 subtests passed; 42 pre-existing
+- `pytest -q`: 225 passed, 201 subtests passed; 42 pre-existing
   return-not-none warnings.
 - ruff on every changed python file: all checks passed.
 - task10 provider-free preflight: 15 instances, 1,920 planned calls, 4,096
@@ -62,3 +66,10 @@
 - documentation checker: 6 pre-existing missing-status errors in older specs
   and 8 status-heading warnings; no new broken link or template residue was
   reported.
+- three separately owner-authorized fictional traces authenticated and failed
+  closed without any provider call. the latest immutable receipt is
+  `a03b7398d8ae1884c843f8a8c71ba22b07c3b92d8804c010226ff34550afea0a`;
+  it records `readback_shape_failed`. a local in-memory reproduction confirmed
+  that export masking deleted the tracer's already-allowlisted hash-only
+  observation io. the bounded local repair keeps only exact schema-shaped io
+  and deletes everything else; another external proof remains separately gated.

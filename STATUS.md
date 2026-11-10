@@ -1,7 +1,7 @@
 # swarmachines / status
 
 > continuity role: operational checkpoint
-> status: task10 response/langfuse repair implemented offline on candidate branch; exact-head review and every external call remain gated; dataset-pack lane core merged (#64 @ d95de98), beads-dir anchor docs merged (#72 @ 1dc0c38), model-evidence causal seal merged (#71 @ f6196f6); event-log seal merged (PR #46); report synthesis pending
+> status: task10 repair is merged via pr #76; pr #77 adds the langfuse delivery proof gate tool; exact-head review and every external call remain gated; dataset-pack lane core merged (#64 @ d95de98), beads-dir anchor docs merged (#72 @ 1dc0c38), model-evidence causal seal merged (#71 @ f6196f6); event-log seal merged (PR #46); report synthesis pending
 > last verified: 2026-11-08 (checkpoint merge window through 20:07:52Z; query origin/master for the current tip)
 > owns: exercised state, active work, gaps, and the next useful action
 > update when: a meaningful stopping point changes these facts; replace this checkpoint in place
@@ -26,6 +26,25 @@ sample-run.jsonl stays legacy (byte-compat fixture).
 ## verified checkpoint
 
 **checkpoint merge window**: 2026-11-08 01:26Z–20:07:52Z; the recent merge ledger below records the attested sequence. query origin/master for the current tip rather than treating this document as a live pointer.
+
+**task10 response/langfuse repair landed (2026-11-09 00:05Z)**: pr #76
+merged exact reviewed head
+`81c61e1b0976235c0f3667f740c092f12b1aeb19` as
+`31504e2d3dba754d281455f15004d8f40e88fb08`. caduceus's durable
+exact-head review receipt records PASS; ruff, bandit and gitleaks passed at
+that head. the post-merge master lint+scan and dependency-graph workflows also
+completed successfully at `31504e2`. this proves the merged offline repair
+surface and repository gates, not langfuse authentication, trace delivery or
+provider behavior. runs `001–004` remain immutable structural and
+failure-behavior specimens: their seals preserve the observed empty-response
+failure, and they are not analytically complete model-response traces.
+
+**task10 telemetry clarification accepted (2026-11-08)**: sealed local logs,
+calls and receipts are authoritative. the owner accepted synthetic readback as
+the pre-live gate and terminal remote reconciliation as the upload/publication
+gate. langfuse sdk flush is not described as an application-visible delivery
+receipt; remote gaps mark observability incomplete and never justify rewriting
+or retrying a paid local call.
 
 **sanitization respin (2026-11-08)**: delegation receipts now persist the model name only when the provider reports the fixed `glm-53-flash` constant (otherwise `unknown`) and validate each usage token count independently within 0..10^9, estimating cost only from a complete valid pair. This is the owner-ruled redo of the db2bc17 sanitization on a channel-preserving base: the bounded response-diagnostics channel from pr #22 (fixed reason codes, allowlisted status, receipt usage fallback) is untouched and no channel was removed. The sanitized delegation harness sha256 is registered in the read-only projection's recognized producers next to the legacy hashes, so budget provenance stays known for new receipts while prior receipts still project. 160 offline tests passed at its df73cd1 merge across control_plane, runtime and viewer (74+24+62) with mocked sdks and zero provider calls; control_plane ruff check and format are clean. Landed via PR #42 (2026-11-08 05:52Z).
 
@@ -72,11 +91,12 @@ experimental batch or provider calls.
 
 ## working now
 
-- task10 repair candidate: 4,096-token visible-response mode, bounded response
+- task10 repair merged via pr #76: 4,096-token visible-response mode, bounded response
   diagnostics, fail-closed empty/incomplete handling, langfuse 5.x generations
   with hashes-only export and strict flush, explicit private credential-file
   loading, one source-linked `model.call.failed` event per rejected attempt,
   pre-seal schema validation, and pre-package seal verification
+- pr #77: langfuse delivery proof gate tool — local bounded otel/readback contract repair awaiting exact-head publication review; no fifth trace, provider call, batch, packaging, upload or publication is authorized
 - freight-world integration merged (PR #29 + PR #38 fix-forward); act-phase legal no-ops now correctly labeled action.committed
 - spec006 formal pair recorded (PR #39): seed-42 mesh vs ring under peer-mute:8:c with frozen manifest
 - tracing layer wired (PR #30): Langfuse-compatible tracer with --trace flag, offline default byte-identical
@@ -88,11 +108,12 @@ experimental batch or provider calls.
 
 ## incomplete or broken
 
-- task10 external proof is intentionally unrun: no langfuse authentication,
-  synthetic trace, adaption diagnostic call, continuation of runs 005–015,
-  packaging, upload, or publication is authorized by the offline candidate
-- task10 exact-head independent review is pending a commit/push/pr gate; pr #75
-  is a separate implementation and is not the accepted candidate described here
+- task10 external proof remains failed closed after four separately authorized
+  fictional traces. pr #77 has a local-only otel/readback repair awaiting
+  publication and exact-head review. no fifth trace, provider call, batch,
+  packaging, upload or publication is authorized
+- task10 runs `001–004` are preserved failed-cohort evidence, not reusable
+  analytically complete results and not candidates for silent replacement
 - local beads writes are blocked by a project-id mismatch between workspace
   metadata and the authoritative database; the existing board remains readable
   and no bootstrap, fix, init, or sync was attempted
@@ -115,7 +136,11 @@ colette drafts report prose from `docs/report/report-skeleton.md`. use the recor
 ## re-entry notes
 
 - checkout: use your own isolated clone of this repository; do not reuse another agent's working directory. the author's `/workspace/clones/dev-status-refresh` is host-specific, not a universal entry point.
-- board reads: use the configured beads store for your host. pug's store is `/workspace/.beads-store`; do not initialize a replacement board or assume that path exists elsewhere.
+- board reads: use the configured beads store for your host. pug's store is `/workspace/.beads-store`; do not initialize a replacement board or sync was attempted
+- pr state: `gh pr list --repo resonatingloop/swarmachines --state open`
+- data pack: `data/runs/gen-full-20261108/` — logs/calls.jsonl, receipts/, run.json
+- report skeleton: `docs/report/report-skeleton.md` — mirrors official Apart template
+- TASKS.md: removed from tree 2026-11-08 — retired 2026-11-08; beads is sole tracker; historical archive kept in owner notes outside the repo; do not recreate
 
 ## provenance
 

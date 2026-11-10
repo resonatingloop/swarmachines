@@ -200,16 +200,53 @@ default: the owner accepted an explicit external private-file argument, and
 the cli must not guess a host path or seek secrets inside the repository.
 
 tracing exports hashes and bounded metadata only. every provider attempt owns
-one generation, flushes before the next paid call, and stops the batch if trace
-creation or export fails. a response becomes a sealed `model.call` only when
-status is `completed` and visible output is nonempty. a rejected attempt
+one generation and attempts a flush before the next paid call. trace creation
+or locally surfaced export exceptions stop the batch, but langfuse sdk `5.x`
+does not expose per-flush delivery as an application-visible result. a
+non-raising flush is therefore not represented as remote-delivery proof. a
+response becomes a sealed `model.call` only when status is `completed` and
+visible output is nonempty. a rejected attempt
 instead becomes exactly one source-linked `model.call.failed` event, and the
 failed partial run is sealed before capture. package creation recomputes every
 persisted event seal before it writes a manifest or copies raw runs.
 
+the sealed local event log, calls and receipts remain authoritative. the
+fictional readback proof must pass before live provider work; before any upload
+or publication, reconcile the live cohort's langfuse observations against the
+local hashes. a remote gap means incomplete observability, not permission to
+rewrite a sealed run or repeat a paid call.
+
 offline success does not authorize langfuse authentication, synthetic export,
-an adaption diagnostic call, runs 005–015, packaging, upload, or publication.
+an adaption diagnostic call, a fresh provider batch, packaging, upload, or publication.
 those gates remain explicit and sequential.
+
+after the owner separately authorizes the first two external gates, run the
+provider-free proof from the exact reviewed revision. the evidence path must
+not already exist:
+
+```sh
+python -m runtime.langfuse_proof \
+  --langfuse-credentials <owner-private-file> \
+  --release <exact-40-character-git-sha> \
+  --evidence <new-private-receipt-path>
+```
+
+the command authenticates before it emits anything, then sends exactly one
+fictional metadata-only trace. it accepts delivery only after a bounded
+observations-v2 readback finds the exact root span and child generation and
+passes the hashes-only privacy assertions. langfuse's standard otel envelope is
+accepted only in its fixed resource/scope shapes: the public project key must
+appear solely as the expected scope routing identifier; the secret key and base
+url remain forbidden. an otel ambient 16-hex parent span and a server-generated
+internal model uuid are accepted only with the langfuse root flag, exact child
+relationship, synthetic `unknown` model, and absent public model id. arbitrary
+metadata or malformed system fields still fail closed. the readback deadline is 90 seconds,
+and each observations-v2 readback request uses the remaining deadline up to 10
+seconds with sdk retries disabled. authentication and otlp export retain their
+sdk-managed retry behavior under the shared 10-second transport timeout. the
+receipt is created exclusively with mode `0600`. flush return alone does not
+count as delivery. any failed gate stops before an adaption call; the command
+never imports or calls the adaption provider.
 
 ## e2e pipeline test
 

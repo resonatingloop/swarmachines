@@ -195,6 +195,41 @@ def test_credential_loader_is_explicit_private_and_non_symlink():
             TraceConfig.from_file(link, release="test")
 
 
+def test_credential_loader_accepts_literal_outer_quotes_only():
+    with tempfile.TemporaryDirectory() as root:
+        credential = Path(root) / "trace.token"
+        credential.write_text(
+            'LANGFUSE_BASE_URL="https://cloud.langfuse.com"\n'
+            "LANGFUSE_PUBLIC_KEY='test-public-key'\n"
+            'LANGFUSE_SECRET_KEY="test-secret-key"\n',
+            encoding="utf-8",
+        )
+        credential.chmod(0o600)
+
+        config = TraceConfig.from_file(credential, release="test")
+        assert config.base_url == "https://cloud.langfuse.com"
+        assert config.public_key == "test-public-key"
+        assert config.secret_key == "test-secret-key"
+
+        credential.write_text(
+            'LANGFUSE_BASE_URL="https://cloud.langfuse.com\n'
+            "LANGFUSE_PUBLIC_KEY='test-public-key'\n"
+            'LANGFUSE_SECRET_KEY="test-secret-key"\n',
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="invalid quoting"):
+            TraceConfig.from_file(credential, release="test")
+
+        credential.write_text(
+            'LANGFUSE_BASE_URL="https://cloud.langfuse.com"\n'
+            "LANGFUSE_PUBLIC_KEY=''\n"
+            'LANGFUSE_SECRET_KEY="test-secret-key"\n',
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="empty field"):
+            TraceConfig.from_file(credential, release="test")
+
+
 def test_generation_exports_hashes_only_and_flushes_strictly():
     exporter = FakeExporter()
     tracer = Tracer(
@@ -345,6 +380,131 @@ def test_v5_export_mask_returns_attribute_patches():
     assert patch.set_attributes["swarmachines.masking_applied"] is True
 
 
+def test_v5_export_mask_preserves_only_exact_hashes_only_io():
+    from langfuse.types import (
+        MaskOtelSpansParams,
+        OtelSpanData,
+        OtelSpanIdentifier,
+    )
+
+    identifier = OtelSpanIdentifier(trace_id="0" * 32, span_id="1" * 16)
+    safe_input = json.dumps({"prompt_sha256": "a" * 64})
+    safe_output = json.dumps({"response_sha256": "b" * 64})
+    span = OtelSpanData(
+        trace_id=identifier.trace_id,
+        span_id=identifier.span_id,
+        parent_span_id=None,
+        name="swarmachines-model-call",
+        instrumentation_scope_name="langfuse",
+        instrumentation_scope_version="5.2.0",
+        attributes={
+            "langfuse.observation.input": safe_input,
+            "langfuse.observation.output": safe_output,
+        },
+        resource_attributes={},
+    )
+
+    result = _mask_otel_spans(params=MaskOtelSpansParams(spans={identifier: span}))
+    patch = result.span_patches[identifier]
+
+    assert patch is not None
+    assert patch.delete_attributes == ()
+    assert patch.set_attributes["swarmachines.masking_applied"] is True
+
+
+def test_v5_export_mask_deletes_non_allowlisted_observation_io():
+    from langfuse.types import (
+        MaskOtelSpansParams,
+        OtelSpanData,
+        OtelSpanIdentifier,
+    )
+
+    identifier = OtelSpanIdentifier(trace_id="0" * 32, span_id="1" * 16)
+    root_identifier = OtelSpanIdentifier(trace_id="0" * 32, span_id="2" * 16)
+    span = OtelSpanData(
+        trace_id=identifier.trace_id,
+        span_id=identifier.span_id,
+        parent_span_id=None,
+        name="swarmachines-model-call",
+        instrumentation_scope_name="langfuse",
+        instrumentation_scope_version="5.2.0",
+        attributes={
+            "langfuse.observation.input": json.dumps({"prompt_sha256": 1}),
+            "langfuse.observation.output": json.dumps({"answer": "private answer"}),
+        },
+        resource_attributes={},
+    )
+    malformed_root = OtelSpanData(
+        trace_id=root_identifier.trace_id,
+        span_id=root_identifier.span_id,
+        parent_span_id=None,
+        name="swarmachines-run",
+        instrumentation_scope_name="langfuse",
+        instrumentation_scope_version="5.2.0",
+        attributes={
+            "langfuse.observation.output": json.dumps(
+                {
+                    "status": ["completed"],
+                    "reason_category": None,
+                    "telemetry_error_count": 0,
+                }
+            )
+        },
+        resource_attributes={},
+    )
+
+    result = _mask_otel_spans(
+        params=MaskOtelSpansParams(
+            spans={identifier: span, root_identifier: malformed_root}
+        )
+    )
+    patch = result.span_patches[identifier]
+    root_patch = result.span_patches[root_identifier]
+
+    assert patch is not None
+    assert set(patch.delete_attributes) == {
+        "langfuse.observation.input",
+        "langfuse.observation.output",
+    }
+    assert root_patch is not None
+    assert root_patch.delete_attributes == ("langfuse.observation.output",)
+
+
+@pytest.mark.parametrize(
+    "hostile_input",
+    [
+        '{"prompt_sha256":"private raw prompt","prompt_sha256":"' + "a" * 64 + '"}',
+        "[" * 2000 + '"private raw prompt"' + "]" * 2000,
+        '{"prompt_sha256":NaN}',
+        '{"prompt_sha256":Infinity}',
+    ],
+)
+def test_v5_export_mask_deletes_hostile_json_without_throwing(hostile_input):
+    from langfuse.types import (
+        MaskOtelSpansParams,
+        OtelSpanData,
+        OtelSpanIdentifier,
+    )
+
+    identifier = OtelSpanIdentifier(trace_id="0" * 32, span_id="1" * 16)
+    span = OtelSpanData(
+        trace_id=identifier.trace_id,
+        span_id=identifier.span_id,
+        parent_span_id=None,
+        name="swarmachines-model-call",
+        instrumentation_scope_name="langfuse",
+        instrumentation_scope_version="5.2.0",
+        attributes={"langfuse.observation.input": hostile_input},
+        resource_attributes={},
+    )
+
+    result = _mask_otel_spans(params=MaskOtelSpansParams(spans={identifier: span}))
+    patch = result.span_patches[identifier]
+
+    assert patch is not None
+    assert patch.delete_attributes == ("langfuse.observation.input",)
+
+
 def test_installed_langfuse_v5_surface_is_zero_network_and_metadata_only():
     from langfuse import Langfuse
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -392,7 +552,8 @@ def test_installed_langfuse_v5_surface_is_zero_network_and_metadata_only():
         error="private tool error",
     )
     tracer.end_trace(RunStatus.COMPLETED)
-    exported = repr([span.attributes for span in sink.get_finished_spans()])
+    finished_spans = sink.get_finished_spans()
+    exported = repr([span.attributes for span in finished_spans])
     assert "private prompt" not in exported
     assert "private answer" not in exported
     assert "private-call" not in exported
@@ -403,6 +564,21 @@ def test_installed_langfuse_v5_surface_is_zero_network_and_metadata_only():
     assert "private tool argument" not in exported
     assert "private tool result" not in exported
     assert "private tool error" not in exported
+    by_name = {span.name: span.attributes for span in finished_spans}
+    assert json.loads(
+        by_name["swarmachines-model-call"]["langfuse.observation.input"]
+    ) == {"prompt_sha256": hashlib.sha256(b"private prompt").hexdigest()}
+    assert json.loads(
+        by_name["swarmachines-model-call"]["langfuse.observation.output"]
+    ) == {"response_sha256": hashlib.sha256(b"private answer").hexdigest()}
+    assert json.loads(by_name["swarmachines-run"]["langfuse.observation.input"]) == {
+        "run_id_sha256": hashlib.sha256(b"private-run").hexdigest()
+    }
+    assert json.loads(by_name["swarmachines-run"]["langfuse.observation.output"]) == {
+        "status": "completed",
+        "reason_category": None,
+        "telemetry_error_count": 0,
+    }
 
 
 def test_disabled_tracing_is_byte_identical_to_absent_tracing():
